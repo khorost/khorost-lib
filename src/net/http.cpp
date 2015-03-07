@@ -53,6 +53,11 @@ bool HTTPTextProtocolHeader::GetChunk(const char*& rpBuffer_, size_t& rnBufferSi
     return false;
 }
 
+bool HTTPTextProtocolHeader::GetBody(std::string& rContent_) {
+    rContent_.assign(reinterpret_cast<const char*>(m_abBody.GetHead()), m_abBody.GetFillSize());
+    return true;
+}
+
 size_t  HTTPTextProtocolHeader::ProcessData(Network::Connection& rConnect_, const boost::uint8_t *pBuffer_, size_t nBufferSize_) {
     size_t nProcessByte = 0, nChunkSize, nChunkSizeV;
     switch (m_eHeaderProcess) {
