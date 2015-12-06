@@ -1,1 +1,1 @@
-# phreeber-lib
+# khorost-lib
