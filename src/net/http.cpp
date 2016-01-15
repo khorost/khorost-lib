@@ -29,6 +29,61 @@ using namespace Network;
 const char*   httpPacket::HTTP_QUERY_REQUEST_METHOD_GET     = "GET";
 const char*   httpPacket::HTTP_QUERY_REQUEST_METHOD_POST    = "POST";
 
+bool FindSubValue(const char* pSource_, size_t nSourceSize_, const char* pMatch_, size_t nMatchSize_, char cDivKV, char cDivKK, const char** pResult_ = NULL, size_t* pnResultSize_ = NULL) {
+    if (nSourceSize_ == -1) {
+        nSourceSize_ = strlen(pSource_);
+    }
+    auto    pMax = nSourceSize_ - nMatchSize_;
+    bool    bInQuote = false;
+    for (size_t pStart = 0, pCheck = 0; pCheck < pMax; ++pCheck) {
+        if (pSource_[pCheck] == '\"') {
+            bInQuote = !bInQuote;
+        } else if (!bInQuote && memcmp(pSource_ + pCheck, pMatch_, nMatchSize_) == 0) {
+            if (pResult_ != NULL && pnResultSize_ != NULL) {
+                *pResult_ = NULL;
+                *pnResultSize_ = 0;
+
+                for (pCheck += nMatchSize_, pMax = nSourceSize_; pCheck < pMax; ++pCheck) {
+                    if (pSource_[pCheck] == '\"') {
+                        bInQuote = !bInQuote;
+                    } else if (!bInQuote) {
+                        if (pSource_[pCheck] == cDivKV) {
+                            pStart = pCheck + sizeof(char);
+                            *pResult_ = pSource_ + pStart;
+                        } else if (pSource_[pCheck] == cDivKK){
+                            --pCheck;
+                            break;
+                        }
+                    }
+                }
+
+                if (*pResult_ != NULL) {
+                    if (pCheck == pMax) {
+                        --pCheck;
+                    }
+                    // значение имеется, его нужно проверить
+                    for (; *(*pResult_) == ' '; ++(*pResult_), ++pStart) {
+                    }
+                    if (*(*pResult_) == '\"') {
+                        ++(*pResult_);
+                        ++pStart;
+                    }
+                    for (; *(pSource_ + pCheck) == ' '; --pCheck) {
+                    }
+                    if (*(pSource_ + pCheck) == '\"') {
+                        --pCheck;
+                    }
+                    *pnResultSize_ = pCheck - pStart + 1;
+                }
+            }
+
+            return true;
+        }
+    }
+
+    return false;
+}
+
 bool HTTPTextProtocolHeader::GetChunk(const char*& rpBuffer_, size_t& rnBufferSize_, char cPrefix_, const char* pDiv_, Data::AutoBufferChar& abTarget_, Data::AutoBufferChunkChar& rabcQueryValue_, size_t& rnChunkSize_) {
     size_t s;
     // зачишаем префикс от white символов
@@ -54,11 +109,6 @@ bool HTTPTextProtocolHeader::GetChunk(const char*& rpBuffer_, size_t& rnBufferSi
         }
     }
     return false;
-}
-
-bool HTTPTextProtocolHeader::GetBody(std::string& rContent_) {
-    rContent_.assign(reinterpret_cast<const char*>(m_abBody.GetHead()), m_abBody.GetFillSize());
-    return true;
 }
 
 size_t  HTTPTextProtocolHeader::ProcessData(Network::Connection& rConnect_, const boost::uint8_t *pBuffer_, size_t nBufferSize_) {
@@ -151,36 +201,37 @@ size_t  HTTPTextProtocolHeader::ProcessData(Network::Connection& rConnect_, cons
     }
 
     if (m_eBodyProcess==eProcessingFirst || m_eBodyProcess==eProcessingNext) {
-        nChunkSize = std::min(nBufferSize_, static_cast<size_t>(m_nContentLength));
+        nChunkSize = std::min(nBufferSize_, (size_t)m_nContentLength);
         if (m_nContentLength==-1 || (nBufferSize_==0 && m_nContentLength==0)) {
             m_eBodyProcess = eSuccessful;
         } else if(nChunkSize!=0) {
-            if (strcmp(HTTP_ATTRIBUTE_CONTENT_TYPE__FORM, GetHeaderParameter(HTTP_ATTRIBUTE_CONTENT_TYPE))==0) {
-                size_t k = m_abParams.GetFillSize();
-                if (m_eBodyProcess==eProcessingFirst && k!=0) {
-                    if (m_abParams.GetElement(k-1)=='\0') {
-                        if (k>1 && m_abParams.GetElement(k-2)!='&'){
-                            m_abParams[k-1] = '&';
-                        } else {
-                            m_abParams.IncrementFreeSize(sizeof(char));
+            m_abBody.Append(reinterpret_cast<const char*>(pBuffer_), nChunkSize);
+            nProcessByte += nChunkSize;
+
+            if (m_abBody.GetFillSize() >= (size_t)m_nContentLength) {
+                m_eBodyProcess = eSuccessful;
+
+                const char *pszContentType = GetHeaderParameter(HTTP_ATTRIBUTE_CONTENT_TYPE);
+                if (FindSubValue(pszContentType, -1, HTTP_ATTRIBUTE_CONTENT_TYPE__FORM, sizeof(HTTP_ATTRIBUTE_CONTENT_TYPE__FORM) - 1, '=', ';')) {
+//                if (strcmp(HTTP_ATTRIBUTE_CONTENT_TYPE__FORM, pszContentType) == 0) {
+                    size_t k = m_abParams.GetFillSize();
+                    if (k != 0) {
+                        if (m_abParams.GetElement(k - 1) == '\0') {
+                            if (k > 1 && m_abParams.GetElement(k - 2) != '&') {
+                                m_abParams[k - 1] = '&';
+                            }
+                            else {
+                                m_abParams.IncrementFreeSize(sizeof(char));
+                            }
                         }
-                    } else if (m_abParams.GetElement(k-1)!='&') {
-                        m_abParams.Append("&", sizeof(char));
+                        else if (m_abParams.GetElement(k - 1) != '&') {
+                            m_abParams.Append("&", sizeof(char));
+                        }
+                        m_nContentLength += m_abParams.GetFillSize();
                     }
-                    m_nContentLength += m_abParams.GetFillSize();
-                }
-                m_eBodyProcess = eProcessingNext;
-                m_abParams.Append(reinterpret_cast<const char*>(pBuffer_), nChunkSize);
-                m_abParams.Append("\0", sizeof(char));
-                nProcessByte += nChunkSize;
-                if (m_abParams.GetFillSize()>=(size_t)m_nContentLength){
-                    m_eBodyProcess = eSuccessful;
-                }
-            } else {
-                m_abBody.Append(pBuffer_, nChunkSize);
-                nProcessByte += nChunkSize;
-                if (m_abBody.GetFillSize()>=(size_t)m_nContentLength){
-                    m_eBodyProcess = eSuccessful;
+
+                    m_abParams.Append(m_abBody.GetHead(), m_abBody.GetFillSize());
+                    m_abParams.Append("\0", sizeof(char));
                 }
             }
         }
@@ -190,6 +241,75 @@ size_t  HTTPTextProtocolHeader::ProcessData(Network::Connection& rConnect_, cons
     }
 
     return nProcessByte;
+}
+
+bool HTTPTextProtocolHeader::GetMultiPart(size_t& rszIterator_, std::string& rsName_, std::string& rsContentType_, const char*& rpBuffer_, size_t& rszBuffer) {
+    const char *pszContentType = GetHeaderParameter(HTTP_ATTRIBUTE_CONTENT_TYPE);
+    if (pszContentType == NULL) {
+        return false;
+    }
+    
+    const char *pszBoundary = NULL;
+    size_t szCT = strlen(pszContentType), szBoundary = 0;
+
+    if (FindSubValue(pszContentType, szCT, HTTP_ATTRIBUTE_CONTENT_TYPE__MULTIPART_FORM_DATA, sizeof(HTTP_ATTRIBUTE_CONTENT_TYPE__MULTIPART_FORM_DATA) - 1, '=', ';')) {
+        if (FindSubValue(pszContentType, szCT, HTTP_ATTRIBUTE_CONTENT_TYPE__BOUNDARY, sizeof(HTTP_ATTRIBUTE_CONTENT_TYPE__BOUNDARY) - 1, '=', ';', &pszBoundary, &szBoundary)) {
+            std::string sBoundary = HTTP_ATTRIBUTE_LABEL_CD;
+            sBoundary.append(pszBoundary, szBoundary);
+            // проверить что контрольная метка правильная
+            if (m_abBody.Compare(rszIterator_, sBoundary.c_str(), sBoundary.size()) != 0) {
+                return false;
+            }
+            rszIterator_ += sBoundary.size();
+
+            if (m_abBody.Compare(rszIterator_, HTTP_ATTRIBUTE_LABEL_CD, sizeof(HTTP_ATTRIBUTE_LABEL_CD) - 1) == 0) {
+                return false; // завершение блока
+            } else if (m_abBody.Compare(rszIterator_, HTTP_ATTRIBUTE_ENDL, sizeof(HTTP_ATTRIBUTE_ENDL) - 1) != 0) {
+                return false;
+            }
+            rszIterator_ += sizeof(HTTP_ATTRIBUTE_ENDL) - 1;
+            auto    pMax = m_abBody.GetFillSize();
+            while (rszIterator_ < pMax) {
+                auto pEndLine = m_abBody.Find(rszIterator_, HTTP_ATTRIBUTE_ENDL, sizeof(HTTP_ATTRIBUTE_ENDL) - 1);
+                if (pEndLine == std::string::npos) {
+                    pEndLine = m_abBody.GetFillSize() - rszIterator_;
+                }
+                if (pEndLine == rszIterator_) {
+                    rszIterator_ += sizeof(HTTP_ATTRIBUTE_ENDL) - 1;
+                    sBoundary.insert(0, HTTP_ATTRIBUTE_ENDL);
+                    pEndLine = m_abBody.Find(rszIterator_, sBoundary.c_str(), sBoundary.size());
+                    if (pEndLine == std::string::npos) {
+                        return false;
+                    }
+
+                    rpBuffer_ = m_abBody.GetHead() + rszIterator_;
+                    rszBuffer = pEndLine - rszIterator_;
+                    rszIterator_ = pEndLine;
+                    return true;
+                } else {
+                    const char* pValue;
+                    size_t szValue;
+                    if (m_abBody.Compare(rszIterator_, HTTP_ATTRIBUTE_CONTENT_DISPOSITION, sizeof(HTTP_ATTRIBUTE_CONTENT_DISPOSITION) - 1) == 0) {
+                        if (FindSubValue(m_abBody.GetHead() + rszIterator_, pEndLine - rszIterator_, "name", sizeof("name") - 1, '=', ';', &pValue, &szValue)) {
+                            rsName_.assign(pValue, szValue);
+                        }
+                    } else if (m_abBody.Compare(rszIterator_, HTTP_ATTRIBUTE_CONTENT_TYPE, sizeof(HTTP_ATTRIBUTE_CONTENT_TYPE) - 1) == 0) {
+                        if (FindSubValue(m_abBody.GetHead() + rszIterator_, pEndLine - rszIterator_, HTTP_ATTRIBUTE_CONTENT_TYPE, sizeof(HTTP_ATTRIBUTE_CONTENT_TYPE) - 1, ':', ';', &pValue, &szValue)) {
+                            rsContentType_.assign(pValue, szValue);
+                        }
+                    }
+                    rszIterator_ = pEndLine + sizeof(HTTP_ATTRIBUTE_ENDL) - 1;
+                }
+            }
+        }
+    }
+    
+// Content-Type: multipart/form-data; boundary=xmyidlatfdmcrqnk; charset=UTF-8
+// Content-Disposition: form-data; name="image"; filename="1.png"
+//    Content - Type: image / png
+
+
+    return false;
 }
 
 bool HTTPTextProtocolHeader::ParseString(char* pBuffer_, size_t nBufferSize_, size_t nShift, ListPairs& lpTarget_, char cDiv, bool bTrim) {

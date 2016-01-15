@@ -25,7 +25,7 @@
 #define HTTP_ATTRIBUTE_AUTHORIZATION        "Authorization"
 #define HTTP_ATTRIBUTE_CONTENT_LENGTH       "Content-Length"
 #define HTTP_ATTRIBUTE_CONTENT_TYPE         "Content-Type"
-#define HTTP_ATTRIBUTE_CONTENT_DISPOSITION  "Content-disposition"
+#define HTTP_ATTRIBUTE_CONTENT_DISPOSITION  "Content-Disposition"
 #define HTTP_ATTRIBUTE_HOST                 "Host"
 #define HTTP_ATTRIBUTE_CONNECTION           "Connection"
 #define HTTP_ATTRIBUTE_TRANSFER_ENCODING    "Transfer-Encoding"
@@ -43,6 +43,7 @@
 
 #define HTTP_ATTRIBUTE_DIV                  ": "
 #define HTTP_ATTRIBUTE_ENDL                 "\r\n"
+#define HTTP_ATTRIBUTE_LABEL_CD             "--"
 
 #define HTTP_ATTRIBUTE_CONTENT_TYPE__FORM       "application/x-www-form-urlencoded"
 #define HTTP_ATTRIBUTE_CONTENT_TYPE__TEXT_HTML  "text/html"
@@ -55,6 +56,9 @@
 #define HTTP_ATTRIBUTE_CONTENT_TYPE__IMAGE_GIF  "image/gif"
 #define HTTP_ATTRIBUTE_CONTENT_TYPE__IMAGE_PNG  "image/png"
 #define HTTP_ATTRIBUTE_CONTENT_TYPE__IMAGE_JPG  "image/jpeg"
+#define HTTP_ATTRIBUTE_CONTENT_TYPE__MULTIPART_FORM_DATA       "multipart/form-data"
+#define HTTP_ATTRIBUTE_CONTENT_TYPE__BOUNDARY   "boundary"
+
 
 #define HTTP_ATTRIBUTE_CONNECTION__KEEP_ALIVE   "keep-alive"
 
@@ -86,7 +90,7 @@ namespace Network {
 
         Data::AutoBufferChar                    m_abHeader;
         Data::AutoBufferChar                    m_abParams;
-        Data::AutoBufferT<boost::uint8_t>       m_abBody;
+        Data::AutoBufferChar                    m_abBody;
         enum {
             eNone
             , eProcessingFirst
@@ -189,11 +193,12 @@ namespace Network {
         const char*    GetHeaderParameter(const std::string& sParam_, const char* sDefault_ = NULL) const;
         const char*    GetParameter(const std::string& sKey_, bool* pbExist_ = NULL) const;
         const char*    GetCookie(const std::string& sKey_, bool* pbExist_ = NULL) const;
+        const boost::uint8_t*  GetBody() const { return reinterpret_cast<boost::uint8_t*>(m_abBody.GetHead()); }
+        size_t          GetBodyLength() const { return m_abBody.GetFillSize(); }
         const char*     GetHost();
         const char*     GetPort();
         void            CalculateHostPort();
 
-        bool            GetBody(std::string& rContent_);
         int             GetParameter(const std::string& sKey_, int nDefault_) const;
         const char*     GetParameter(const std::string& sKey_, const char* sDefault_) const;
         size_t          GetParameterIndex(const std::string& sKey_) const;
@@ -220,6 +225,8 @@ namespace Network {
         void Response(Network::Connection& rConnect_, const char* psResponse_, size_t nLength = -1);
 
         const char*     GetClientProxyIP();
+
+        bool        GetMultiPart(size_t& rszIterator_, std::string& rsName_, std::string& rsContentType_, const char*& rpBuffer_, size_t& rszBuffer);
     };
 
     class HTTPFileTransfer {
@@ -285,7 +292,13 @@ namespace Network {
         const Data::AutoBufferChar&   GetBuffer() const {return m_abBuffer;}
         const char* GetURIEncode(const char* pURIString_) {
             int nLenghtOut = 0;
-            char* pt = curl_easy_unescape(m_curl, pURIString_, strlen(pURIString_), &nLenghtOut);
+
+            Data::AutoBufferChar    abTemp;
+            abTemp.Append(pURIString_, strlen(pURIString_));
+            // if +'s aren't replaced with %20's then curl won't unescape to spaces propperly
+            abTemp.Replace("+", 1, "%20", 3, false);
+//            string url = std::str_replace("+", "%20", str);
+            char* pt = curl_easy_unescape(m_curl, abTemp.GetHead(), abTemp.GetFillSize(), &nLenghtOut);
 
             m_abBuffer.CheckSize(nLenghtOut);
             strcpy(m_abBuffer.GetHead(), pt);

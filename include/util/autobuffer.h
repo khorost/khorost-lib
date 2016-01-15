@@ -53,6 +53,24 @@ namespace Data{
         //	**********************************************************************
         void FlushFreeSize(){m_nReadyPosition = 0;}
 
+        size_t  Find(size_t nFrom_, const T* pMatch_, size_t nMatchSize) {
+            auto pMax = m_nReadyPosition - nMatchSize;
+            for (auto pCheck = nFrom_; pCheck <= pMax; ++pCheck) {
+                if (memcmp(m_pBuffer + pCheck, pMatch_, sizeof(T)*nMatchSize) == 0) {
+                    return pCheck; 
+                }
+            }
+            return std::string::npos;
+        }
+
+        size_t Compare(size_t nFrom_, const T* pMatch_, size_t nMatchSize) {
+            if ((nFrom_ + nMatchSize)>m_nReadyPosition) {
+                return -1;
+            } else {
+                return memcmp(m_pBuffer + nFrom_, pMatch_, sizeof(T)*nMatchSize);
+            }
+        }
+
         size_t DecrementFreeSize(size_t nSize_){
             if((m_nReadyPosition + nSize_)<m_nFullSize)
                 m_nReadyPosition += nSize_;
@@ -114,7 +132,7 @@ namespace Data{
 
             size_t  nMatchBytes = nMatchCount_*sizeof(T);
             size_t  nReplaceBytes = nReplaceCount_*sizeof(T);
-            size_t	nMaxPosBytes = (m_nReadyPosition - nMatchCount_)*sizeof(T);
+            size_t	nMaxPos = m_nReadyPosition - nMatchCount_;
             bool	bResult = false;
 
             size_t  nDeltaExpand = 0, nDeltaSub = 0;
@@ -127,32 +145,34 @@ namespace Data{
                 }
             }
 
-            for(size_t km = 0; km<=nMaxPosBytes; km+=sizeof(T)){
+            for(size_t km = 0; km<=nMaxPos; ){
                 if (memcmp(m_pBuffer + km, pMatchBuffer_, nMatchBytes)==0){
                     if (nDeltaExpand!=0) {
                         CheckSize(m_nReadyPosition + nDeltaExpand);
                     }
                     // сдвигаем хвост
                     if (nDeltaExpand!=0 || nDeltaSub!=0) {
-                        memmove(m_pBuffer + km + nReplaceBytes, m_pBuffer + km + nMatchBytes, m_nReadyPosition*sizeof(T) - (km + nMatchBytes));
+                        memmove(m_pBuffer + km + nReplaceCount_, m_pBuffer + km + nMatchCount_, (m_nReadyPosition - (km + nMatchCount_))*sizeof(T));
                     }
                     memcpy(m_pBuffer + km, pReplaceBuffer_, nReplaceBytes);
 
                     if (nDeltaExpand) {
                         m_nReadyPosition += nDeltaExpand;
-                        nMaxPosBytes += nDeltaExpand*sizeof(T);
-                        km += nReplaceBytes;
+                        nMaxPos += nDeltaExpand;
+                        km += nReplaceCount_;
                     } else if (nDeltaSub) {
                         m_nReadyPosition -= nDeltaSub;
-                        nMaxPosBytes -= nDeltaSub*sizeof(T);
-                        km += nMatchBytes;
+                        nMaxPos -= nDeltaSub;
+                        km += nMatchCount_;
                     } else {
-                        km += nReplaceBytes;
+                        km += nReplaceCount_;
                     }
 
                     bResult = true;
                     if(bSingle_)
                         break;
+                } else {
+                    ++km;
                 }
             }
 
