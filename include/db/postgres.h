@@ -14,6 +14,7 @@
 #include <string>
 #include <pqxx/pqxx>
 #include <boost/scoped_ptr.hpp>
+#include <json/json.h>
 
 namespace DB {
     class Postgres {
@@ -45,6 +46,9 @@ namespace DB {
 
             Reconnect();
         }
+
+        void    ExecuteCustomSQL(bool bReadOnly_, const std::string& sSQL_, Json::Value& jvResult_);
+
     };
 }
 

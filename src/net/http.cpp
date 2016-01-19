@@ -30,6 +30,10 @@ const char*   httpPacket::HTTP_QUERY_REQUEST_METHOD_GET     = "GET";
 const char*   httpPacket::HTTP_QUERY_REQUEST_METHOD_POST    = "POST";
 
 bool FindSubValue(const char* pSource_, size_t nSourceSize_, const char* pMatch_, size_t nMatchSize_, char cDivKV, char cDivKK, const char** pResult_ = NULL, size_t* pnResultSize_ = NULL) {
+    if (pSource_ == NULL) {
+        return false;
+    }
+
     if (nSourceSize_ == -1) {
         nSourceSize_ = strlen(pSource_);
     }
@@ -212,7 +216,7 @@ size_t  HTTPTextProtocolHeader::ProcessData(Network::Connection& rConnect_, cons
                 m_eBodyProcess = eSuccessful;
 
                 const char *pszContentType = GetHeaderParameter(HTTP_ATTRIBUTE_CONTENT_TYPE);
-                if (FindSubValue(pszContentType, -1, HTTP_ATTRIBUTE_CONTENT_TYPE__FORM, sizeof(HTTP_ATTRIBUTE_CONTENT_TYPE__FORM) - 1, '=', ';')) {
+                if (pszContentType!=NULL && FindSubValue(pszContentType, -1, HTTP_ATTRIBUTE_CONTENT_TYPE__FORM, sizeof(HTTP_ATTRIBUTE_CONTENT_TYPE__FORM) - 1, '=', ';')) {
 //                if (strcmp(HTTP_ATTRIBUTE_CONTENT_TYPE__FORM, pszContentType) == 0) {
                     size_t k = m_abParams.GetFillSize();
                     if (k != 0) {
