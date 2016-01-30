@@ -436,6 +436,12 @@ void HTTPTextProtocolHeader::Response(Network::Connection& rConnect_, const char
     rConnect_.SendString(m_Replay.m_sCodeReason);
     rConnect_.SendString(HTTP_ATTRIBUTE_ENDL, sizeof(HTTP_ATTRIBUTE_ENDL)-1);
     rConnect_.SendString("Server: phreeber" HTTP_ATTRIBUTE_ENDL);
+    time_t n = time(NULL);
+    strftime(st, sizeof(st), "%a, %d %b %Y %H:%M:%S GMT", gmtime(&n));
+    rConnect_.SendString("Date: ");
+    rConnect_.SendString(st);
+    rConnect_.SendString(HTTP_ATTRIBUTE_ENDL, sizeof(HTTP_ATTRIBUTE_ENDL) - 1);
+
     const char* pAC = GetHeaderParameter(HTTP_ATTRIBUTE_CONNECTION);
     if (pAC==NULL || strcmp(HTTP_ATTRIBUTE_CONNECTION__KEEP_ALIVE, pAC)!=0) {
         m_Replay.m_bAutoClose = true;
@@ -496,8 +502,7 @@ bool HTTPFileTransfer::SendFile(Network::Connection& rConnect_, HTTPTextProtocol
     std::string     sFileName;
     if(sFileName_=="") {
         sFileName = sDocRoot_ + (pQueryURI + 1);
-    }
-    else {
+    } else {
         sFileName = sDocRoot_ + sFileName_;
     }
 
@@ -522,99 +527,113 @@ bool HTTPFileTransfer::SendFile(Network::Connection& rConnect_, HTTPTextProtocol
 
     std::string sCanonicFileName;
 
-    try {
-        if(sFileName.length()>=MAX_PATH)
-            throw std::string("Path is too long");
-
-        char        bufCanonicFileName[MAX_PATH];
-        memset(bufCanonicFileName, 0, sizeof(bufCanonicFileName));
-
-#ifdef WIN32
-        if(!PathCanonicalize((LPSTR)bufCanonicFileName, sFileName.c_str()))
-            throw std::string("PathCanonicalize failed");
-#else
-        if(!realpath(sFileName.c_str(), bufCanonicFileName))
-            throw std::string("realpath failed");
-#endif
-
-        sCanonicFileName=bufCanonicFileName;
-
-        if(sCanonicFileName.substr(0, sDocRoot_.length())!=sDocRoot_)
-            throw std::string("Access outside of docroot attempted");
-
-        System::FastFile    ff;
-        if (ff.Open(sCanonicFileName, -1, true)) {
-            static struct SECT{
-                const char* m_Ext;
-                const char* m_CT;
-                const char* m_CP;
-            }   s_SECT[] = {
-                {"js", HTTP_ATTRIBUTE_CONTENT_TYPE__APP_JS, HTTP_CODEPAGE_UTF8}
-                , {"html", HTTP_ATTRIBUTE_CONTENT_TYPE__TEXT_HTML, HTTP_CODEPAGE_UTF8}
-                , {"htm", HTTP_ATTRIBUTE_CONTENT_TYPE__TEXT_HTML, HTTP_CODEPAGE_UTF8}
-                , {"css", HTTP_ATTRIBUTE_CONTENT_TYPE__TEXT_CSS, HTTP_CODEPAGE_UTF8}
-                , {"gif", HTTP_ATTRIBUTE_CONTENT_TYPE__IMAGE_GIF, HTTP_CODEPAGE_NULL}
-                , {"jpg", HTTP_ATTRIBUTE_CONTENT_TYPE__IMAGE_JPG, HTTP_CODEPAGE_NULL}
-                , {"jpeg", HTTP_ATTRIBUTE_CONTENT_TYPE__IMAGE_JPG, HTTP_CODEPAGE_NULL}
-                , {"png", HTTP_ATTRIBUTE_CONTENT_TYPE__IMAGE_PNG, HTTP_CODEPAGE_NULL}
-                , {NULL, NULL, NULL}
-            };
-
-            const char* pIMS = rHTTP_.GetHeaderParameter("If-Modified-Since");
-            if (pIMS!=NULL) {
-                tm t;
-                strptime(pIMS, "%a, %d-%b-%Y %H:%M:%S GMT", &t);
-#ifdef WIN32
-                time_t tt = _mkgmtime(&t);
-#else
-                time_t tt = timegm(&t);
-#endif  // WIN32
-                if (tt>=ff.GetTimeUpdate()) {
-                    LOG_CONTEXT(LOG_CTX_NETWORK, LOG_LEVEL_DEBUG, "Dont send file '%s' length = %d. Response 304 (If-Modified-Since: '%s')", pQueryURI, ff.GetLength(), pIMS);
-                    rHTTP_.SetResponseStatus(304, "Not Modified");
-                    rHTTP_.Response(rConnect_, NULL, -1);
-                    return true;
-                }
-                tt =tt;
-            }
-
-            const char*   pExt = sCanonicFileName.c_str();
-            size_t  nExt = sCanonicFileName.size();
-            for (;nExt>0;--nExt) {
-                if (pExt[nExt]=='.') {
-                    nExt++;
-                    break;
-                } else if (pExt[nExt]=='\\' || pExt[nExt]=='/') {
-                    nExt = 0;
-                    break;
-                }
-            }
-
-            LOG_CONTEXT(LOG_CTX_NETWORK, LOG_LEVEL_DEBUG, "Send file '%s' length = %d", pQueryURI, ff.GetLength());
-            if (nExt>0) {
-                pExt += nExt;
-                for (int k=0; s_SECT[k].m_Ext!=NULL; ++k) {
-                    if (strcmp(s_SECT[k].m_Ext, pExt)==0) {
-                        rHTTP_.SetContentType(s_SECT[k].m_CT, s_SECT[k].m_CP);
-                        break;
-                    }
-                }
-            }
-            rHTTP_.SetLastModify(ff.GetTimeUpdate());
-            rHTTP_.Response(rConnect_, NULL, ff.GetLength());
-            rConnect_.SendData(reinterpret_cast<const boost::uint8_t*>(ff.GetMemory()), ff.GetLength());
-
-            ff.Close();
-        } else {
-            throw std::string("File not found '%s'");
-        }
+    if (sFileName.length() >= MAX_PATH) {
+        LOG_CONTEXT(LOG_CTX_NETWORK, LOG_LEVEL_DEBUG, "Path is too long");
+        
+        rHTTP_.SetResponseStatus(404, "Not found");
+        rHTTP_.Response(rConnect_, "File not found", -1);
+        return false;
     }
-    catch(std::string err) {
-        LOG_CONTEXT(LOG_CTX_NETWORK, LOG_LEVEL_ERROR, err.c_str(), sCanonicFileName.c_str());
+
+    char        bufCanonicFileName[MAX_PATH];
+    memset(bufCanonicFileName, 0, sizeof(bufCanonicFileName));
+
+#ifdef WIN32
+    if (!PathCanonicalize((LPSTR)bufCanonicFileName, sFileName.c_str())) {
+        LOG_CONTEXT(LOG_CTX_NETWORK, LOG_LEVEL_DEBUG, "PathCanonicalize failed");
 
         rHTTP_.SetResponseStatus(404, "Not found");
         rHTTP_.Response(rConnect_, "File not found", -1);
+        return false;
+    }
+#else
+    if (!realpath(sFileName.c_str(), bufCanonicFileName)) {
+        LOG_CONTEXT(LOG_CTX_NETWORK, LOG_LEVEL_DEBUG, "realpath failed");
 
+        rHTTP_.SetResponseStatus(404, "Not found");
+        rHTTP_.Response(rConnect_, "File not found", -1);
+        return false;
+    }
+#endif
+
+    sCanonicFileName = bufCanonicFileName;
+
+    if (sCanonicFileName.substr(0, sDocRoot_.length()) != sDocRoot_) {
+        LOG_CONTEXT(LOG_CTX_NETWORK, LOG_LEVEL_DEBUG, "Access outside of docroot attempted");
+
+        rHTTP_.SetResponseStatus(404, "Not found");
+        rHTTP_.Response(rConnect_, "File not found", -1);
+        return false;
+    }
+
+    System::FastFile    ff;
+    if (ff.Open(sCanonicFileName, -1, true)) {
+        static struct SECT {
+            const char* m_Ext;
+            const char* m_CT;
+            const char* m_CP;
+        }   s_SECT[] = {
+            { "js", HTTP_ATTRIBUTE_CONTENT_TYPE__APP_JS, HTTP_CODEPAGE_UTF8 }
+            , { "html", HTTP_ATTRIBUTE_CONTENT_TYPE__TEXT_HTML, HTTP_CODEPAGE_UTF8 }
+            , { "htm", HTTP_ATTRIBUTE_CONTENT_TYPE__TEXT_HTML, HTTP_CODEPAGE_UTF8 }
+            , { "css", HTTP_ATTRIBUTE_CONTENT_TYPE__TEXT_CSS, HTTP_CODEPAGE_UTF8 }
+            , { "gif", HTTP_ATTRIBUTE_CONTENT_TYPE__IMAGE_GIF, HTTP_CODEPAGE_NULL }
+            , { "jpg", HTTP_ATTRIBUTE_CONTENT_TYPE__IMAGE_JPG, HTTP_CODEPAGE_NULL }
+            , { "jpeg", HTTP_ATTRIBUTE_CONTENT_TYPE__IMAGE_JPG, HTTP_CODEPAGE_NULL }
+            , { "png", HTTP_ATTRIBUTE_CONTENT_TYPE__IMAGE_PNG, HTTP_CODEPAGE_NULL }
+            , { NULL, NULL, NULL }
+        };
+
+        const char* pIMS = rHTTP_.GetHeaderParameter("If-Modified-Since");
+        if (pIMS != NULL) {
+            tm t;
+            strptime(pIMS, "%a, %d-%b-%Y %H:%M:%S GMT", &t);
+#ifdef WIN32
+            time_t tt = _mkgmtime(&t);
+#else
+            time_t tt = timegm(&t);
+#endif  // WIN32
+            if (tt >= ff.GetTimeUpdate()) {
+                LOG_CONTEXT(LOG_CTX_NETWORK, LOG_LEVEL_DEBUG, "Dont send file '%s' length = %d. Response 304 (If-Modified-Since: '%s')", pQueryURI, ff.GetLength(), pIMS);
+                rHTTP_.SetResponseStatus(304, "Not Modified");
+                rHTTP_.Response(rConnect_, NULL, -1);
+                return true;
+            }
+            tt = tt;
+        }
+
+        const char*   pExt = sCanonicFileName.c_str();
+        size_t  nExt = sCanonicFileName.size();
+        for (; nExt > 0; --nExt) {
+            if (pExt[nExt] == '.') {
+                nExt++;
+                break;
+            } else if (pExt[nExt] == '\\' || pExt[nExt] == '/') {
+                nExt = 0;
+                break;
+            }
+        }
+
+        LOG_CONTEXT(LOG_CTX_NETWORK, LOG_LEVEL_DEBUG, "Send file '%s' length = %d", pQueryURI, ff.GetLength());
+        if (nExt > 0) {
+            pExt += nExt;
+            for (int k = 0; s_SECT[k].m_Ext != NULL; ++k) {
+                if (strcmp(s_SECT[k].m_Ext, pExt) == 0) {
+                    rHTTP_.SetContentType(s_SECT[k].m_CT, s_SECT[k].m_CP);
+                    break;
+                }
+            }
+        }
+        rHTTP_.SetLastModify(ff.GetTimeUpdate());
+        rHTTP_.Response(rConnect_, NULL, ff.GetLength());
+        rConnect_.SendData(reinterpret_cast<const boost::uint8_t*>(ff.GetMemory()), ff.GetLength());
+
+        ff.Close();
+    } else {
+        LOG_CONTEXT(LOG_CTX_NETWORK, LOG_LEVEL_DEBUG, "File not found");
+
+        rHTTP_.SetResponseStatus(404, "Not found");
+        rHTTP_.Response(rConnect_, "File not found", -1);
         return false;
     }
 
