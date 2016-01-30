@@ -442,6 +442,12 @@ void HTTPTextProtocolHeader::Response(Network::Connection& rConnect_, const char
     rConnect_.SendString(st);
     rConnect_.SendString(HTTP_ATTRIBUTE_ENDL, sizeof(HTTP_ATTRIBUTE_ENDL) - 1);
 
+    if (m_Replay.m_sRedirectURL.size()>0) {
+        rConnect_.SendString("Location: ");
+        rConnect_.SendString(m_Replay.m_sRedirectURL);
+        rConnect_.SendString(HTTP_ATTRIBUTE_ENDL, sizeof(HTTP_ATTRIBUTE_ENDL) - 1);
+    }
+
     const char* pAC = GetHeaderParameter(HTTP_ATTRIBUTE_CONNECTION);
     if (pAC==NULL || strcmp(HTTP_ATTRIBUTE_CONNECTION__KEEP_ALIVE, pAC)!=0) {
         m_Replay.m_bAutoClose = true;

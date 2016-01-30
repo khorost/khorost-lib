@@ -138,6 +138,7 @@ namespace Network {
             std::string         m_sContentTypeCP;
             time_t              m_tLastModify;
             std::string         m_sContentDisposition;
+            std::string         m_sRedirectURL;
 
             void    Clear() {
                 m_Cookies.clear();
@@ -209,6 +210,10 @@ namespace Network {
         void    SetResponseStatus(int nCode_, const std::string& sCodeReason_) {
             m_Replay.m_nCode = nCode_;
             m_Replay.m_sCodeReason = sCodeReason_;
+        }
+        void    SetRedirect(int nCode_, const std::string& sRedirectURL_) {
+            m_Replay.m_sRedirectURL = sRedirectURL_;
+            SetResponseStatus(nCode_, "Redirect");
         }
 
         void    SetContentType(const std::string& sContentType_, const std::string& sContentTypeCP_ = "UTF-8") {
