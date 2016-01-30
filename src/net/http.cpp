@@ -37,9 +37,14 @@ bool FindSubValue(const char* pSource_, size_t nSourceSize_, const char* pMatch_
     if (nSourceSize_ == -1) {
         nSourceSize_ = strlen(pSource_);
     }
+
+    if (nSourceSize_ < nMatchSize_) {
+        return false;
+    }
+
     auto    pMax = nSourceSize_ - nMatchSize_;
     bool    bInQuote = false;
-    for (size_t pStart = 0, pCheck = 0; pCheck < pMax; ++pCheck) {
+    for (size_t pStart = 0, pCheck = 0; pCheck <= pMax; ++pCheck) {
         if (pSource_[pCheck] == '\"') {
             bInQuote = !bInQuote;
         } else if (!bInQuote && memcmp(pSource_ + pCheck, pMatch_, nMatchSize_) == 0) {

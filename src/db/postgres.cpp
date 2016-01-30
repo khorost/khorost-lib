@@ -56,24 +56,24 @@ static void sExecuteCustomSQL(pqxx::transaction_base& txn_, const std::string& s
     try{
         pqxx::result r = txn_.exec(sSQL_);
 
-        Json::Value jvHeader, jvTable;
-        for (pqxx::row::size_type c = 0; c < r.columns(); ++c) {
+        Json::Value /*jvHeader,*/ jvTable;
+        /*for (pqxx::row::size_type c = 0; c < r.columns(); ++c) {
             jvHeader.append(r.column_name(c));
         }
-
+        */
         for (pqxx::result::const_iterator i = r.begin(); i != r.end(); i++) {
             Json::Value jvRow;
             for (pqxx::row::size_type f = 0; f < i->size(); ++f) {
                 if (i[f].is_null()) {
-                    jvRow.append(Json::nullValue);
+                    jvRow[i[f].name()] = Json::nullValue;
                 } else {
-                    jvRow.append(i[f].c_str());
+                    jvRow[i[f].name()] = i[f].c_str();
                 }
             }
 
             jvTable.append(jvRow);
         }
-        jvResult_["Header"] = jvHeader;
+//        jvResult_["Header"] = jvHeader;
         jvResult_["Table"] = jvTable;
     } catch (const pqxx::pqxx_exception &e) {
         OutputDebugString(e.base().what());
