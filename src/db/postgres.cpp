@@ -56,11 +56,11 @@ static void sExecuteCustomSQL(pqxx::transaction_base& txn_, const std::string& s
     try{
         pqxx::result r = txn_.exec(sSQL_);
 
-        Json::Value /*jvHeader,*/ jvTable;
-        /*for (pqxx::row::size_type c = 0; c < r.columns(); ++c) {
+        Json::Value jvHeader, jvTable;
+        for (pqxx::row::size_type c = 0; c < r.columns(); ++c) {
             jvHeader.append(r.column_name(c));
         }
-        */
+
         for (pqxx::result::const_iterator i = r.begin(); i != r.end(); i++) {
             Json::Value jvRow;
             for (pqxx::row::size_type f = 0; f < i->size(); ++f) {
@@ -73,13 +73,16 @@ static void sExecuteCustomSQL(pqxx::transaction_base& txn_, const std::string& s
 
             jvTable.append(jvRow);
         }
-//        jvResult_["Header"] = jvHeader;
+        jvResult_["Header"] = jvHeader;
         jvResult_["Table"] = jvTable;
     } catch (const pqxx::pqxx_exception &e) {
+        Json::Value jvError;
+        jvError["What"] = e.base().what();
         OutputDebugString(e.base().what());
         std::cerr << e.base().what() << std::endl;
         const pqxx::sql_error *s = dynamic_cast<const pqxx::sql_error*>(&e.base());
         if (s) {
+            jvError["Query"] = s->query();
             OutputDebugString(s->query().c_str());
             std::cerr << "Query was: " << s->query() << std::endl;
         }
