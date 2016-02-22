@@ -81,11 +81,12 @@ static void sExecuteCustomSQL(pqxx::transaction_base& txn_, const std::string& s
         OutputDebugString(e.base().what());
         std::cerr << e.base().what() << std::endl;
         const pqxx::sql_error *s = dynamic_cast<const pqxx::sql_error*>(&e.base());
-        if (s) {
+        if (s!=NULL) {
             jvError["Query"] = s->query();
             OutputDebugString(s->query().c_str());
             std::cerr << "Query was: " << s->query() << std::endl;
         }
+        jvResult_["Error"] = jvError;
     }
 }
 
@@ -96,6 +97,7 @@ void Postgres::ExecuteCustomSQL(bool bReadOnly_, const std::string& sSQL_, Json:
     } else {
         pqxx::work txn(*m_DBConnection);
         sExecuteCustomSQL(txn, sSQL_, jvResult_);
+        txn.commit();
     }
 }
 
