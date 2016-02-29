@@ -422,6 +422,8 @@ const char* HTTPTextProtocolHeader::GetHeaderParameter(const std::string& sParam
 }
 
 void HTTPTextProtocolHeader::Response(Network::Connection& rConnect_, const char* psResponse_, size_t nLength) {
+    using namespace boost::posix_time;
+
     char  st[255];
 
     if (nLength==-1 && psResponse_!=NULL) {
@@ -457,7 +459,8 @@ void HTTPTextProtocolHeader::Response(Network::Connection& rConnect_, const char
     rConnect_.SendString(std::string("Connection: ") + std::string(pAC!=NULL?pAC:"close") + std::string(HTTP_ATTRIBUTE_ENDL));
     for (std::deque<Replay::Cookie>::const_iterator cit = m_Replay.m_Cookies.begin(); cit != m_Replay.m_Cookies.end(); ++cit) {
         const Replay::Cookie& c = *cit;
-        strftime(st, sizeof(st), "%a, %d-%b-%Y %H:%M:%S GMT", gmtime(&c.m_dtExpire));
+        time_t gmt = to_time_t(c.m_dtExpire);
+        strftime(st, sizeof(st), "%a, %d-%b-%Y %H:%M:%S GMT", gmtime(&gmt));
         rConnect_.SendString(std::string("Set-Cookie: ") + c.m_sCookie + std::string("=") + c.m_sValue + std::string("; Expires=") + std::string(st) + std::string("; Domain=.") + c.m_sDomain +  std::string("; Path=/" HTTP_ATTRIBUTE_ENDL));
     }
 
@@ -478,9 +481,10 @@ void HTTPTextProtocolHeader::Response(Network::Connection& rConnect_, const char
         rConnect_.SendString(HTTP_ATTRIBUTE_ENDL, sizeof(HTTP_ATTRIBUTE_ENDL)-1);
     }
 
-    if (m_Replay.m_tLastModify!=0) {
+    if (!m_Replay.m_tLastModify.is_not_a_date_time()) {
         rConnect_.SendString(HTTP_ATTRIBUTE_LAST_MODIFIED HTTP_ATTRIBUTE_DIV);
-        strftime(st, sizeof(st), "%a, %d-%b-%Y %H:%M:%S GMT", gmtime(&m_Replay.m_tLastModify));
+        time_t gmt = to_time_t(m_Replay.m_tLastModify);
+        strftime(st, sizeof(st), "%a, %d-%b-%Y %H:%M:%S GMT", gmtime(&gmt));
         rConnect_.SendString(st);
         rConnect_.SendString(HTTP_ATTRIBUTE_ENDL, sizeof(HTTP_ATTRIBUTE_ENDL)-1);
     }
@@ -490,7 +494,7 @@ void HTTPTextProtocolHeader::Response(Network::Connection& rConnect_, const char
     }
 }
 
-void HTTPTextProtocolHeader::SetCookie(const std::string& sCookie_, const std::string& sValue_, time_t dtExpire_, const std::string& sDomain_) {
+void HTTPTextProtocolHeader::SetCookie(const std::string& sCookie_, const std::string& sValue_, boost::posix_time::ptime dtExpire_, const std::string& sDomain_) {
     m_Replay.m_Cookies.push_back(Replay::Cookie(sCookie_, sValue_, dtExpire_, sDomain_));
 }
 
@@ -502,7 +506,9 @@ static bool IsSlash (char ch_) { return ch_=='/'; }
 #endif
 
 
-bool HTTPFileTransfer::SendFile(Network::Connection& rConnect_, HTTPTextProtocolHeader& rHTTP_, const std::string& sDocRoot_, SessionPtr sp_, const std::string& sFileName_) {
+bool HTTPFileTransfer::SendFile(Network::Connection& rConnect_, HTTPTextProtocolHeader& rHTTP_, const std::string& sDocRoot_, const std::string& sFileName_) {
+    using namespace boost::posix_time;
+
     const char* pQueryURI = rHTTP_.GetQueryURI();
     // TODO сделать корректировку по абсолютно-относительным переходам
     std::string     sFileName;
@@ -630,7 +636,7 @@ bool HTTPFileTransfer::SendFile(Network::Connection& rConnect_, HTTPTextProtocol
                 }
             }
         }
-        rHTTP_.SetLastModify(ff.GetTimeUpdate());
+        rHTTP_.SetLastModify(from_time_t(ff.GetTimeUpdate()));
         rHTTP_.Response(rConnect_, NULL, ff.GetLength());
         rConnect_.SendData(reinterpret_cast<const boost::uint8_t*>(ff.GetMemory()), ff.GetLength());
 

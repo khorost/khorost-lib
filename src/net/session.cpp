@@ -4,6 +4,7 @@
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/date_time/posix_time/conversion.hpp>
 
 using namespace Network;
 
@@ -12,14 +13,48 @@ std::string Session::GenerateSessionID(){
     return boost::lexical_cast<std::string>(uid);
 }
 
-Session::Session(const std::string& sSessionID_, time_t dtCreated, time_t dtExpired){
+Session::Session(const std::string& sSessionID_, boost::posix_time::ptime dtCreated_, boost::posix_time::ptime dtExpired_) {
     m_sSessionID    = sSessionID_;
-    m_dtCreated     = dtCreated;
-    m_dtExpired     = dtExpired;
-    m_dtLastActivity= dtCreated;
+    m_dtCreated     = dtCreated_;
+    m_dtExpired     = dtExpired_;
+    m_dtLastActivity= dtCreated_;
+ 
+    m_nCount = 0;
+    m_bStatsUpdate = false;
 }
 
 Session::~Session(){
+}
+
+void Session::SetIP(const std::string& sIP_) {
+    DictIP::iterator    it = m_IPs.find(sIP_);
+    if (it == m_IPs.end()) {
+        m_IPs.insert(std::pair<std::string, bool>(sIP_, false));
+        m_bStatsUpdate = true;
+    }
+}
+
+void Session::GetIP(std::list<std::string>& lIPs_, bool bReset_) {
+    for (auto it : m_IPs) {
+        if (!it.second) {
+            lIPs_.push_back(it.first);
+            if (bReset_) {
+                it.second = true;
+            }
+        }
+    }
+}
+
+void Session::SetLastActivity(boost::posix_time::ptime t_) {
+    using namespace boost::posix_time;
+
+    time_duration   td = t_ - m_dtLastActivity;
+    if ( td.minutes() > 20) { // 20 минут неактивности
+        m_nCount++;
+    }
+
+    m_dtLastActivity = t_;
+    m_bStatsUpdate = true;
 }
 
 SessionControler::SessionControler() {
@@ -62,15 +97,17 @@ bool SessionControler::SessionDB::PrepareDatabase() {
 }
 
 bool SessionControler::SessionDB::UpdateSession(SessionPtr sp_, int nVersion_) {
+    using namespace boost::posix_time;
+
     Inserter Stmt(GetDB());
     
     bool bSuccess = Stmt.Prepare("INSERT OR REPLACE INTO sessions (SID, Version, dtCreate, dtUpdate, dtExpire, Data) VALUES(?,?,?,?,?,?)");
     
     Stmt.BindParam(1, sp_->GetSessionID());
     Stmt.BindParam(2, nVersion_);
-    Stmt.BindParam(3, static_cast<int>(sp_->GetCreated()));
+    Stmt.BindParam(3, static_cast<int>(to_time_t(sp_->GetCreated())));
     Stmt.BindParam(4, static_cast<int>(time(NULL)));
-    Stmt.BindParam(5, static_cast<int>(sp_->GetExpired()));
+    Stmt.BindParam(5, static_cast<int>(to_time_t(sp_->GetExpired())));
 
     std::string se;
     sp_->ExportData(se);
@@ -93,7 +130,10 @@ bool SessionControler::SessionDB::RemoveSession(SessionPtr sp_) {
 }
 
 bool SessionControler::SessionDB::LoadSessions(SessionControler& cs_) {
-	Reader      rStmt(GetDB());
+    using namespace boost::posix_time;
+    using namespace boost::gregorian;
+    
+    Reader      rStmt(GetDB());
     Inserter    iStmt(GetDB());
 	
     iStmt.Prepare("DELETE FROM sessions WHERE dtExpire < ? OR Version < ? ");
@@ -117,7 +157,7 @@ bool SessionControler::SessionDB::LoadSessions(SessionControler& cs_) {
 			rStmt.GetValue(1, s);
 			rStmt.GetValue(2, dtc);
 			rStmt.GetValue(3, dte);
-            SessionPtr sp = cs_.CreateSession(s, dtc, dte);
+            SessionPtr sp = cs_.CreateSession(s, from_time_t(dtc), from_time_t(dte));
 
             rStmt.GetValue(4, s);
             sp->ImportData(s);
@@ -129,32 +169,57 @@ bool SessionControler::SessionDB::LoadSessions(SessionControler& cs_) {
     return true;
 }
 
+bool SessionControler::GetActiveSessionsStats(ListSession& rLS_) {
+    for (auto s : m_Sessions){
+        if (s.second->IsStatsUpdate(true)!= 0) {
+            rLS_.push_back(s.second);
+        }
+    }
+    return rLS_.size() != 0;
+}
+
 SessionPtr SessionControler::FindSession(const std::string& sSession_) {
     static SessionPtr spNull = SessionPtr();
     DictSession::iterator it = m_Sessions.find(sSession_);
     return it!=m_Sessions.end()?it->second:spNull;
 }
 
-SessionPtr SessionControler::GetSession(const std::string& sSession_) {
-    time_t  t = time(NULL);
+SessionPtr SessionControler::GetSession(const std::string& sSession_, bool& bCreate_) {
+    using namespace boost::posix_time;
+    using namespace boost::gregorian;
+
+    ptime  ptNow = second_clock::universal_time();
     DictSession::iterator it = m_Sessions.find(sSession_);
 
     if (it!=m_Sessions.end()) {
         SessionPtr  sp = it->second;
-        if (sp->GetExpired()>t) {
+        if (sp->GetExpired()>ptNow) {
+            bCreate_ = false;
             return sp;
         }
         m_Sessions.erase(it);
         m_SessionDB.RemoveSession(sp);
     }
 
-    SessionPtr  sp = CreateSession(Session::GenerateSessionID(), t, t + 1209600);   // 2 недели = 1209600
+    ptime  ptExpire = ptNow + days(2 * 7);
+    SessionPtr  sp = CreateSession(Session::GenerateSessionID(), ptNow, ptExpire);   // 2 недели = 1209600
                                                                                     // 1 час = 3600
+    sp->SetCountUse(1);
     m_Sessions.insert(std::pair<std::string, SessionPtr>(sp->GetSessionID(), sp));
     m_SessionDB.UpdateSession(sp, m_nVersionCurrent);
+    bCreate_ = true;
+
     return sp;
 }
 
 bool SessionControler::UpdateSession(SessionPtr sp_) {
     return m_SessionDB.UpdateSession(sp_, m_nVersionCurrent);
+}
+
+void SessionControler::RemoveSession(SessionPtr sp_) {
+    DictSession::iterator it = m_Sessions.find(sp_->GetSessionID());
+    if (it != m_Sessions.end()) {
+        m_Sessions.erase(it);
+    }
+    m_SessionDB.RemoveSession(sp_);
 }

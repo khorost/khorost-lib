@@ -15,11 +15,11 @@
 #endif  // Win32
 
 #include <curl/curl.h>
+#include "boost/date_time/posix_time/posix_time.hpp"
 
 #include "util/autobuffer.h"
 #include "util/logger.h"
 #include "net/connection.h"
-#include "net/Session.h"
 
 
 #define HTTP_ATTRIBUTE_AUTHORIZATION        "Authorization"
@@ -35,6 +35,10 @@
 #define HTTP_ATTRIBUTE_X_REAL_IP            "X-Real-IP"
 #define HTTP_ATTRIBUTE_X_FORWARDED_FOR      "X-Forwarded-For"
 #define HTTP_ATTRIBUTE_ACCEPT_LANGUAGE      "Accept-Language"
+#define HTTP_ATTRIBUTE_USER_AGENT           "User-Agent"
+#define HTTP_ATTRIBUTE_ACCEPT_ENCODING      "Accept-Encoding"
+#define HTTP_ATTRIBUTE_ACCEPT               "Accept"
+#define HTTP_ATTRIBUTE_REFERER               "Referer"
 
 #define HTTP_LANGUAGE_RU                    "ru"
 #define HTTP_LANGUAGE_EN                    "en"
@@ -104,7 +108,7 @@ namespace Network {
             struct Cookie {
                 std::string m_sCookie;
                 std::string m_sValue;
-                time_t      m_dtExpire;
+                boost::posix_time::ptime      m_dtExpire;
                 std::string m_sDomain;
 
                 Cookie() {
@@ -114,7 +118,7 @@ namespace Network {
                         *this = right_;
                     }
                 }
-                Cookie(const std::string& sCookie_, const std::string& sValue_, time_t dtExpire_, const std::string& sDomain_) {
+                Cookie(const std::string& sCookie_, const std::string& sValue_, boost::posix_time::ptime dtExpire_, const std::string& sDomain_) {
                     m_sCookie   = sCookie_;
                     m_sValue    = sValue_;
                     m_dtExpire  = dtExpire_;
@@ -136,19 +140,21 @@ namespace Network {
             std::string         m_sCodeReason;
             std::string         m_sContentType;
             std::string         m_sContentTypeCP;
-            time_t              m_tLastModify;
+            boost::posix_time::ptime              m_tLastModify;
             std::string         m_sContentDisposition;
             std::string         m_sRedirectURL;
 
             void    Clear() {
+                using namespace boost::posix_time;
+
                 m_Cookies.clear();
                 m_bAutoClose = true;
                 m_nCode     = 200;
                 m_sCodeReason   = "Ok";
                 m_sContentType  = HTTP_ATTRIBUTE_CONTENT_TYPE__TEXT_HTML;
                 m_sContentTypeCP    = "UTF-8";
-                m_tLastModify   = 0;
                 m_sContentDisposition = "";
+                m_tLastModify = ptime(not_a_date_time);
             }
         }   m_Replay;
 
@@ -206,7 +212,7 @@ namespace Network {
         size_t          GetHeaderIndex(const std::string& sKey_) const;
         bool            IsParameterExist(const std::string& sKey_) const;
 
-        void    SetCookie(const std::string& sCookie_, const std::string& sValue_, time_t dtExpire_, const std::string& sDomain_);
+        void    SetCookie(const std::string& sCookie_, const std::string& sValue_, boost::posix_time::ptime dtExpire_, const std::string& sDomain_);
         void    SetResponseStatus(int nCode_, const std::string& sCodeReason_) {
             m_Replay.m_nCode = nCode_;
             m_Replay.m_sCodeReason = sCodeReason_;
@@ -225,7 +231,7 @@ namespace Network {
             m_Replay.m_sContentDisposition = sContentDisposition_;
         }
 
-        void    SetLastModify(time_t tLM_) {m_Replay.m_tLastModify = tLM_;}
+        void    SetLastModify(boost::posix_time::ptime tLM_) { m_Replay.m_tLastModify = tLM_; }
 
         void Response(Network::Connection& rConnect_, const char* psResponse_, size_t nLength = -1);
 
@@ -239,7 +245,7 @@ namespace Network {
         HTTPFileTransfer() {}
         virtual ~HTTPFileTransfer() {}
 
-        bool    SendFile(Network::Connection& rConnect_, HTTPTextProtocolHeader& rHTTP_, const std::string& sDocRoot_, SessionPtr sp_, const std::string& sFileName_="");
+        bool    SendFile(Network::Connection& rConnect_, HTTPTextProtocolHeader& rHTTP_, const std::string& sDocRoot_, const std::string& sFileName_="");
     };
 
     template<typename T>
