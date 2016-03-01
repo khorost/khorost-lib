@@ -51,9 +51,11 @@ namespace Network {
             return b; 
         }
 
+        virtual void                GetExpireShift(boost::posix_time::time_duration& td_) { td_ = boost::posix_time::minutes(DEFAULT_EXPIRE_MINUTES); }
         virtual bool                ExportData(std::string& sData_) {return true;}
         virtual bool                ImportData(const std::string& sData_) { return true; }
 
+        static const int DEFAULT_EXPIRE_MINUTES;
         static std::string GenerateSessionID();
     };
 
@@ -92,6 +94,7 @@ namespace Network {
 
         int         GetVersionMin() {return m_nVersionMin;}
         bool        GetActiveSessionsStats(ListSession& rLS_);
+        void        CheckAliveSessions();
     };
 }
 
