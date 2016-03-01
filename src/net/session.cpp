@@ -8,6 +8,8 @@
 
 using namespace Network;
 
+const int Session::DEFAULT_EXPIRE_MINUTES = 30;
+
 std::string Session::GenerateSessionID(){
     boost::uuids::uuid  uid = boost::uuids::random_generator()();
     return boost::lexical_cast<std::string>(uid);
@@ -169,9 +171,24 @@ bool SessionControler::SessionDB::LoadSessions(SessionControler& cs_) {
     return true;
 }
 
+void SessionControler::CheckAliveSessions() {
+    using namespace boost::posix_time;
+
+    ptime                   ptNow = second_clock::universal_time();
+
+    for (DictSession::iterator it = m_Sessions.begin(); it != m_Sessions.end();){
+        DictSession::iterator sit = it++;
+        SessionPtr  sp = sit->second;
+        if (sp->GetExpired() < ptNow) {
+            m_Sessions.erase(sit);
+            m_SessionDB.RemoveSession(sp);
+        }
+    }
+}
+
 bool SessionControler::GetActiveSessionsStats(ListSession& rLS_) {
     for (auto s : m_Sessions){
-        if (s.second->IsStatsUpdate(true)!= 0) {
+        if (s.second->IsStatsUpdate(true) != 0) {
             rLS_.push_back(s.second);
         }
     }
@@ -188,12 +205,16 @@ SessionPtr SessionControler::GetSession(const std::string& sSession_, bool& bCre
     using namespace boost::posix_time;
     using namespace boost::gregorian;
 
-    ptime  ptNow = second_clock::universal_time();
-    DictSession::iterator it = m_Sessions.find(sSession_);
+    time_duration           td;
+    ptime                   ptNow = second_clock::universal_time();
+    DictSession::iterator   it = m_Sessions.find(sSession_);
 
     if (it!=m_Sessions.end()) {
         SessionPtr  sp = it->second;
         if (sp->GetExpired()>ptNow) {
+            sp->GetExpireShift(td);
+            sp->SetExpired(ptNow + td);
+
             bCreate_ = false;
             return sp;
         }
@@ -201,7 +222,7 @@ SessionPtr SessionControler::GetSession(const std::string& sSession_, bool& bCre
         m_SessionDB.RemoveSession(sp);
     }
 
-    ptime  ptExpire = ptNow + days(2 * 7);
+    ptime  ptExpire = ptNow + minutes(Session::DEFAULT_EXPIRE_MINUTES);
     SessionPtr  sp = CreateSession(Session::GenerateSessionID(), ptNow, ptExpire);   // 2 недели = 1209600
                                                                                     // 1 час = 3600
     sp->SetCountUse(1);
