@@ -302,20 +302,26 @@ namespace Network {
 
         const Data::AutoBufferChar&   GetBuffer() const {return m_abBuffer;}
         const char* GetURIEncode(const char* pURIString_) {
-            int nLenghtOut = 0;
 
-            Data::AutoBufferChar    abTemp;
-            abTemp.Append(pURIString_, strlen(pURIString_));
-            // if +'s aren't replaced with %20's then curl won't unescape to spaces propperly
-            abTemp.Replace("+", 1, "%20", 3, false);
-//            string url = std::str_replace("+", "%20", str);
-            char* pt = curl_easy_unescape(m_curl, abTemp.GetHead(), abTemp.GetFillSize(), &nLenghtOut);
+            if (pURIString_ == NULL || *pURIString_ == '\0') {
+                m_abBuffer.CheckSize(sizeof(char));
+                m_abBuffer[0] = '\0';
+            } else {
+                int nLenghtOut = 0;
 
-            m_abBuffer.CheckSize(nLenghtOut);
-            strcpy(m_abBuffer.GetHead(), pt);
-            m_abBuffer.FlushFreeSize();
-            m_abBuffer.DecrementFreeSize(nLenghtOut);
-            curl_free(pt);
+                Data::AutoBufferChar    abTemp;
+                abTemp.Append(pURIString_, strlen(pURIString_));
+                // if +'s aren't replaced with %20's then curl won't unescape to spaces propperly
+                abTemp.Replace("+", 1, "%20", 3, false);
+                //            string url = std::str_replace("+", "%20", str);
+                char* pt = curl_easy_unescape(m_curl, abTemp.GetHead(), abTemp.GetFillSize(), &nLenghtOut);
+
+                m_abBuffer.CheckSize(nLenghtOut);
+                strcpy(m_abBuffer.GetHead(), pt);
+                m_abBuffer.FlushFreeSize();
+                m_abBuffer.DecrementFreeSize(nLenghtOut);
+                curl_free(pt);
+            }
 
             return m_abBuffer.GetHead();
         }
