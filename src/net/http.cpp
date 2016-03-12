@@ -394,6 +394,15 @@ size_t HTTPTextProtocolHeader::GetHeaderIndex(const std::string& sKey_) const {
     return -1;
 }
 
+void HTTPTextProtocolHeader::FillParameter2Array(const std::string& sKey_, std::vector<int>& rArray_) {
+    std::string sKey2 = sKey_ + "[]";
+    for (auto p : m_ParamsValue) {
+        if (strcmp(sKey_.c_str(), m_abParams.GetPosition(p.first)) == 0 || strcmp(sKey2.c_str(), m_abParams.GetPosition(p.first)) == 0) {
+            rArray_.push_back(atoi( m_abParams.GetPosition(p.second)));
+        }
+    }
+}
+
 const char* HTTPTextProtocolHeader::GetParameter(const std::string& sKey_, bool* pbExist_) const {
     if (pbExist_!=NULL) {
         *pbExist_ = false;
