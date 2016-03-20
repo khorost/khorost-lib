@@ -198,6 +198,7 @@ Connection* ConnectionController::AddConnection(evutil_socket_t fd_, struct sock
 
     Connection* pConnection = CreateConnection(this, GetUniqID(), fd_, sa_, socklen_);
 
+    char    buf[1024];
     LOG_CONTEXT(LOG_CTX_NETWORK,LOG_LEVEL_INFO
         ,"Detect incoming connect #%d from %s. Accepted on socket #%X"
         ,pConnection->GetID(),evutil_format_sockaddr_port(sa_, buf, sizeof(buf)), fd_);
