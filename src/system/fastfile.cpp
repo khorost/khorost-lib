@@ -18,7 +18,7 @@
  #include <time.h>
 #endif
 
-using namespace System;
+using namespace khorost::System;
 
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction

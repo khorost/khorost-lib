@@ -2,7 +2,7 @@
 
 #pragma comment(lib,"sqlite3.lib")
 
-using namespace DB;
+using namespace khorost::DB;
 
 SQLite3::SQLite3() {
 

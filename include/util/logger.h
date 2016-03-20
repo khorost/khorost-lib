@@ -23,50 +23,51 @@
 #define LOG_LEVEL_INFO	(log4cxx::Level::INFO_INT)
 #define LOG_LEVEL_DEBUG	(log4cxx::Level::DEBUG_INT)
 
+namespace khorost {
+    namespace Log{
 
-namespace Log{
+        class Context{
+            typedef std::map<std::string, int>	ContextNumberDict;
 
-	class Context{
-		typedef std::map<std::string, int>	ContextNumberDict;
+            std::string			m_sDefaultContext;	// имя общего контекста логирования
+            ContextNumberDict	m_NumberDict;		// уровень логирования
+        public:
+            Context(const std::string& sDefaultContext_, const std::string& sPropertyFilename_, const std::string& sDefaultDirectory_);
+            virtual ~Context();
 
-		std::string			m_sDefaultContext;	// имя общего контекста логирования
-		ContextNumberDict	m_NumberDict;		// уровень логирования
-	public:
-		Context(const std::string& sDefaultContext_, const std::string& sPropertyFilename_, const std::string& sDefaultDirectory_);
-		virtual ~Context();
+            enum ContextStack{
+                CONTEXT_STACK_NONE,
+                CONTEXT_STACK_UP,
+                CONTEXT_STACK_DOWN,
+            };
 
-		enum ContextStack{
-			CONTEXT_STACK_NONE,
-			CONTEXT_STACK_UP,
-			CONTEXT_STACK_DOWN,
-		};
+            void Prepare(const std::string& sDefaultContext_, const std::string& sPropertyFilename_, const std::string& sDefaultDirectory_);
 
-		void Prepare(const std::string& sDefaultContext_, const std::string& sPropertyFilename_, const std::string& sDefaultDirectory_);
+            void LogStrVA(ContextStack ContextStack_, int iLevel_, const char* sFormat_, ...);
+            void LogStrVA(ContextStack ContextStack_, const std::string& sContext_, int iLevel_, const char* sFormat_, ...);
 
-		void LogStrVA(ContextStack ContextStack_, int iLevel_, const char* sFormat_,...);
-		void LogStrVA(ContextStack ContextStack_, const std::string& sContext_, int iLevel_, const char* sFormat_,...);
+            void LogStr(ContextStack ContextStack_, int iLevel_, const std::string& sInfo_);
+            void LogStr(ContextStack ContextStack_, const std::string& sContext_, int iLevel_, const std::string& sInfo_);
 
-		void LogStr(ContextStack ContextStack_, int iLevel_, const std::string& sInfo_);
-		void LogStr(ContextStack ContextStack_, const std::string& sContext_, int iLevel_, const std::string& sInfo_);
+            std::string	GetDefaultContext() const { return m_sDefaultContext; }
+            int		GetStackLevel(const std::string& sContext_) const;
+            void	SetStackLevel(const std::string& sContext_, int StackLevel_);
+            void	ProcessStackLevel(const std::string& sContext_, ContextStack ContextStack_);
+        };
 
-		std::string	GetDefaultContext() const {return m_sDefaultContext;}
-		int		GetStackLevel(const std::string& sContext_) const;
-		void	SetStackLevel(const std::string& sContext_, int StackLevel_);
-		void	ProcessStackLevel(const std::string& sContext_, ContextStack ContextStack_);
-	};
+        class ContextAuto{
+            Context&		m_Context;
+            std::string		m_sDescription;
+            int				m_iLevel;
+            std::string		m_sContext;
+        public:
+            ContextAuto(Context& Context_, const std::string& sContext_, int iLevel_, const std::string& sDescription_);
+            virtual ~ContextAuto();
+        };
 
-	class ContextAuto{
-		Context&		m_Context;
-		std::string		m_sDescription;
-		int				m_iLevel;
-		std::string		m_sContext;
-	public:
-		ContextAuto(Context& Context_, const std::string& sContext_, int iLevel_, const std::string& sDescription_);
-		virtual ~ContextAuto();
-	};
-
-	// глобальный логер
-	extern Context		g_Logger;
+        // глобальный логер
+        extern Context		g_Logger;
+    }
 }
 
 #define MAX_LOG4CXX_FORMAT_BUFFER		0x400

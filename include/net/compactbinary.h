@@ -21,13 +21,14 @@
 #include "util/autobuffer.h"
 #include "util/logger.h"
 
-namespace Network {
+namespace khorost {
+    namespace Network {
 
-    class cbPacket {
-    public:
-        typedef boost::uint8_t      sign_cbp;
-        typedef boost::uint16_t     size_cbp;
-        typedef boost::uint16_t     type_cbp;
+        class cbPacket {
+        public:
+            typedef boost::uint8_t      sign_cbp;
+            typedef boost::uint16_t     size_cbp;
+            typedef boost::uint16_t     type_cbp;
 
 #define PACKET_HTON_SIGN(v)        (v)
 #define PACKET_HTON_SIZE(v)        htons(v)
@@ -37,15 +38,15 @@ namespace Network {
 #define PACKET_NTOH_SIZE(v)        ntohs(v)
 #define PACKET_NTOH_TYPE(v)        ntohs(v)
 
-        // Вычисляем размер заголовка пакета
-        static size_cbp    GetHeaderSize() { return sizeof(sign_cbp) + sizeof(type_cbp) + sizeof(size_cbp);}
-    };
+            // Вычисляем размер заголовка пакета
+            static size_cbp    GetHeaderSize() { return sizeof(sign_cbp) + sizeof(type_cbp) + sizeof(size_cbp); }
+        };
 
-    class cbChunk {
-    public:
-        typedef boost::uint8_t      id_cbc;
-        typedef boost::uint16_t     size_cbc;
-        typedef boost::uint8_t      type_cbc;
+        class cbChunk {
+        public:
+            typedef boost::uint8_t      id_cbc;
+            typedef boost::uint16_t     size_cbc;
+            typedef boost::uint8_t      type_cbc;
 
 #define CHUNK_HTON_ID(v)          (v)
 #define CHUNK_HTON_SIZE(v)        htons(v)
@@ -55,150 +56,150 @@ namespace Network {
 #define CHUNK_NTOH_SIZE(v)        ntohs(v)
 #define CHUNK_NTOH_TYPE(v)        (v)
 
-        static  const type_cbc    CHUNK_TYPE_BYTE = 0x01;       // 1 байт
-        static  const type_cbc    CHUNK_TYPE_SHORT = 0x02;      // 2 байта
-        static  const type_cbc    CHUNK_TYPE_INTEGER = 0x03;    // 4 байта
-        static  const type_cbc    CHUNK_TYPE_LONG = 0x04;       // 8 байт
-        static  const type_cbc    CHUNK_TYPE_STRING = 0x05;     // объект аналогичен CHUNK_TYPE_BINARY
-        static  const type_cbc    CHUNK_TYPE_BINARY = 0x07;     // бинарные данные размером до 64К
-        static  const type_cbc    CHUNK_TYPE_ARRAY = 0x08;      // массив повторяющихся данных
+            static  const type_cbc    CHUNK_TYPE_BYTE = 0x01;       // 1 байт
+            static  const type_cbc    CHUNK_TYPE_SHORT = 0x02;      // 2 байта
+            static  const type_cbc    CHUNK_TYPE_INTEGER = 0x03;    // 4 байта
+            static  const type_cbc    CHUNK_TYPE_LONG = 0x04;       // 8 байт
+            static  const type_cbc    CHUNK_TYPE_STRING = 0x05;     // объект аналогичен CHUNK_TYPE_BINARY
+            static  const type_cbc    CHUNK_TYPE_BINARY = 0x07;     // бинарные данные размером до 64К
+            static  const type_cbc    CHUNK_TYPE_ARRAY = 0x08;      // массив повторяющихся данных
 
-    public:
-        cbChunk() {
-        }
-        virtual ~cbChunk() {
-        }
-    };
+        public:
+            cbChunk() {
+            }
+            virtual ~cbChunk() {
+            }
+        };
 
-    class cbChunkIn : public cbChunk {
-    public:
-        virtual void        SetValue(id_cbc id_, const std::string& value_){}
-        virtual void        SetValue(id_cbc id_, const Data::AutoBufferT<boost::uint8_t>& value_){}
-        virtual void        SetValue8(id_cbc id_, const boost::uint8_t value_){}
-        virtual void        SetValue16(id_cbc id_, const boost::uint16_t value_){}
-        virtual void        SetValue32(id_cbc id_, const boost::uint32_t value_){}
-        virtual void        SetValue64(id_cbc id_, const boost::uint64_t value_){}
-        virtual cbChunkIn*  SetArray(id_cbc id_, size_cbc count_) {return NULL;}
-        virtual cbChunkIn*  EnterNode(id_cbc id_, size_cbc index_) {return NULL;}
-        virtual void        LeaveNode(id_cbc id_, size_cbc index_) {}
+        class cbChunkIn : public cbChunk {
+        public:
+            virtual void        SetValue(id_cbc id_, const std::string& value_){}
+            virtual void        SetValue(id_cbc id_, const Data::AutoBufferT<boost::uint8_t>& value_){}
+            virtual void        SetValue8(id_cbc id_, const boost::uint8_t value_){}
+            virtual void        SetValue16(id_cbc id_, const boost::uint16_t value_){}
+            virtual void        SetValue32(id_cbc id_, const boost::uint32_t value_){}
+            virtual void        SetValue64(id_cbc id_, const boost::uint64_t value_){}
+            virtual cbChunkIn*  SetArray(id_cbc id_, size_cbc count_) { return NULL; }
+            virtual cbChunkIn*  EnterNode(id_cbc id_, size_cbc index_) { return NULL; }
+            virtual void        LeaveNode(id_cbc id_, size_cbc index_) {}
 
-        void ParsePacket(const boost::uint8_t* pBuffer_, size_t nBufferSize_);
-    };
+            void ParsePacket(const boost::uint8_t* pBuffer_, size_t nBufferSize_);
+        };
 
-    class cbChunkOut : public cbChunk {
-    protected:
-        Data::AutoBufferT<boost::uint8_t>   m_abPacket;
-    public:
-        template<typename T, cbChunk::type_cbc tv_>
-        void AppendChunkT(cbChunk::id_cbc id_, T value_) {
-            id_ = CHUNK_HTON_ID(id_);
-            cbChunk::size_cbc   sizeValue(CHUNK_HTON_SIZE(sizeof(value_)));
-            cbChunk::type_cbc   typeValue(CHUNK_HTON_TYPE(tv_));
+        class cbChunkOut : public cbChunk {
+        protected:
+            Data::AutoBufferT<boost::uint8_t>   m_abPacket;
+        public:
+            template<typename T, cbChunk::type_cbc tv_>
+            void AppendChunkT(cbChunk::id_cbc id_, T value_) {
+                id_ = CHUNK_HTON_ID(id_);
+                cbChunk::size_cbc   sizeValue(CHUNK_HTON_SIZE(sizeof(value_)));
+                cbChunk::type_cbc   typeValue(CHUNK_HTON_TYPE(tv_));
 
-            m_abPacket.Append(reinterpret_cast<const boost::uint8_t*>(&id_), sizeof(id_));
-            m_abPacket.Append(reinterpret_cast<const boost::uint8_t*>(&typeValue), sizeof(typeValue));
-            m_abPacket.Append(reinterpret_cast<const boost::uint8_t*>(&sizeValue), sizeof(sizeValue));
-            m_abPacket.Append(reinterpret_cast<const boost::uint8_t*>(&value_), sizeof(value_));
-        }
+                m_abPacket.Append(reinterpret_cast<const boost::uint8_t*>(&id_), sizeof(id_));
+                m_abPacket.Append(reinterpret_cast<const boost::uint8_t*>(&typeValue), sizeof(typeValue));
+                m_abPacket.Append(reinterpret_cast<const boost::uint8_t*>(&sizeValue), sizeof(sizeValue));
+                m_abPacket.Append(reinterpret_cast<const boost::uint8_t*>(&value_), sizeof(value_));
+            }
 
-    #define AppendChunkByte(i,v)     AppendChunkT<boost::uint8_t, cbChunk::CHUNK_TYPE_BYTE>(i,v)
-    #define AppendChunkShort(i,v)    AppendChunkT<boost::uint16_t, cbChunk::CHUNK_TYPE_SHORT>(i,v)
-    #define AppendChunkInteger(i,v)  AppendChunkT<boost::uint32_t, cbChunk::CHUNK_TYPE_INTEGER>(i,v)
+#define AppendChunkByte(i,v)     AppendChunkT<boost::uint8_t, cbChunk::CHUNK_TYPE_BYTE>(i,v)
+#define AppendChunkShort(i,v)    AppendChunkT<boost::uint16_t, cbChunk::CHUNK_TYPE_SHORT>(i,v)
+#define AppendChunkInteger(i,v)  AppendChunkT<boost::uint32_t, cbChunk::CHUNK_TYPE_INTEGER>(i,v)
 
-        void    AppendChunkString(cbChunk::id_cbc id_, const std::string& value_);
-        void    AppendChunkBuffer(cbChunk::id_cbc id_, const Data::AutoBufferT<boost::uint8_t>& value_);
+            void    AppendChunkString(cbChunk::id_cbc id_, const std::string& value_);
+            void    AppendChunkBuffer(cbChunk::id_cbc id_, const Data::AutoBufferT<boost::uint8_t>& value_);
 
-        size_cbc    GetSize() const {return m_abPacket.GetFillSize();}
-        boost::uint8_t* GetBuffer() const {return m_abPacket.GetPosition(0);}
-    };
+            size_cbc    GetSize() const { return m_abPacket.GetFillSize(); }
+            boost::uint8_t* GetBuffer() const { return m_abPacket.GetPosition(0); }
+        };
 
-    template<typename T>
-    inline bool CheckBuffer(const boost::uint8_t* pBuffer_, size_t nBufferSize_) {
-        return nBufferSize_>=sizeof(T);
-    }
-
-    template<typename T>
-    inline T ReadBuffer(const boost::uint8_t*& pBuffer_, size_t& nBufferSize_) {
-        T v = *(reinterpret_cast<const T*>(pBuffer_));
-        pBuffer_ += sizeof(T);
-        nBufferSize_ -= sizeof(T);
-        return v;
-    }
-
-    inline bool CheckBuffer(const boost::uint8_t* pBuffer_, size_t nBufferSize_, cbChunk::size_cbc nSizeValueChunk_) {
-        return nBufferSize_>=nSizeValueChunk_;
-    }
-
-    inline void ReadBuffer(const boost::uint8_t*& pBuffer_, size_t& nBufferSize_, cbChunk::size_cbc nSizeValueChunk_, std::string& value_) {
-        value_.assign(reinterpret_cast<const char*>(pBuffer_), nSizeValueChunk_);
-        pBuffer_ += nSizeValueChunk_;
-        nBufferSize_ -= nSizeValueChunk_;
-    }
-
-    inline void ReadBuffer(const boost::uint8_t*& pBuffer_, size_t& nBufferSize_, cbChunk::size_cbc nSizeValueChunk_, Data::AutoBufferT<boost::uint8_t>& value_) {
-        value_.Append(pBuffer_, nSizeValueChunk_);
-        pBuffer_ += nSizeValueChunk_;
-        nBufferSize_ -= nSizeValueChunk_;
-    }
-
-    template<typename TD, typename TC, cbPacket::sign_cbp signConst>
-    class cbDispatchT {
-    protected:
-        typedef bool	(TD::* funcProcessCommandCB)(TC&, cbPacket::type_cbp, const boost::uint8_t*, size_t);
-        typedef std::map<cbPacket::type_cbp, funcProcessCommandCB>	DictionaryProcessCommandCB;
-
-        DictionaryProcessCommandCB	m_ProcessCommandCB;
-        TD*                         m_Context;
-    public:
-        cbDispatchT(TD* Context_) {
-            m_Context = Context_;
+        template<typename T>
+        inline bool CheckBuffer(const boost::uint8_t* pBuffer_, size_t nBufferSize_) {
+            return nBufferSize_ >= sizeof(T);
         }
 
-        void    RegisterProcessCommandCB(cbPacket::type_cbp type_, funcProcessCommandCB func_) {
-            m_ProcessCommandCB[type_] = func_;
+        template<typename T>
+        inline T ReadBuffer(const boost::uint8_t*& pBuffer_, size_t& nBufferSize_) {
+            T v = *(reinterpret_cast<const T*>(pBuffer_));
+            pBuffer_ += sizeof(T);
+            nBufferSize_ -= sizeof(T);
+            return v;
         }
 
-        size_t	DoProcessCB(typename TC& rConnect_, const boost::uint8_t* pBuffer_, size_t nBufferSize_) {
-            size_t	nProcessBytes = 0, nHeaderSize = cbPacket::GetHeaderSize();
+        inline bool CheckBuffer(const boost::uint8_t* pBuffer_, size_t nBufferSize_, cbChunk::size_cbc nSizeValueChunk_) {
+            return nBufferSize_ >= nSizeValueChunk_;
+        }
 
-            while (nBufferSize_>=nHeaderSize) {
-                cbPacket::sign_cbp      sign = PACKET_NTOH_SIGN(ReadBuffer<cbPacket::sign_cbp>(pBuffer_,nBufferSize_));
-                if (sign==signConst) {
-                    cbPacket::size_cbp	sizePacket = PACKET_NTOH_SIZE(ReadBuffer<cbPacket::size_cbp>(pBuffer_,nBufferSize_));
-                    cbPacket::type_cbp  typePacket = PACKET_NTOH_TYPE(ReadBuffer<cbPacket::type_cbp>(pBuffer_,nBufferSize_));
-                    if (sizePacket<=nBufferSize_) {
-                        nProcessBytes += nHeaderSize + sizePacket;
+        inline void ReadBuffer(const boost::uint8_t*& pBuffer_, size_t& nBufferSize_, cbChunk::size_cbc nSizeValueChunk_, std::string& value_) {
+            value_.assign(reinterpret_cast<const char*>(pBuffer_), nSizeValueChunk_);
+            pBuffer_ += nSizeValueChunk_;
+            nBufferSize_ -= nSizeValueChunk_;
+        }
 
-                        LOG_CONTEXT(LOG_CTX_NETWORK,LOG_LEVEL_DEBUG,"Process packet type = 0x%04X size = %d bytes", typePacket, sizePacket);
+        inline void ReadBuffer(const boost::uint8_t*& pBuffer_, size_t& nBufferSize_, cbChunk::size_cbc nSizeValueChunk_, Data::AutoBufferT<boost::uint8_t>& value_) {
+            value_.Append(pBuffer_, nSizeValueChunk_);
+            pBuffer_ += nSizeValueChunk_;
+            nBufferSize_ -= nSizeValueChunk_;
+        }
 
-                        DictionaryProcessCommandCB::iterator	itDPCCB = m_ProcessCommandCB.find(typePacket);
-                        if (itDPCCB!=m_ProcessCommandCB.end()) {
-                            funcProcessCommandCB pf = itDPCCB->second;
-                            (m_Context->*pf)(rConnect_, typePacket, pBuffer_, sizePacket);
+        template<typename TD, typename TC, cbPacket::sign_cbp signConst>
+        class cbDispatchT {
+        protected:
+            typedef bool	(TD::* funcProcessCommandCB)(TC&, cbPacket::type_cbp, const boost::uint8_t*, size_t);
+            typedef std::map<cbPacket::type_cbp, funcProcessCommandCB>	DictionaryProcessCommandCB;
 
-                            pBuffer_ += sizePacket;
-                            nBufferSize_ -= sizePacket;
+            DictionaryProcessCommandCB	m_ProcessCommandCB;
+            TD*                         m_Context;
+        public:
+            cbDispatchT(TD* Context_) {
+                m_Context = Context_;
+            }
+
+            void    RegisterProcessCommandCB(cbPacket::type_cbp type_, funcProcessCommandCB func_) {
+                m_ProcessCommandCB[type_] = func_;
+            }
+
+            size_t	DoProcessCB(typename TC& rConnect_, const boost::uint8_t* pBuffer_, size_t nBufferSize_) {
+                size_t	nProcessBytes = 0, nHeaderSize = cbPacket::GetHeaderSize();
+
+                while (nBufferSize_ >= nHeaderSize) {
+                    cbPacket::sign_cbp      sign = PACKET_NTOH_SIGN(ReadBuffer<cbPacket::sign_cbp>(pBuffer_, nBufferSize_));
+                    if (sign == signConst) {
+                        cbPacket::size_cbp	sizePacket = PACKET_NTOH_SIZE(ReadBuffer<cbPacket::size_cbp>(pBuffer_, nBufferSize_));
+                        cbPacket::type_cbp  typePacket = PACKET_NTOH_TYPE(ReadBuffer<cbPacket::type_cbp>(pBuffer_, nBufferSize_));
+                        if (sizePacket <= nBufferSize_) {
+                            nProcessBytes += nHeaderSize + sizePacket;
+
+                            LOG_CONTEXT(LOG_CTX_NETWORK, LOG_LEVEL_DEBUG, "Process packet type = 0x%04X size = %d bytes", typePacket, sizePacket);
+
+                            DictionaryProcessCommandCB::iterator	itDPCCB = m_ProcessCommandCB.find(typePacket);
+                            if (itDPCCB != m_ProcessCommandCB.end()) {
+                                funcProcessCommandCB pf = itDPCCB->second;
+                                (m_Context->*pf)(rConnect_, typePacket, pBuffer_, sizePacket);
+
+                                pBuffer_ += sizePacket;
+                                nBufferSize_ -= sizePacket;
+                            } else {
+                                // неизвестная команда
+                                break;
+                            }
                         } else {
-                            // неизвестная команда
+                            // пока еще мало данных
                             break;
                         }
                     } else {
-                        // пока еще мало данных
+                        // неправильный формат
+                        LOG_CONTEXT(LOG_CTX_NETWORK, LOG_LEVEL_DEBUG, "Wrong signature - %x", sign);
                         break;
                     }
-                } else {
-                    // неправильный формат
-                    LOG_CONTEXT(LOG_CTX_NETWORK,LOG_LEVEL_DEBUG,"Wrong signature - %x", sign);
-                    break;
                 }
+
+                return nProcessBytes;
             }
 
-            return nProcessBytes;
-        }
+        };
 
-    };
-
-    template<cbPacket::sign_cbp signConst>
+        template<cbPacket::sign_cbp signConst>
         void SendChunkInPacket(Network::Connection& rConnect_, Network::cbPacket::type_cbp tp_, const Network::cbChunkOut& ch_) {
             using namespace Network;
 
@@ -211,6 +212,7 @@ namespace Network {
             rConnect_.SendData(reinterpret_cast<boost::uint8_t*>(&tp_), sizeof(tp_));
             rConnect_.SendData(reinterpret_cast<boost::uint8_t*>(ch_.GetBuffer()), ch_.GetSize());
         }
+    }
 }
 
 #endif  // _COMPACT_BINARY__H_

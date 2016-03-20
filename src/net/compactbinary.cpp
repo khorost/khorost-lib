@@ -1,6 +1,7 @@
 #include "net/compactbinary.h"
 
-using namespace Network;
+using namespace khorost::Network;
+using namespace khorost::Data;
 
 union uint64x32_t {
     boost::uint64_t	m_ui64;
@@ -126,7 +127,7 @@ void cbChunkOut::AppendChunkString(cbChunk::id_cbc id_, const std::string& value
     m_abPacket.Append(reinterpret_cast<const boost::uint8_t*>(value_.c_str()), value_.size());
 }
 
-void cbChunkOut::AppendChunkBuffer(cbChunk::id_cbc id_, const Data::AutoBufferT<boost::uint8_t>& value_) {
+void cbChunkOut::AppendChunkBuffer(cbChunk::id_cbc id_, const AutoBufferT<boost::uint8_t>& value_) {
     id_ = CHUNK_HTON_ID(id_);
     cbChunk::size_cbc   sizeValue(CHUNK_HTON_SIZE(value_.GetFillSize()));
     cbChunk::type_cbc   typeValue(CHUNK_HTON_TYPE(cbChunk::CHUNK_TYPE_BINARY));

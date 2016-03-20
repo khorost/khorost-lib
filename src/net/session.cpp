@@ -6,7 +6,7 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/date_time/posix_time/conversion.hpp>
 
-using namespace Network;
+using namespace khorost::Network;
 
 const int Session::DEFAULT_EXPIRE_MINUTES = 30;
 

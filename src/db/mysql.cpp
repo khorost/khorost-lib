@@ -17,7 +17,8 @@
 
 #pragma comment(lib,"libmysql.lib")
 
-using namespace DB;
+using namespace khorost::DB;
+using namespace khorost::Data;
 
 MySQL::MySQL():
 	m_Handle(NULL){
@@ -156,7 +157,7 @@ void MySQL::Query::BindValue64(const char* psTag_, uint64_t nValue_) {
 	m_abQuery.Replace(psTag_, strlen(psTag_), strTarget.c_str(), strTarget.size());
 }
 
-void MySQL::Query::BindValueBLOB(const char* psTag_, const Data::AutoBufferT<uint8_t>& abBLOB_) {
+void MySQL::Query::BindValueBLOB(const char* psTag_, const AutoBufferT<uint8_t>& abBLOB_) {
 	Data::AutoBufferChar	abTemp;
 	abTemp.CheckSize(abBLOB_.GetFillSize()*2 + 1 + 2);
 	uint32_t uiReplaceSize = mysql_real_escape_string(m_Handle, abTemp.GetPosition(1), (char*)abBLOB_.GetPosition(0), abBLOB_.GetFillSize());

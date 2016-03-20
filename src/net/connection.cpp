@@ -8,7 +8,7 @@
 #pragma comment(lib,"Ws2_32.lib")
 #endif	// WIN32
 
-using namespace Network;
+using namespace khorost::Network;
 
 Connection::Connection(ConnectionController* pThis_, int ID_, evutil_socket_t fd_, struct sockaddr* sa_, int socklen_){
     m_pController = pThis_;

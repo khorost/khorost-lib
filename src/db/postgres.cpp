@@ -8,7 +8,7 @@
 #endif
 #endif // WIN32
 
-using namespace DB;
+using namespace khorost::DB;
 
 bool Postgres::Reconnect() {
     std::string sc;

@@ -24,7 +24,8 @@
 
 #pragma comment(lib,"shlwapi.lib")
 
-using namespace Network;
+using namespace khorost;
+using namespace khorost::Network;
 
 const char*   httpPacket::HTTP_QUERY_REQUEST_METHOD_GET     = "GET";
 const char*   httpPacket::HTTP_QUERY_REQUEST_METHOD_POST    = "POST";
