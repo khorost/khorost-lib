@@ -210,6 +210,16 @@ Connection* ConnectionController::AddConnection(evutil_socket_t fd_, struct sock
 
 void Connection::GetClientIP(char* pBuffer_, size_t nBufferSize_) {
     evutil_format_sockaddr_port(&m_sa, pBuffer_, nBufferSize_);
+    for (size_t k = 0; k < nBufferSize_ && pBuffer_[k] != '\0'; ++k) {
+        if (pBuffer_[k] == ':') {
+            pBuffer_[k] = '\0';
+            break;
+        }
+    }
+}
+
+void Connection::GetClientIP(char* pBuffer_, size_t nBufferSize_) {
+    evutil_format_sockaddr_port(&m_sa, pBuffer_, nBufferSize_);
 }
 
 #ifndef WIN32
