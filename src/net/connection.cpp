@@ -218,10 +218,6 @@ void Connection::GetClientIP(char* pBuffer_, size_t nBufferSize_) {
     }
 }
 
-void Connection::GetClientIP(char* pBuffer_, size_t nBufferSize_) {
-    evutil_format_sockaddr_port(&m_sa, pBuffer_, nBufferSize_);
-}
-
 #ifndef WIN32
 static void stubSignal(
                       evutil_socket_t sig
