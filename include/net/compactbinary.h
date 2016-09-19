@@ -109,7 +109,7 @@ namespace khorost {
             void    AppendChunkString(cbChunk::id_cbc id_, const std::string& value_);
             void    AppendChunkBuffer(cbChunk::id_cbc id_, const Data::AutoBufferT<boost::uint8_t>& value_);
 
-            size_cbc    GetSize() const { return m_abPacket.GetFillSize(); }
+            size_cbc    GetSize() const { return static_cast<size_cbc>(m_abPacket.GetFillSize()); }
             boost::uint8_t* GetBuffer() const { return m_abPacket.GetPosition(0); }
         };
 

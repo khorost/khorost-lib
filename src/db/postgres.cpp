@@ -8,6 +8,8 @@
 #endif
 #endif // WIN32
 
+#include <iostream>
+
 using namespace khorost::DB;
 
 bool Postgres::Reconnect() {

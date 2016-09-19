@@ -3,7 +3,9 @@
 #include "util/logger.h"
 
 #ifdef WIN32
-#pragma comment(lib,"libevent.lib")
+#pragma comment(lib,"event.lib")
+#pragma comment(lib,"event_core.lib")
+#pragma comment(lib,"event_extra.lib")
 #pragma comment(lib,"wsock32.lib")
 #pragma comment(lib,"Ws2_32.lib")
 #endif	// WIN32
@@ -191,7 +193,7 @@ bool ConnectionController::RemoveConnection(Connection* pConnection_){
     return true;
 }
 // Так делать опасно, осуществляется вызов функции из libevent\util-internal.h
-extern "C" const char * evutil_format_sockaddr_port(const struct sockaddr *sa, char *out, size_t outlen);
+extern "C" const char * evutil_format_sockaddr_port_(const struct sockaddr *sa, char *out, size_t outlen);
 
 Connection* ConnectionController::AddConnection(evutil_socket_t fd_, struct sockaddr* sa_, int socklen_){
     boost::mutex::scoped_lock lock(m_mutex);
@@ -201,7 +203,7 @@ Connection* ConnectionController::AddConnection(evutil_socket_t fd_, struct sock
     char    buf[1024];
     LOG_CONTEXT(LOG_CTX_NETWORK,LOG_LEVEL_INFO
         ,"Detect incoming connect #%d from %s. Accepted on socket #%X"
-        ,pConnection->GetID(),evutil_format_sockaddr_port(sa_, buf, sizeof(buf)), fd_);
+        ,pConnection->GetID(),evutil_format_sockaddr_port_(sa_, buf, sizeof(buf)), fd_);
 
     pConnection->OpenConnection();
 
@@ -209,7 +211,7 @@ Connection* ConnectionController::AddConnection(evutil_socket_t fd_, struct sock
 }
 
 void Connection::GetClientIP(char* pBuffer_, size_t nBufferSize_) {
-    evutil_format_sockaddr_port(&m_sa, pBuffer_, nBufferSize_);
+    evutil_format_sockaddr_port_(&m_sa, pBuffer_, nBufferSize_);
     for (size_t k = 0; k < nBufferSize_ && pBuffer_[k] != '\0'; ++k) {
         if (pBuffer_[k] == ':') {
             pBuffer_[k] = '\0';
