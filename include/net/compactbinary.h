@@ -4,15 +4,15 @@
 #include <map>
 #include <string>
 
-#ifndef WIN32
-/* For sockaddr_in */
- #include <netinet/in.h>
-/* For socket functions */
- #include <sys/socket.h>
- #include <unistd.h>
+#if defined(_WIN32) || defined(_WIN64)
+# include <windows.h>
 #else
- #include <winsock2.h>
-#endif  // Win32
+/* For sockaddr_in */
+# include <netinet/in.h>
+/* For socket functions */
+# include <sys/socket.h>
+# include <unistd.h>
+#endif  
 
 #include <boost/cstdint.hpp>
 
@@ -170,7 +170,7 @@ namespace khorost {
                         if (sizePacket <= nBufferSize_) {
                             nProcessBytes += nHeaderSize + sizePacket;
 
-                            LOG_CONTEXT(LOG_CTX_NETWORK, LOG_LEVEL_DEBUG, "Process packet type = 0x%04X size = %d bytes", typePacket, sizePacket);
+                            LOGF(DEBUG, "Process packet type = 0x%04X size = %d bytes", typePacket, sizePacket);
 
                             DictionaryProcessCommandCB::iterator	itDPCCB = m_ProcessCommandCB.find(typePacket);
                             if (itDPCCB != m_ProcessCommandCB.end()) {
@@ -189,7 +189,7 @@ namespace khorost {
                         }
                     } else {
                         // неправильный формат
-                        LOG_CONTEXT(LOG_CTX_NETWORK, LOG_LEVEL_DEBUG, "Wrong signature - %x", sign);
+                        LOGF(WARNING, "Wrong signature - %x", sign);
                         break;
                     }
                 }

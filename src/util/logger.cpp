@@ -1,6 +1,6 @@
 ﻿
-#ifdef WIN32
-#include <Windows.h>
+#if defined(_WIN32) || defined(_WIN64)
+ #include <Windows.h>
 #endif
 
 #include <stdio.h>
@@ -15,11 +15,7 @@
 
 #pragma comment(lib,"dbghelp.lib")
 
-#ifdef LOGGER_USE
-
-khorost::Log::Context		khorost::Log::g_Logger("common", "log4cxx.properties", ".\\");
-
-#ifdef WIN32
+#if defined(_WIN32) || defined(_WIN64)
 
 struct ColorCoutSinkWin32 {
     bool textcolorprotect = true;
@@ -114,171 +110,24 @@ struct ColorCoutSink {
             << logEntry.get().toString() << "\033[m" << std::endl;
     }
     };
-#endif // WIN32
+#endif // WIN
 
-using namespace khorost::Log;
+std::unique_ptr<g3::LogWorker>  g_Logger;
 
-Context::Context(const std::string& _sDefaultContext, const std::string& _sPropertyFilename, const std::string& _sDefaultDirectory){
-	Prepare();
-}
+void khorost::log::prepare(const std::string& sFolder_, const std::string& sPrefix_, const std::string& sID_) {
+    if (g_Logger.get() == NULL) {
+        g_Logger = g3::LogWorker::createLogWorker();
+        g3::initializeLogging(g_Logger.get());
 
-Context::~Context(){
-}
-
-void Context::Prepare() {
-    if (m_LogWorker == NULL) {
-        m_LogWorker = g3::LogWorker::createLogWorker();
-        g3::initializeLogging(m_LogWorker.get());
-    }
-#ifdef WIN32
-    m_LogWorker->addSink(std::make_unique<ColorCoutSinkWin32>(), &ColorCoutSinkWin32::ReceiveLogMessage);
+#if defined(_WIN32) || defined(_WIN64)
+        g_Logger->addSink(std::make_unique<ColorCoutSinkWin32>(), &ColorCoutSinkWin32::ReceiveLogMessage);
 #else
-    m_LogWorker->addSink(std::make_unique<ColorCoutSink>(), &ColorCoutSink::ReceiveLogMessage);
-#endif  // WIN32
-}
-
-void Context::Prepare(const std::string& sDefaultContext_, const std::string& sPropertyFilename_, const std::string& sDefaultDirectory_) {
-    using namespace boost::filesystem;
-
-    m_sDefaultContext = sDefaultContext_;
-    /*
-    path filePath, currentPath = current_path();
-
-    filePath = currentPath;
-    filePath /= sPropertyFilename_;
-
-    if (!exists(filePath)) {
-        filePath = sDefaultDirectory_;
-        filePath /= sPropertyFilename_;
-
-        if (!exists(filePath)) {
-            return;
-        }
+        g_Logger->addSink(std::make_unique<ColorCoutSink>(), &ColorCoutSink::ReceiveLogMessage);
+#endif  // WIN
     }
-    */
-    if (m_LogWorker == NULL) {
-        m_LogWorker = g3::LogWorker::createLogWorker();
-        g3::initializeLogging(m_LogWorker.get());
+
+    if (!sFolder_.empty()) {
+        g_Logger->addDefaultLogger(sPrefix_, sFolder_, sID_);
     }
-    auto handle = m_LogWorker->addDefaultLogger(sDefaultContext_, sDefaultDirectory_);
 }
 
-void Context::LogStrVA(eContextStack _ContextStack, int _iLevel, const char* _sFormat,...) {
-	va_list va;
-
-	va_start(va, _sFormat);
-	LogStrVA(_ContextStack, m_sDefaultContext, _iLevel, _sFormat, va);
-	va_end(va);
-}
-
-void Context::LogStrVA(eContextStack _ContextStack, const std::string& _sContext, int _iLevel, const char* _sFormat,...){
-	char	buffer[MAX_LOG4CXX_FORMAT_BUFFER], prefix[2*MAX_LOG4CXX_FORMAT_BUFFER] = "";
-	va_list va;
-
-//	LoggerPtr logger = Logger::getLogger(_sContext);
-
-	ProcessStackLevel(_sContext, _ContextStack);
-
-	int k, cnt = GetStackLevel(_sContext);
-	if(_ContextStack==CONTEXT_STACK_UP){
-		cnt--;
-	}
-	for(k=0;k<cnt;){
-		prefix[k++] = STACK_LEVEL_FILL;
-	}
-	prefix[k] = '\0';
-
-	va_start(va, _sFormat);
-
-    switch(_iLevel) {
-		case LOG_LEVEL_FATAL:
-        case LOG_LEVEL_ERROR:
-            vsnprintf(buffer, sizeof(buffer), _sFormat, va);
-            strcat(prefix, buffer);
-            LOGF(FATAL, prefix);
-			break;
-		case LOG_LEVEL_WARN:
-			vsnprintf(buffer, sizeof(buffer), _sFormat, va);
-			strcat(prefix, buffer);
-			LOGF(WARNING, prefix);
-			break;
-		case LOG_LEVEL_INFO:
-			vsnprintf(buffer, sizeof(buffer), _sFormat, va);
-			strcat(prefix, buffer);
-			LOGF(INFO, prefix);
-			break;
-		case LOG_LEVEL_DEBUG:
-			vsnprintf(buffer, sizeof(buffer), _sFormat, va);
-			strcat(prefix, buffer);
-			LOGF(DEBUG, prefix);
-			break;
-	};
-
-    va_end(va);
-}
-
-void Context::LogStr(eContextStack _ContextStack, int _iLevel, const std::string& _sInfo){
-	LogStr(_ContextStack, m_sDefaultContext, _iLevel, _sInfo);
-}
-
-void Context::LogStr(eContextStack _ContextStack, const std::string& _sContext, int _iLevel, const std::string& _sInfo){
-	char		prefix[MAX_LOG4CXX_FORMAT_BUFFER] = "";
-//	LoggerPtr logger = Logger::getLogger(_sContext);
-
-	ProcessStackLevel(_sContext, _ContextStack);
-
-    int k, cnt = GetStackLevel(_sContext);
-	if(_ContextStack==CONTEXT_STACK_UP){
-		cnt--;
-	}
-	for(k=0;k<cnt;){
-		prefix[k++] = STACK_LEVEL_FILL;
-	}
-	prefix[k] = '\0';
-	switch(_iLevel) {
-		case LOG_LEVEL_FATAL:
-        case LOG_LEVEL_ERROR:
-            LOG(FATAL) << std::string(prefix) + _sInfo;
-			break;
-		case LOG_LEVEL_WARN:
-			LOG(WARNING) << std::string(prefix) + _sInfo;
-			break;
-		case LOG_LEVEL_INFO:
-			LOG(INFO) << std::string(prefix) + _sInfo;
-			break;
-		case LOG_LEVEL_DEBUG:
-			LOG(DEBUG) << std::string(prefix) + _sInfo;
-			break;
-	};
-}
-
-int	Context::GetStackLevel(const std::string& _sContext) const{
-	ContextNumberDict::const_iterator	cit = m_NumberDict.find(_sContext);
-	return cit!=m_NumberDict.end()?cit->second:0;
-}
-
-void Context::SetStackLevel(const std::string& _sContext, int _StackLevel){
-	m_NumberDict[_sContext] = _StackLevel;
-}
-
-void Context::ProcessStackLevel(const std::string& sContext_, eContextStack ContextStack_){
-	if(ContextStack_==CONTEXT_STACK_UP){
-		SetStackLevel(sContext_, GetStackLevel(sContext_) + 1);
-	}else if(ContextStack_==CONTEXT_STACK_DOWN){
-		SetStackLevel(sContext_, GetStackLevel(sContext_) - 1);
-	}
-}
-
-ContextAuto::ContextAuto(Context &Context_, const std::string& sContext_, int nLevel_, const std::string &sDescription_):
-	m_Context(Context_)
-	,m_sDescription(sDescription_)
-	,m_iLevel(nLevel_)
-	,m_sContext(sContext_){
-		m_Context.LogStr(Context::CONTEXT_STACK_UP, m_sContext, m_iLevel, std::string("{E}") + m_sDescription);
-}
-
-ContextAuto::~ContextAuto(){
-	m_Context.LogStr(Context::CONTEXT_STACK_DOWN, m_sContext, m_iLevel, std::string("{L}") + m_sDescription);
-}
-
-#endif

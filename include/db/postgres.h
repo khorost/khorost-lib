@@ -1,15 +1,15 @@
 ﻿#ifndef __POSTGRES_H__
 #define __POSTGRES_H__
 
-#ifndef WIN32
-/* For sockaddr_in */
-#include <netinet/in.h>
-/* For socket functions */
-#include <sys/socket.h>
-#include <unistd.h>
+#if defined(_WIN32) || defined(_WIN64)
+# include <windows.h>
 #else
-#include <winsock2.h>
-#endif  // Win32
+/* For sockaddr_in */
+# include <netinet/in.h>
+/* For socket functions */
+# include <sys/socket.h>
+# include <unistd.h>
+#endif  
 
 #include <string>
 #include <pqxx/pqxx>
@@ -18,20 +18,22 @@
 
 namespace khorost {
     namespace DB {
+
         class Postgres {
             int         m_nPort;
             std::string m_sHost;
             std::string m_sDatabase;
             std::string m_sLogin;
             std::string m_sPassword;
-        protected:
-            boost::scoped_ptr<pqxx::connection> m_DBConnection;
+
         public:
             Postgres() {
             }
             virtual ~Postgres() {
                 Disconnect();
             }
+
+            boost::scoped_ptr<pqxx::connection> m_dbConnection;
 
             bool Reconnect();
             bool Disconnect();

@@ -70,8 +70,8 @@ namespace khorost {
                 SessionDB(){}
                 virtual bool PrepareDatabase();
 
-                bool    UpdateSession(SessionPtr sp_, int nVersion_);
-                bool    RemoveSession(SessionPtr sp_);
+                bool    UpdateSession(Session* sp_, int nVersion_);
+                bool    RemoveSession(Session* sp_);
                 bool    LoadSessions(SessionControler& cs_);
             };
 
@@ -90,8 +90,8 @@ namespace khorost {
 
             SessionPtr  FindSession(const std::string& sSession_);
             SessionPtr  GetSession(const std::string& sSession_, bool& bCreate_);
-            bool        UpdateSession(SessionPtr sp_);
-            void        RemoveSession(SessionPtr sp_);
+            bool        UpdateSession(Session* sp_);
+            void        RemoveSession(Session* sp_);
 
             int         GetVersionMin() { return m_nVersionMin; }
             bool        GetActiveSessionsStats(ListSession& rLS_);

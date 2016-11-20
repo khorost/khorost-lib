@@ -20,12 +20,12 @@ bool Postgres::Reconnect() {
     sc += " user = " + m_sLogin;
     sc += " password = " + m_sPassword;
 
-    m_DBConnection.reset(new pqxx::connection(sc));
+    m_dbConnection.reset(new pqxx::connection(sc));
     return true;
 }
 
 bool Postgres::Disconnect() {
-    m_DBConnection.reset(NULL);
+    m_dbConnection.reset(NULL);
     return true;
 }
 
@@ -33,12 +33,12 @@ bool Postgres::CheckConnect() {
     static int times = 0;
     try {
         times++;
-        if (!m_DBConnection->is_open()) {
-            m_DBConnection->activate();
+        if (!m_dbConnection->is_open()) {
+            m_dbConnection->activate();
         }
         times = 0;
         // hack
-        pqxx::read_transaction txn(*m_DBConnection);
+        pqxx::read_transaction txn(*m_dbConnection);
 
         pqxx::result r = txn.exec(
             "SELECT id "
@@ -94,10 +94,10 @@ static void sExecuteCustomSQL(pqxx::transaction_base& txn_, const std::string& s
 
 void Postgres::ExecuteCustomSQL(bool bReadOnly_, const std::string& sSQL_, Json::Value& jvResult_) {
     if (bReadOnly_) {
-        pqxx::read_transaction txn(*m_DBConnection);
+        pqxx::read_transaction txn(*m_dbConnection);
         sExecuteCustomSQL(txn, sSQL_, jvResult_);
     } else {
-        pqxx::work txn(*m_DBConnection);
+        pqxx::work txn(*m_dbConnection);
         sExecuteCustomSQL(txn, sSQL_, jvResult_);
         txn.commit();
     }

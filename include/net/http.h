@@ -4,15 +4,15 @@
 #include <map>
 #include <string>
 
-#ifndef WIN32
-/* For sockaddr_in */
-#include <netinet/in.h>
-/* For socket functions */
-#include <sys/socket.h>
-#include <unistd.h>
+#if defined(_WIN32) || defined(_WIN64)
+# include <WinSock2.h>
 #else
-#include <winsock2.h>
-#endif  // Win32
+/* For sockaddr_in */
+# include <netinet/in.h>
+/* For socket functions */
+# include <sys/socket.h>
+# include <unistd.h>
+#endif  
 
 #include <curl/curl.h>
 #include "boost/date_time/posix_time/posix_time.hpp"
@@ -233,7 +233,10 @@ namespace khorost {
 
             void    SetLastModify(boost::posix_time::ptime tLM_) { m_Replay.m_tLastModify = tLM_; }
 
-            void Response(Network::Connection& rConnect_, const char* psResponse_, size_t nLength = -1);
+            void    Response(Network::Connection& rConnect_, const char* psResponse_, size_t nLength);
+            void    Response(Network::Connection& rConnect_, const std::string& sResponse_) {
+                Response(rConnect_, sResponse_.c_str(), sResponse_.size());
+            }
 
             const char*     GetClientProxyIP();
 
@@ -245,7 +248,7 @@ namespace khorost {
             HTTPFileTransfer() {}
             virtual ~HTTPFileTransfer() {}
 
-            bool    SendFile(Network::Connection& rConnect_, HTTPTextProtocolHeader& rHTTP_, const std::string& sDocRoot_, const std::string& sFileName_ = "");
+            bool    SendFile(const std::string& sQueryURI_, Network::Connection& rConnect_, HTTPTextProtocolHeader& rHTTP_, const std::string& sDocRoot_, const std::string& sFileName_ = "");
         };
 
         template<typename T>
@@ -314,7 +317,7 @@ namespace khorost {
                     // if +'s aren't replaced with %20's then curl won't unescape to spaces propperly
                     abTemp.Replace("+", 1, "%20", 3, false);
                     //            string url = std::str_replace("+", "%20", str);
-                    char* pt = curl_easy_unescape(m_curl, abTemp.GetHead(), abTemp.GetFillSize(), &nLenghtOut);
+                    char* pt = curl_easy_unescape(m_curl, abTemp.GetHead(), static_cast<int>(abTemp.GetFillSize()), &nLenghtOut);
 
                     m_abBuffer.CheckSize(nLenghtOut);
                     strcpy(m_abBuffer.GetHead(), pt);

@@ -237,7 +237,7 @@ size_t  HTTPTextProtocolHeader::ProcessData(Network::Connection& rConnect_, cons
                         else if (m_abParams.GetElement(k - 1) != '&') {
                             m_abParams.Append("&", sizeof(char));
                         }
-                        m_nContentLength += m_abParams.GetFillSize();
+                        m_nContentLength += static_cast<int>(m_abParams.GetFillSize());
                     }
 
                     m_abParams.Append(m_abBody.GetHead(), m_abBody.GetFillSize());
@@ -487,7 +487,7 @@ void HTTPTextProtocolHeader::Response(Network::Connection& rConnect_, const char
 
     if (nLength!=-1) {
         rConnect_.SendString(HTTP_ATTRIBUTE_CONTENT_LENGTH ": ");
-        rConnect_.SendNumber(nLength);
+        rConnect_.SendNumber(static_cast<unsigned int>(nLength));
         rConnect_.SendString(HTTP_ATTRIBUTE_ENDL, sizeof(HTTP_ATTRIBUTE_ENDL)-1);
     }
 
@@ -516,14 +516,13 @@ static bool IsSlash (char ch_) { return ch_=='/'; }
 #endif
 
 
-bool HTTPFileTransfer::SendFile(Network::Connection& rConnect_, HTTPTextProtocolHeader& rHTTP_, const std::string& sDocRoot_, const std::string& sFileName_) {
+bool HTTPFileTransfer::SendFile(const std::string& sQueryURI_, Network::Connection& rConnect_, HTTPTextProtocolHeader& rHTTP_, const std::string& sDocRoot_, const std::string& sFileName_) {
     using namespace boost::posix_time;
 
-    const char* pQueryURI = rHTTP_.GetQueryURI();
     // TODO сделать корректировку по абсолютно-относительным переходам
     std::string     sFileName;
     if(sFileName_=="") {
-        sFileName = sDocRoot_ + (pQueryURI + 1);
+        sFileName = sDocRoot_ + sQueryURI_;
     } else {
         sFileName = sDocRoot_ + sFileName_;
     }
@@ -550,7 +549,7 @@ bool HTTPFileTransfer::SendFile(Network::Connection& rConnect_, HTTPTextProtocol
     std::string sCanonicFileName;
 
     if (sFileName.length() >= MAX_PATH) {
-        LOG_CONTEXT(LOG_CTX_NETWORK, LOG_LEVEL_DEBUG, "Path is too long");
+        LOGF(WARNING, "Path is too long");
         
         rHTTP_.SetResponseStatus(404, "Not found");
         rHTTP_.Response(rConnect_, "File not found", -1);
@@ -562,7 +561,7 @@ bool HTTPFileTransfer::SendFile(Network::Connection& rConnect_, HTTPTextProtocol
 
 #ifdef WIN32
     if (!PathCanonicalize((LPSTR)bufCanonicFileName, sFileName.c_str())) {
-        LOG_CONTEXT(LOG_CTX_NETWORK, LOG_LEVEL_DEBUG, "PathCanonicalize failed");
+        LOGF(WARNING, "PathCanonicalize failed");
 
         rHTTP_.SetResponseStatus(404, "Not found");
         rHTTP_.Response(rConnect_, "File not found", -1);
@@ -570,7 +569,7 @@ bool HTTPFileTransfer::SendFile(Network::Connection& rConnect_, HTTPTextProtocol
     }
 #else
     if (!realpath(sFileName.c_str(), bufCanonicFileName)) {
-        LOG_CONTEXT(LOG_CTX_NETWORK, LOG_LEVEL_DEBUG, "realpath failed");
+        LOGF(WARNING, "realpath failed");
 
         rHTTP_.SetResponseStatus(404, "Not found");
         rHTTP_.Response(rConnect_, "File not found", -1);
@@ -581,7 +580,7 @@ bool HTTPFileTransfer::SendFile(Network::Connection& rConnect_, HTTPTextProtocol
     sCanonicFileName = bufCanonicFileName;
 
     if (sCanonicFileName.substr(0, sDocRoot_.length()) != sDocRoot_) {
-        LOG_CONTEXT(LOG_CTX_NETWORK, LOG_LEVEL_DEBUG, "Access outside of docroot attempted");
+        LOGF(WARNING, "Access outside of docroot attempted");
 
         rHTTP_.SetResponseStatus(404, "Not found");
         rHTTP_.Response(rConnect_, "File not found", -1);
@@ -616,7 +615,8 @@ bool HTTPFileTransfer::SendFile(Network::Connection& rConnect_, HTTPTextProtocol
             time_t tt = timegm(&t);
 #endif  // WIN32
             if (tt >= ff.GetTimeUpdate()) {
-                LOG_CONTEXT(LOG_CTX_NETWORK, LOG_LEVEL_DEBUG, "Dont send file '%s' length = %d. Response 304 (If-Modified-Since: '%s')", pQueryURI, ff.GetLength(), pIMS);
+                LOGF(DEBUG, "Dont send file '%s' length = %d. Response 304 (If-Modified-Since: '%s')", sQueryURI_.c_str(), ff.GetLength(), pIMS);
+
                 rHTTP_.SetResponseStatus(304, "Not Modified");
                 rHTTP_.Response(rConnect_, NULL, -1);
                 return true;
@@ -636,7 +636,8 @@ bool HTTPFileTransfer::SendFile(Network::Connection& rConnect_, HTTPTextProtocol
             }
         }
 
-        LOG_CONTEXT(LOG_CTX_NETWORK, LOG_LEVEL_DEBUG, "Send file '%s' length = %d", pQueryURI, ff.GetLength());
+        LOGF(DEBUG, "Send file '%s' length = %d", sQueryURI_.c_str(), ff.GetLength());
+
         if (nExt > 0) {
             pExt += nExt;
             for (int k = 0; s_SECT[k].m_Ext != NULL; ++k) {
@@ -652,7 +653,7 @@ bool HTTPFileTransfer::SendFile(Network::Connection& rConnect_, HTTPTextProtocol
 
         ff.Close();
     } else {
-        LOG_CONTEXT(LOG_CTX_NETWORK, LOG_LEVEL_DEBUG, "File not found");
+        LOGF(WARNING, "File not found '%s'", sCanonicFileName.c_str());
 
         rHTTP_.SetResponseStatus(404, "Not found");
         rHTTP_.Response(rConnect_, "File not found", -1);

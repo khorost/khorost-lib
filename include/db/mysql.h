@@ -6,15 +6,16 @@
 #ifndef __MYSQL_H__
 #define __MYSQL_H__
 
-#ifndef WIN32
-/* For sockaddr_in */
- #include <netinet/in.h>
-/* For socket functions */
- #include <sys/socket.h>
- #include <unistd.h>
+#if defined(_WIN32) || defined(_WIN64)
+# include <windows.h>
+# include <WinSock2.h>
 #else
- #include <winsock2.h>
-#endif  // Win32
+/* For sockaddr_in */
+# include <netinet/in.h>
+/* For socket functions */
+# include <sys/socket.h>
+# include <unistd.h>
+#endif  
 
 #include <mysql.h>
 

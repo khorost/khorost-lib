@@ -1,0 +1,192 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{E660C7C0-C9AE-41E2-97A1-E62CABB67F31}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>khorostlib</RootNamespace>
+    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <OutDir>$(SolutionDir)lib\bin-$(PlatformShortName)\</OutDir>
+    <IntDir>$(SolutionDir)bin\$(Configuration)\$(PlatformShortName)\$(ProjectName)\</IntDir>
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);$(CPP_SDK)\boost14\include;$(CPP_SDK)\apache-log4cxx.MD\include;$(CPP_SDK)\libcurl\include;$(CPP_SDK)\libevent\include;$(CPP_SDK)\libsqlite3\include;$(ProjectDir)..\include;$(ProjectDir)..\external\include;$(CPP_SDK)\openssl\include;$(CPP_SDK)\libmongo\include;$(CPP_SDK)\libpqxx\include;$(CPP_SDK)\libmysql\include</IncludePath>
+    <LibraryPath>$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86);$(NETFXKitsDir)Lib\um\x86;$(CPP_SDK)\libpqxx\lib;$(CPP_SDK)\boost14\lib;$(CPP_SDK)\apache-log4cxx.MD\lib;$(CPP_SDK)\libevent\lib;$(CPP_SDK)\libsqlite3\lib;$(CPP_SDK)\libmysql\lib\opt;$(CPP_SDK)\libmongo\lib;$(CPP_SDK)\openssl\lib;$(CPP_SDK)\libcurl\lib</LibraryPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <IntDir>$(SolutionDir)bin\$(Configuration)\$(PlatformShortName)\$(ProjectName)\</IntDir>
+    <OutDir>$(SolutionDir)lib\bin-$(PlatformShortName)\</OutDir>
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);$(CPP_SDK)\boost14\include;$(CPP_SDK)\apache-log4cxx.MD\include;$(CPP_SDK)\libcurl\include;$(CPP_SDK)\libevent\include;$(CPP_SDK)\libsqlite3\include;$(ProjectDir)..\include;$(ProjectDir)..\external\include;$(CPP_SDK)\openssl\include;$(CPP_SDK)\libmongo\include;$(CPP_SDK)\libpqxx\include;$(CPP_SDK)\libmysql\include</IncludePath>
+    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);$(NETFXKitsDir)Lib\um\x64;$(CPP_SDK)\libpqxx\lib;$(CPP_SDK)\boost14\lib;$(CPP_SDK)\apache-log4cxx.MD\lib;$(CPP_SDK)\libevent\lib;$(CPP_SDK)\libsqlite3\lib;$(CPP_SDK)\libmysql\lib\opt;$(CPP_SDK)\libmongo\lib;$(CPP_SDK)\openssl\lib;$(CPP_SDK)\libcurl\lib</LibraryPath>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions);_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_LOG4CXX_USE;NOMINMAX;WIN32_LEAN_AND_MEAN</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>_DEBUG;_LIB;%(PreprocessorDefinitions);_MBCS;_SCL_SECURE_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_LOG4CXX_USE;NOMINMAX;WIN32_LEAN_AND_MEAN</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <Text Include="ReadMe.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\external\src\g3log\crashhandler_windows.cpp" />
+    <ClCompile Include="..\external\src\g3log\filesink.cpp" />
+    <ClCompile Include="..\external\src\g3log\g3log.cpp" />
+    <ClCompile Include="..\external\src\g3log\logcapture.cpp" />
+    <ClCompile Include="..\external\src\g3log\loglevels.cpp" />
+    <ClCompile Include="..\external\src\g3log\logmessage.cpp" />
+    <ClCompile Include="..\external\src\g3log\logworker.cpp" />
+    <ClCompile Include="..\external\src\g3log\stacktrace_windows.cpp" />
+    <ClCompile Include="..\external\src\g3log\time.cpp" />
+    <ClCompile Include="..\external\src\ini\dictionary.c" />
+    <ClCompile Include="..\external\src\ini\iniparser.c" />
+    <ClCompile Include="..\external\src\json\jsoncpp.cpp" />
+    <ClCompile Include="..\external\src\win\strptime.c" />
+    <ClCompile Include="..\src\app\framework.cxx" />
+    <ClCompile Include="..\src\app\s2h-session.cxx" />
+    <ClCompile Include="..\src\app\s2hb-storage.cxx" />
+    <ClCompile Include="..\src\app\server2hb.cxx" />
+    <ClCompile Include="..\src\db\mysql.cpp" />
+    <ClCompile Include="..\src\db\postgres.cpp" />
+    <ClCompile Include="..\src\db\sqlite3.cpp" />
+    <ClCompile Include="..\src\net\compactbinary.cpp" />
+    <ClCompile Include="..\src\net\connection.cpp" />
+    <ClCompile Include="..\src\net\http.cpp" />
+    <ClCompile Include="..\src\net\session.cpp" />
+    <ClCompile Include="..\src\system\fastfile.cpp" />
+    <ClCompile Include="..\src\util\logger.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\external\src\g3log\g2log.hpp" />
+    <ClInclude Include="..\include\app\framework.h" />
+    <ClInclude Include="..\include\app\server2hb.h" />
+    <ClInclude Include="..\include\db\mysql.h" />
+    <ClInclude Include="..\include\db\postgres.h" />
+    <ClInclude Include="..\include\db\sqlite3.h" />
+    <ClInclude Include="..\include\net\compactbinary.h" />
+    <ClInclude Include="..\include\net\connection.h" />
+    <ClInclude Include="..\include\net\http.h" />
+    <ClInclude Include="..\include\net\session.h" />
+    <ClInclude Include="..\include\system\fastfile.h" />
+    <ClInclude Include="..\include\util\autobuffer.h" />
+    <ClInclude Include="..\include\util\logger.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\external\src\g3log\filesinkhelper.ipp" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

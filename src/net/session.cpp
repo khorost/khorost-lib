@@ -98,7 +98,7 @@ bool SessionControler::SessionDB::PrepareDatabase() {
     return true;
 }
 
-bool SessionControler::SessionDB::UpdateSession(SessionPtr sp_, int nVersion_) {
+bool SessionControler::SessionDB::UpdateSession(Session* sp_, int nVersion_) {
     using namespace boost::posix_time;
 
     Inserter Stmt(GetDB());
@@ -120,7 +120,7 @@ bool SessionControler::SessionDB::UpdateSession(SessionPtr sp_, int nVersion_) {
     return bSuccess;
 }
 
-bool SessionControler::SessionDB::RemoveSession(SessionPtr sp_) {
+bool SessionControler::SessionDB::RemoveSession(Session* sp_) {
     Inserter Stmt(GetDB());
     
     bool bSuccess = Stmt.Prepare("DELETE FROM sessions WHERE SID = ?");
@@ -181,7 +181,7 @@ void SessionControler::CheckAliveSessions() {
         SessionPtr  sp = sit->second;
         if (sp->GetExpired() < ptNow) {
             m_Sessions.erase(sit);
-            m_SessionDB.RemoveSession(sp);
+            m_SessionDB.RemoveSession(sp.get());
         }
     }
 }
@@ -219,7 +219,7 @@ SessionPtr SessionControler::GetSession(const std::string& sSession_, bool& bCre
             return sp;
         }
         m_Sessions.erase(it);
-        m_SessionDB.RemoveSession(sp);
+        m_SessionDB.RemoveSession(sp.get());
     }
 
     ptime  ptExpire = ptNow + minutes(Session::DEFAULT_EXPIRE_MINUTES);
@@ -227,17 +227,17 @@ SessionPtr SessionControler::GetSession(const std::string& sSession_, bool& bCre
                                                                                     // 1 час = 3600
     sp->SetCountUse(1);
     m_Sessions.insert(std::pair<std::string, SessionPtr>(sp->GetSessionID(), sp));
-    m_SessionDB.UpdateSession(sp, m_nVersionCurrent);
+    m_SessionDB.UpdateSession(sp.get(), m_nVersionCurrent);
     bCreate_ = true;
 
     return sp;
 }
 
-bool SessionControler::UpdateSession(SessionPtr sp_) {
+bool SessionControler::UpdateSession(Session* sp_) {
     return m_SessionDB.UpdateSession(sp_, m_nVersionCurrent);
 }
 
-void SessionControler::RemoveSession(SessionPtr sp_) {
+void SessionControler::RemoveSession(Session* sp_) {
     DictSession::iterator it = m_Sessions.find(sp_->GetSessionID());
     if (it != m_Sessions.end()) {
         m_Sessions.erase(it);

@@ -1,15 +1,15 @@
 ﻿#ifndef _FASTFILE__H_
 #define _FASTFILE__H_
 
-#ifndef WIN32
-/* For sockaddr_in */
-#include <netinet/in.h>
-/* For socket functions */
-#include <sys/socket.h>
-#include <unistd.h>
+#if defined(_WIN32) || defined(_WIN64)
+# include <windows.h>
 #else
- #include <windows.h>
-#endif  // Win32
+/* For sockaddr_in */
+# include <netinet/in.h>
+/* For socket functions */
+# include <sys/socket.h>
+# include <unistd.h>
+#endif  
 
 #include <string>
 

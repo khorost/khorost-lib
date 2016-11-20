@@ -127,14 +127,14 @@ bool Connection::CloseConnection() {
 
     bufferevent_setwatermark(m_bev, EV_WRITE,  evbuffer_get_length(output), 0);
 	if (evbuffer_get_length(output)) {
-        LOG_CONTEXT(LOG_CTX_NETWORK, LOG_LEVEL_DEBUG, "Flush & Close connection");
+        LOGF(DEBUG, "Flush & Close connection");
         /* We still have to flush data from the other
 		 * side, but when that's done, close the other
 		 * side. */
         bufferevent_setcb(m_bev, NULL, Connection::stubConnWrite, Connection::stubConnEvent, this);
 	    bufferevent_disable(m_bev, EV_READ);
     } else {
-        LOG_CONTEXT(LOG_CTX_NETWORK, LOG_LEVEL_DEBUG, "Close connection");
+        LOGF(DEBUG, "Close connection");
 	    /* We have nothing left to say to the other
 	    * side; close it. */
 		bufferevent_free(m_bev);
@@ -146,7 +146,7 @@ bool Connection::CloseConnection() {
     return true;
 }
 
-ConnectionController::ConnectionController(void* pContext_){
+ConnectionController::ConnectionController(ConnectionContext* pContext_){
     m_nUniqID = 0;
     m_pContext = pContext_;
     m_ptListen = NULL;
@@ -163,16 +163,16 @@ Connection* ConnectionController::CreateConnection(ConnectionController* pThis_,
 }
 
 bool ConnectionController::Shutdown(){
-    LOG_CONTEXT(LOG_CTX_NETWORK,LOG_LEVEL_DEBUG,"Shutdown listner");
+    LOGF(INFO, "Shutdown listner");
     event_base_loopexit(m_pebBaseListen, NULL);
 
-    LOG_CONTEXT(LOG_CTX_NETWORK,LOG_LEVEL_DEBUG,"Shutdown workers");
+    LOGF(INFO, "Shutdown workers");
     for (std::deque<event_base*>::const_iterator cit=m_vWorkersBase.begin();cit!=m_vWorkersBase.end();++cit) {
         event_base_loopbreak(*cit);
     }
     m_vWorkersBase.clear();
 
-    LOG_CONTEXT(LOG_CTX_NETWORK,LOG_LEVEL_DEBUG,"Shutdown complete");
+    LOGF(INFO, "Shutdown complete");
     return true;
 }
 
@@ -186,7 +186,7 @@ bool ConnectionController::WaitListen() {
 bool ConnectionController::RemoveConnection(Connection* pConnection_){
     boost::mutex::scoped_lock lock(m_mutex);
 
-    LOG_CONTEXT(LOG_CTX_NETWORK, LOG_LEVEL_INFO
+    LOGF(DEBUG
         , "Close connect #%d. Receive %d bytes, send %d bytes"
         , pConnection_->GetID(), pConnection_->GetReceiveBytes(), pConnection_->GetSendBytes());
 
@@ -201,9 +201,9 @@ Connection* ConnectionController::AddConnection(evutil_socket_t fd_, struct sock
     Connection* pConnection = CreateConnection(this, GetUniqID(), fd_, sa_, socklen_);
 
     char    buf[1024];
-    LOG_CONTEXT(LOG_CTX_NETWORK,LOG_LEVEL_INFO
-        ,"Detect incoming connect #%d from %s. Accepted on socket #%X"
-        ,pConnection->GetID(),evutil_format_sockaddr_port_(sa_, buf, sizeof(buf)), fd_);
+    LOGF(DEBUG
+        , "Detect incoming connect #%d from %s. Accepted on socket #%X"
+        , pConnection->GetID(), evutil_format_sockaddr_port_(sa_, buf, sizeof(buf)), fd_);
 
     pConnection->OpenConnection();
 
@@ -259,7 +259,7 @@ void ConnectionController::stubListenRun(ConnectionController* pThis_, int iList
     evconnlistener*         pelListener;
     sockaddr_in             sin;
 
-    LOG_CONTEXT(LOG_CTX_NETWORK,LOG_LEVEL_DEBUG,"Start listen");
+    LOGF(INFO, "Start listen");
 
 #ifdef WIN32
     evthread_use_windows_threads();
@@ -271,7 +271,7 @@ void ConnectionController::stubListenRun(ConnectionController* pThis_, int iList
 #endif
 
     pThis_->m_pebBaseListen = event_base_new_with_config(cfg);
-    LOG_CONTEXT(LOG_CTX_NETWORK,LOG_LEVEL_DEBUG,"LibEvent Method %s",event_base_get_method(pThis_->m_pebBaseListen));
+    LOGF(DEBUG, "LibEvent Method %s", event_base_get_method(pThis_->m_pebBaseListen));
 
     if (!pThis_->m_pebBaseListen) {
         // fprintf(stderr, "Could not initialize libevent!\n");
@@ -322,11 +322,11 @@ void ConnectionController::stubListenRun(ConnectionController* pThis_, int iList
     event_base_free(pThis_->m_pebBaseListen);
     event_config_free(cfg);
 
-    LOG_CONTEXT(LOG_CTX_NETWORK,LOG_LEVEL_DEBUG,"Listen stoped");
+    LOGF(INFO, "Listen stoped");
 }
 
 void ConnectionController::stubWorker(ConnectionController* pThis_){
-    LOG_CONTEXT(LOG_CTX_NETWORK,LOG_LEVEL_DEBUG,"Start worker");
+    LOGF(INFO, "Start worker");
     event_base* base = event_base_new();
     pThis_->m_vWorkersBase.push_back(base);
 
@@ -334,11 +334,11 @@ void ConnectionController::stubWorker(ConnectionController* pThis_){
     event_base_dispatch(base);
 
     event_base_free(base);
-    LOG_CONTEXT(LOG_CTX_NETWORK,LOG_LEVEL_DEBUG,"Stop worker");
+    LOGF(INFO, "Stop worker");
 }
 
 bool ConnectionController::StartListen(int iListenPort_, int iPollSize_){
-    LOG_CONTEXT(LOG_CTX_NETWORK,LOG_LEVEL_DEBUG,"Start listen on port %d", iListenPort_);
+    LOGF(INFO, "Start listen on port %d", iListenPort_);
     m_ptgWorkers = new boost::thread_group();
     for (int k=0; k<iPollSize_; ++k) {
 //        m_ptgWorkers->create_thread(boost::bind(&stubWorker,this));
@@ -346,7 +346,7 @@ bool ConnectionController::StartListen(int iListenPort_, int iPollSize_){
 
     m_ptListen = new boost::thread(boost::bind(&stubListenRun,this, iListenPort_));
 
-    LOG_CONTEXT(LOG_CTX_NETWORK,LOG_LEVEL_DEBUG,"Starting listen");
+    LOGF(INFO, "Starting listen");
     return true;
 }
 

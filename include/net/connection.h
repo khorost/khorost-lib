@@ -1,15 +1,15 @@
 #ifndef __CONNECTION_H__
 #define __CONNECTION_H__
 
-#ifndef WIN32
-/* For sockaddr_in */
-#include <netinet/in.h>
-/* For socket functions */
-#include <sys/socket.h>
-#include <unistd.h>
+#if defined(_WIN32) || defined(_WIN64)
+# include <WinSock2.h>
 #else
-#include <winsock2.h>
-#endif  // Win32
+/* For sockaddr_in */
+# include <netinet/in.h>
+/* For socket functions */
+# include <sys/socket.h>
+# include <unistd.h>
+#endif  
 /* For fcntl */
 #include <fcntl.h>
 
@@ -42,9 +42,10 @@
 namespace khorost {
     namespace Network {
         inline bool Init(){
-#ifdef WIN32
+#ifndef UNIX
             WSADATA wsa_data;
             WSAStartup(0x0201, &wsa_data);
+#pragma comment(lib,"Ws2_32.lib")
 #endif
             return true;
         }
@@ -95,9 +96,13 @@ namespace khorost {
 
         typedef boost::shared_ptr<Connection>		ConnectionPtr;
 
+        class ConnectionContext {
+
+        };
+
         class ConnectionController {
             int						m_nUniqID;
-            void*                   m_pContext;
+            ConnectionContext*      m_pContext;
         protected:
             boost::mutex            m_mutex;
             // основной слушающий поток 
@@ -116,7 +121,7 @@ namespace khorost {
 
             virtual Connection* CreateConnection(ConnectionController* pThis_, int ID_, evutil_socket_t fd_, struct sockaddr* sa_, int socklen_);
         public:
-            ConnectionController(void* pContext);
+            ConnectionController(ConnectionContext* pContext_);
             virtual ~ConnectionController();
 
             // «апуск слушащего сокета. ”правление возвращаетс€ сразу
@@ -125,8 +130,9 @@ namespace khorost {
             bool    Shutdown();
 
             event_base* GetBaseListen() { return m_pebBaseListen; }
-            void*       GetContext() { return m_pContext; }
-            void        SetContext(void* pContext_) { m_pContext = pContext_; }
+
+            ConnectionContext*  GetContext() { return m_pContext; }
+            void                SetContext(ConnectionContext* pContext_) { m_pContext = pContext_; }
 
             Connection* AddConnection(evutil_socket_t fd_, struct sockaddr* sa_, int socklen_);
             bool        RemoveConnection(Connection* pConnection_);

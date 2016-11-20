@@ -47,7 +47,7 @@ bool MySQL::Reconnect(){
 		mysql_options(&m_mysql, MYSQL_READ_DEFAULT_GROUP, m_sConfigGroup.c_str());
 	}
 	if (!(m_Handle = mysql_real_connect(&m_mysql, m_sHost.c_str(), m_sLogin.c_str(), m_sPassword.c_str(), m_sDatabase.c_str(), m_nPort, NULL, CLIENT_MULTI_RESULTS))) {
-        LOG_CONTEXT(LOG_CTX_DATABASE,LOG_LEVEL_DEBUG,"[KMySQL::Reconnect()] error '%s'",mysql_error(&m_mysql));
+        LOGF(WARNING,"[KMySQL::Reconnect()] error '%s'",mysql_error(&m_mysql));
 		return false;
 	}
 
@@ -76,16 +76,16 @@ m1:
 			if(iErrorCode==CR_SERVER_GONE_ERROR || iErrorCode==CR_SERVER_LOST){
 				mysql_query(m_Handle,"SET CHARACTER SET utf8");
 
-				LOG_CONTEXT(LOG_CTX_DATABASE,LOG_LEVEL_DEBUG,"[KMySQL::ExecuteSQL()] repair after '%d' error",iErrorCode);
+				LOGF(WARNING, "[KMySQL::ExecuteSQL()] repair after '%d' error",iErrorCode);
 				goto m1;
 			}
 		}
 		if(bReconnectEnable && Reconnect()){
 			bReconnectEnable = false;
-			LOG_CONTEXT(LOG_CTX_DATABASE,LOG_LEVEL_DEBUG,"[KMySQL::ExecuteSQL()] use Reconnect repair after '%d' error",iErrorCode);
+            LOGF(WARNING, "[KMySQL::ExecuteSQL()] use Reconnect repair after '%d' error",iErrorCode);
 			goto m1;
 		}
-		LOG_CONTEXT(LOG_CTX_DATABASE,LOG_LEVEL_DEBUG,"[KMySQL::ExecuteSQL()] %d %s",iErrorCode,mysql_error(m_Handle));
+        LOGF(WARNING, "[KMySQL::ExecuteSQL()] %d %s",iErrorCode,mysql_error(m_Handle));
 		return false;
 	}
 	return true;
@@ -189,14 +189,14 @@ m1:
 			if(iErrorCode==CR_SERVER_GONE_ERROR || iErrorCode==CR_SERVER_LOST){
 				mysql_query(m_Handle,"SET CHARACTER SET utf8");
 
-				LOG_CONTEXT(LOG_CTX_DATABASE,LOG_LEVEL_DEBUG,"[MySQL::Query::Execute()] repair after '%d' error",iErrorCode);
+                LOGF(WARNING, "[MySQL::Query::Execute()] repair after '%d' error",iErrorCode);
 				goto m1;
 			}
 		}
 
 		if(bReconnectEnable && m_Connection!=NULL && m_Connection->Reconnect()){
 			bReconnectEnable = false;
-			LOG_CONTEXT(LOG_CTX_DATABASE,LOG_LEVEL_DEBUG,"[MySQL::ExecuteSQL()] use Reconnect repair after '%d' error",iErrorCode);
+            LOGF(WARNING, "[MySQL::ExecuteSQL()] use Reconnect repair after '%d' error",iErrorCode);
 			goto m1;
 		}
 
