@@ -76,7 +76,7 @@ namespace khorost {
             };
 
             SessionDB       m_SessionDB;
-            DictSession     m_Sessions;
+            DictSession     m_SessionMemory;
             int             m_nVersionMin, m_nVersionCurrent;
 
             virtual SessionPtr  CreateSession(const std::string& sSessionID_, boost::posix_time::ptime dtCreated_, boost::posix_time::ptime dtExpired_) {

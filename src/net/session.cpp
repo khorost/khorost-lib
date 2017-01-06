@@ -164,7 +164,7 @@ bool SessionControler::SessionDB::LoadSessions(SessionControler& cs_) {
             rStmt.GetValue(4, s);
             sp->ImportData(s);
 
-            cs_.m_Sessions.insert(std::pair<std::string, SessionPtr>(sp->GetSessionID(), sp));
+            cs_.m_SessionMemory.insert(std::pair<std::string, SessionPtr>(sp->GetSessionID(), sp));
 		} while(rStmt.MoveNext());
     }
 
@@ -176,18 +176,18 @@ void SessionControler::CheckAliveSessions() {
 
     ptime                   ptNow = second_clock::universal_time();
 
-    for (DictSession::iterator it = m_Sessions.begin(); it != m_Sessions.end();){
+    for (DictSession::iterator it = m_SessionMemory.begin(); it != m_SessionMemory.end();){
         DictSession::iterator sit = it++;
         SessionPtr  sp = sit->second;
         if (sp->GetExpired() < ptNow) {
-            m_Sessions.erase(sit);
+            m_SessionMemory.erase(sit);
             m_SessionDB.RemoveSession(sp.get());
         }
     }
 }
 
 bool SessionControler::GetActiveSessionsStats(ListSession& rLS_) {
-    for (auto s : m_Sessions){
+    for (auto s : m_SessionMemory){
         if (s.second->IsStatsUpdate(true) != 0) {
             rLS_.push_back(s.second);
         }
@@ -197,8 +197,8 @@ bool SessionControler::GetActiveSessionsStats(ListSession& rLS_) {
 
 SessionPtr SessionControler::FindSession(const std::string& sSession_) {
     static SessionPtr spNull = SessionPtr();
-    DictSession::iterator it = m_Sessions.find(sSession_);
-    return it!=m_Sessions.end()?it->second:spNull;
+    DictSession::iterator it = m_SessionMemory.find(sSession_);
+    return it!=m_SessionMemory.end()?it->second:spNull;
 }
 
 SessionPtr SessionControler::GetSession(const std::string& sSession_, bool& bCreate_) {
@@ -207,9 +207,9 @@ SessionPtr SessionControler::GetSession(const std::string& sSession_, bool& bCre
 
     time_duration           td;
     ptime                   ptNow = second_clock::universal_time();
-    DictSession::iterator   it = m_Sessions.find(sSession_);
+    DictSession::iterator   it = m_SessionMemory.find(sSession_);
 
-    if (it!=m_Sessions.end()) {
+    if (it!=m_SessionMemory.end()) {
         SessionPtr  sp = it->second;
         if (sp->GetExpired()>ptNow) {
             sp->GetExpireShift(td);
@@ -218,7 +218,7 @@ SessionPtr SessionControler::GetSession(const std::string& sSession_, bool& bCre
             bCreate_ = false;
             return sp;
         }
-        m_Sessions.erase(it);
+        m_SessionMemory.erase(it);
         m_SessionDB.RemoveSession(sp.get());
     }
 
@@ -226,7 +226,7 @@ SessionPtr SessionControler::GetSession(const std::string& sSession_, bool& bCre
     SessionPtr  sp = CreateSession(Session::GenerateSessionID(), ptNow, ptExpire);   // 2 недели = 1209600
                                                                                     // 1 час = 3600
     sp->SetCountUse(1);
-    m_Sessions.insert(std::pair<std::string, SessionPtr>(sp->GetSessionID(), sp));
+    m_SessionMemory.insert(std::pair<std::string, SessionPtr>(sp->GetSessionID(), sp));
     m_SessionDB.UpdateSession(sp.get(), m_nVersionCurrent);
     bCreate_ = true;
 
@@ -238,9 +238,9 @@ bool SessionControler::UpdateSession(Session* sp_) {
 }
 
 void SessionControler::RemoveSession(Session* sp_) {
-    DictSession::iterator it = m_Sessions.find(sp_->GetSessionID());
-    if (it != m_Sessions.end()) {
-        m_Sessions.erase(it);
+    DictSession::iterator it = m_SessionMemory.find(sp_->GetSessionID());
+    if (it != m_SessionMemory.end()) {
+        m_SessionMemory.erase(it);
     }
     m_SessionDB.RemoveSession(sp_);
 }

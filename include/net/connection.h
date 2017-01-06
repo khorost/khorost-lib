@@ -97,7 +97,6 @@ namespace khorost {
         typedef boost::shared_ptr<Connection>		ConnectionPtr;
 
         class ConnectionContext {
-
         };
 
         class ConnectionController {

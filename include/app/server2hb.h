@@ -8,8 +8,7 @@
 #include "app/server2hb-np.h"
 #include "app/s2h-session.h"
 #include "app/s2hb-storage.h"
-
-#define S2H_SESSION     "s2hsession"
+#include "app/config.h"
 
 namespace khorost {
     class Server2HB : public Network::ConnectionContext {
@@ -64,7 +63,8 @@ namespace khorost {
             virtual void    GetClientIP(char* pBuffer_, size_t nBufferSize_);
         };
 
-        DB::Postgres                    m_DB;
+        DB::Postgres                    m_dbConnect;
+        Config                          m_Configure;
 
     private:
         class CBController : public Network::ConnectionController {
@@ -89,11 +89,9 @@ namespace khorost {
 
         int			            m_nHTTPListenPort;
         std::string             m_strDocRoot;       // место хранения вебсервера
-        std::string             m_sURLPrefixAction;
 
         DB::S2HBStorage                 m_dbBase;
         Network::S2HSessionController   m_Sessions;
-        Json::Value                     m_Configure;
 
         void    TimerSessionUpdate();
         static void     stubTimerRun(Server2HB* pThis_);
@@ -107,8 +105,25 @@ namespace khorost {
         DictionaryActionS2H    m_dictActionS2H;
     protected:
         bool    ProcessHTTP(HTTPConnection& rConnect_);
+
         virtual bool    ProcessHTTPCommand(const std::string& sQueryAction_, Network::S2HSession* sp_, HTTPConnection& rConnect_, Network::HTTPTextProtocolHeader& rHTTP_);
         virtual bool    ProcessHTTPFileServer(const std::string& sQueryURI_, Network::S2HSession* sp_, HTTPConnection& rConnect_, Network::HTTPTextProtocolHeader& rHTTP_);
+        
+        virtual const char* GetContextDefaultName() const {
+            return "s2h"; 
+        }
+        virtual const char* GetSessionCode() const {
+            return "s2hsession";
+        }
+        virtual const char* GetURLPrefixAction() const {
+            return "/api/";
+        }
+        virtual const char* GetURLParamAction() const {
+            return "ppa";
+        }
+        virtual const char* GetURLParamActionParam() const {
+            return "ap";
+        }
 
         Network::SessionPtr ProcessingSession(HTTPConnection& rConnect_, Network::HTTPTextProtocolHeader& rHTTP_);
 
@@ -129,7 +144,7 @@ namespace khorost {
         bool        JSON_FillAuth(Network::S2HSession* pSession_, bool bFullInfo_, Json::Value& jvRoot_);
 
         void    SetConnect(std::string sHost_, int nPort_, std::string sDatabase_, std::string sLogin_, std::string sPassword_) {
-            m_DB.SetConnect(sHost_, nPort_, sDatabase_, sLogin_, sPassword_);
+            m_dbConnect.SetConnect(sHost_, nPort_, sDatabase_, sLogin_, sPassword_);
         }
         void	SetListenPort(int nPort_) { m_nHTTPListenPort = nPort_; }
         //        void    SetStorageFolder(const std::string& strFolder_);
@@ -139,6 +154,7 @@ namespace khorost {
         void    SetSessionDriver(const std::string& sDriver_) {
             m_Sessions.Open(sDriver_);
         }
+
     private:
 
     };
@@ -151,9 +167,6 @@ namespace khorost {
 #define S2H_PARAM_ACTION_AUTH_PRE           "ba"        // запрос авторизации
 #define S2H_PARAM_ACTION_AUTH_RESET         "ra"        // сброс авторизации
 #define S2H_PARAM_ACTION_AUTH_CHANGEPASS    "chpwd"     // изменить пароль
-
-#define S2H_PARAM_ACTION                    "ppa"
-#define S2H_PARAM_ACTION_PARAM              "ap"
 
 #define S2H_JSON_PONG                       "pong"
 #define S2H_PARAM_ACTION_PING               "ping"
@@ -171,5 +184,7 @@ namespace khorost {
 #define S2H_JSON_SALT                       "Salt"
 #define S2H_JSON_REASON                     "Reason"
 #define S2H_JSON_ROLES                      "Roles"
+
+#define S2H_DEFAULT_TCP_PORT                7709
 
 #endif // __SERVER_2HB__

@@ -1,4 +1,4 @@
-#include "app/server2hb.h"
+п»ї#include "app/server2hb.h"
 
 #include <openssl/md5.h>
 #include <boost/algorithm/hex.hpp>
@@ -92,8 +92,8 @@ bool WinSignal(DWORD SigType_) {
 
 
 Server2HB::Server2HB() :
-    m_Connections(this)
-    , m_dbBase(m_DB)
+    m_Connections(reinterpret_cast<ConnectionContext*>(this))
+    , m_dbBase(m_dbConnect)
     , m_nHTTPListenPort(0)
     , m_Dispatcher(this)
     , m_bShutdownTimer(false) {
@@ -122,29 +122,36 @@ bool Server2HB::Prepare(int argc_, char* argv_[]) {
 
     m_dictActionS2H.insert(std::pair<std::string, funcActionS2H>(S2H_PARAM_ACTION_AUTH, &Server2HB::ActionAuth));
 
-/*    khorost::System::FastFile    ff;
+    if (m_Configure.Load(std::string("configure.") + GetContextDefaultName() + std::string(".json"))) {
+        log::prepare(m_Configure.GetValue("log:path", "./"), GetContextDefaultName());
 
-    if (ff.Open("autoexec.json", -1, true)) {
-        Json::Value root;
-        Json::Reader reader;
+        SetListenPort(m_Configure.GetValue("http:port", S2H_DEFAULT_TCP_PORT));
+        SetHTTPDocRoot(m_Configure.GetValue("http:docroot", "./"));
+        SetSessionDriver(m_Configure.GetValue("http:session", "./session.db"));
 
-        char* pAUJ = reinterpret_cast<char*>(ff.GetMemory());
-        if (reader.parse(pAUJ, pAUJ + ff.GetLength(), root)) {
-            Json::Value jsCreateUser = root["Create"]["User"];
-            for (Json::Value::ArrayIndex k = 0; k < jsCreateUser.size(); ++k) {
-                Json::Value jsUser = jsCreateUser[k];
+        SetConnect(
+            m_Configure.GetValue("storage:host", "localhost")
+            , m_Configure.GetValue("storage:port", 5432)
+            , m_Configure.GetValue("storage:db", "")
+            , m_Configure.GetValue("storage:user", "")
+            , m_Configure.GetValue("storage:password", "")
+            );
 
-                if (!m_dbStorage.IsUserExist(jsUser["Login"].asString())) {
-                    m_dbStorage.CreateUser(jsUser);
+        Config::Iterator    cfgCreateUser = m_Configure["autoexec"]["Create"]["User"];
+        if (!cfgCreateUser.isNull()) {
+            for (Config::Iterator::ArrayIndex k = 0; k < cfgCreateUser.size(); ++k) {
+                Config::Iterator cfgUser = cfgCreateUser[k];
+
+                if (!m_dbBase.IsUserExist(cfgUser["Login"].asString())) {
+                    m_dbBase.CreateUser(cfgUser);
                 }
             }
+            //        ReparseExportFiles();
         }
-
-        ff.Close();
-
-        //        ReparseExportFiles();
+    } else {
+        LOGF(INFO, "Config file not found");
     }
-    */
+
     return true;
 }
 
@@ -173,8 +180,6 @@ void Server2HB::HTTPConnection::GetClientIP(char* pBuffer_, size_t nBufferSize_)
 }
 
 bool Server2HB::ProcessHTTP(HTTPConnection& rConnect_) {
-    LOGF(DEBUG, "[HTTP_PROCESS]");
-
     HTTPTextProtocolHeader&     rHTTP = rConnect_.GetHTTP();
     SessionPtr                  sp = ProcessingSession(rConnect_, rHTTP);
     S2HSession*                 s2hSession = reinterpret_cast<S2HSession*>(sp.get());
@@ -182,8 +187,8 @@ bool Server2HB::ProcessHTTP(HTTPConnection& rConnect_) {
 
     LOGF(DEBUG, "[HTTP_PROCESS] URI='%s'", pQueryURI);
 
-    if (strncmp(pQueryURI, m_sURLPrefixAction.c_str(), m_sURLPrefixAction.size())==0) {
-        const char* pQueryAction = rHTTP.GetParameter(S2H_PARAM_ACTION);
+    if (strcmp(pQueryURI, GetURLPrefixAction())==0) {
+        const char* pQueryAction = rHTTP.GetParameter(GetURLParamAction());
         if (pQueryAction != NULL) {
             if (!ProcessHTTPCommand(pQueryAction, s2hSession, rConnect_, rHTTP)) {
                 return true;
@@ -244,7 +249,7 @@ void Server2HB::stubTimerRun(Server2HB* pThis_) {
 
         this_thread::sleep_for(chrono::milliseconds(1000));
     }
-    // сбросить кэш
+    // СЃР±СЂРѕСЃРёС‚СЊ РєСЌС€
     pThis_->TimerSessionUpdate();
 }
 
@@ -252,7 +257,7 @@ SessionPtr Server2HB::ProcessingSession(HTTPConnection& rConnect_, HTTPTextProto
     using namespace boost::posix_time;
 
     bool        bCreated = false;
-    const char* pQuerySession = rHTTP_.GetCookie(S2H_SESSION);
+    const char* pQuerySession = rHTTP_.GetCookie(GetSessionCode());
     SessionPtr  sp = m_Sessions.GetSession(pQuerySession != NULL ? pQuerySession : "", bCreated);
     S2HSession* s2hSession = reinterpret_cast<S2HSession*>(sp.get());
 
@@ -286,10 +291,10 @@ SessionPtr Server2HB::ProcessingSession(HTTPConnection& rConnect_, HTTPTextProto
         }
     }
 
-    rHTTP_.SetCookie(S2H_SESSION, sp->GetSessionID(), sp->GetExpired(), rHTTP_.GetHost());
+    rHTTP_.SetCookie(GetSessionCode(), sp->GetSessionID(), sp->GetExpired(), rHTTP_.GetHost());
 
-    LOGF(DEBUG, S2H_SESSION " = '%s' ClientIP = '%s' ConnectID = #%d InS = '%s' "
-        , sp->GetSessionID().c_str(), sIP, rConnect_.GetID()
+    LOGF(DEBUG, "%s = '%s' ClientIP = '%s' ConnectID = #%d InS = '%s' "
+        , GetSessionCode(), sp->GetSessionID().c_str(), sIP, rConnect_.GetID()
         , pQuerySession != NULL ? (strcmp(sp->GetSessionID().c_str(), pQuerySession) == 0 ? "+" : pQuerySession) : "-"
     );
     return sp;
@@ -301,22 +306,22 @@ bool Server2HB::ActionAuth(Network::Connection& rConnect_, S2HSession* pSession_
     LOGF(DEBUG, "[ActionAuth]");
     Json::Value jvRoot;
 
-    const char* pActionParam = rHTTP_.GetParameter(S2H_PARAM_ACTION_PARAM);
+    const char* pActionParam = rHTTP_.GetParameter(GetURLParamActionParam());
     if (pActionParam != NULL) {
         LOGF(DEBUG, "[ActionAuth] ActionParam = '%s'", pActionParam);
         std::string sLogin, sNickname, sPwHash, sSalt;
         int nUserID;
 
-        m_DB.CheckConnect();
+        m_dbConnect.CheckConnect();
 
         const char* pQueryQ = rHTTP_.GetParameter(S2H_PARAM_QUESTION);
         if (strcmp(pActionParam, S2H_PARAM_ACTION_AUTH_PRE) == 0) {
             if (m_dbBase.GetUserInfo(pQueryQ != NULL ? pQueryQ : "", nUserID, sNickname, sPwHash, sSalt)) {
                 jvRoot[S2H_JSON_SALT] = sSalt;
             } else {
-                // не найден пользователь. но так в принципе наверно не стоит 
-                LOGF(INFO, "User not found");
-                // посылаем fake данные к проверке подключения
+                // РЅРµ РЅР°Р№РґРµРЅ РїРѕР»СЊР·РѕРІР°С‚РµР»СЊ. РЅРѕ С‚Р°Рє РІ РїСЂРёРЅС†РёРїРµ РЅР°РІРµСЂРЅРѕ РЅРµ СЃС‚РѕРёС‚ 
+                LOGF(WARNING, "User not found");
+                // РїРѕСЃС‹Р»Р°РµРј fake РґР°РЅРЅС‹Рµ Рє РїСЂРѕРІРµСЂРєРµ РїРѕРґРєР»СЋС‡РµРЅРёСЏ
                 jvRoot[S2H_JSON_SALT] = pSession_->GetSessionID();
             }
         } else if (strcmp(pActionParam, S2H_PARAM_ACTION_AUTH_DO) == 0) {
@@ -332,17 +337,17 @@ bool Server2HB::ActionAuth(Network::Connection& rConnect_, S2HSession* pSession_
                     m_dbBase.SessionUpdate(pSession_);
                     m_Sessions.UpdateSession(pSession_);
                 } else {
-                    // не найден пользователь
-                    LOGF(INFO, "Password not correct");
+                    // РЅРµ РЅР°Р№РґРµРЅ РїРѕР»СЊР·РѕРІР°С‚РµР»СЊ
+                    LOGF(WARNING, "Password not correct");
                 }
             } else {
-                // не найден пользователь
-                LOGF(INFO, "User not found");
+                // РЅРµ РЅР°Р№РґРµРЅ РїРѕР»СЊР·РѕРІР°С‚РµР»СЊ
+                LOGF(WARNING, "User not found");
             }
         } else if (strcmp(pActionParam, S2H_PARAM_ACTION_AUTH_RESET) == 0) {
             pSession_->Reset();
             pSession_->SetExpired(second_clock::universal_time());
-            rHTTP_.SetCookie(S2H_SESSION, pSession_->GetSessionID(), pSession_->GetExpired(), rHTTP_.GetHost());
+            rHTTP_.SetCookie(GetSessionCode(), pSession_->GetSessionID(), pSession_->GetExpired(), rHTTP_.GetHost());
             m_dbBase.SessionUpdate(pSession_);
             m_Sessions.RemoveSession(pSession_);
         } else if (strcmp(pActionParam, S2H_PARAM_ACTION_AUTH_CHANGEPASS) == 0) {
@@ -359,7 +364,7 @@ bool Server2HB::ActionAuth(Network::Connection& rConnect_, S2HSession* pSession_
                         RecalcPasswordHash(sPwHash, sLogin, sNewPassword, sSalt);
                         m_dbBase.UpdatePassword(nUserID, sPwHash);
                     } else {
-                        // пользователь не найден
+                        // РїРѕР»СЊР·РѕРІР°С‚РµР»СЊ РЅРµ РЅР°Р№РґРµРЅ
                     }
                 } else {
                     RecalcPasswordHash(sPwHash, sLogin, sNewPassword, sSalt);
@@ -369,7 +374,7 @@ bool Server2HB::ActionAuth(Network::Connection& rConnect_, S2HSession* pSession_
                 jvRoot[S2H_JSON_REASON] = "UserNotFound";
             }
         }
-        // if (strcmp(pActionParam, PMX_PARAM_ACTION_AUTH_CHECK)==0) - пройдет по умолчанию и передаст информацию об авторизации
+        // if (strcmp(pActionParam, PMX_PARAM_ACTION_AUTH_CHECK)==0) - РїСЂРѕР№РґРµС‚ РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ Рё РїРµСЂРµРґР°СЃС‚ РёРЅС„РѕСЂРјР°С†РёСЋ РѕР± Р°РІС‚РѕСЂРёР·Р°С†РёРё
     }
 
     JSON_FillAuth(pSession_, true, jvRoot);

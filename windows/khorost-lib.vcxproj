@@ -138,9 +138,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <Text Include="ReadMe.txt" />
-  </ItemGroup>
-  <ItemGroup>
     <ClCompile Include="..\external\src\g3log\crashhandler_windows.cpp" />
     <ClCompile Include="..\external\src\g3log\filesink.cpp" />
     <ClCompile Include="..\external\src\g3log\g3log.cpp" />
@@ -154,7 +151,7 @@
     <ClCompile Include="..\external\src\ini\iniparser.c" />
     <ClCompile Include="..\external\src\json\jsoncpp.cpp" />
     <ClCompile Include="..\external\src\win\strptime.c" />
-    <ClCompile Include="..\src\app\framework.cxx" />
+    <ClCompile Include="..\src\app\config.cxx" />
     <ClCompile Include="..\src\app\s2h-session.cxx" />
     <ClCompile Include="..\src\app\s2hb-storage.cxx" />
     <ClCompile Include="..\src\app\server2hb.cxx" />
@@ -170,6 +167,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\external\src\g3log\g2log.hpp" />
+    <ClInclude Include="..\include\app\config.h" />
     <ClInclude Include="..\include\app\framework.h" />
     <ClInclude Include="..\include\app\server2hb.h" />
     <ClInclude Include="..\include\db\mysql.h" />
