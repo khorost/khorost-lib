@@ -98,10 +98,9 @@ void Connection::stubConnRead(bufferevent* bev_, void* ctx_){
 void Connection::stubConnEvent(bufferevent* bev_, short events_, void* ctx_){
     Connection* pThis = static_cast<Connection*>(ctx_);
 	if (events_ & BEV_EVENT_EOF) {
-		printf("Connection closed.\n");
+		LOG(DEBUG) << "Connection closed.";
 	} else if (events_ & BEV_EVENT_ERROR) {
-		printf("Got an error on the connection: %s\n",
-		    strerror(errno));/*XXX win32*/
+		LOG(WARNING) << "Got an error on the connection: " << strerror(errno);	/*XXX win32*/
 	} 
 
     ConnectionController* cc = pThis->GetController();
@@ -127,14 +126,14 @@ bool Connection::CloseConnection() {
 
     bufferevent_setwatermark(m_bev, EV_WRITE,  evbuffer_get_length(output), 0);
 	if (evbuffer_get_length(output)) {
-        LOGF(DEBUG, "Flush & Close connection");
+        LOG(DEBUG) << "Flush & Close connection";
         /* We still have to flush data from the other
 		 * side, but when that's done, close the other
 		 * side. */
         bufferevent_setcb(m_bev, NULL, Connection::stubConnWrite, Connection::stubConnEvent, this);
 	    bufferevent_disable(m_bev, EV_READ);
     } else {
-        LOGF(DEBUG, "Close connection");
+        LOG(DEBUG) << "Close connection";
 	    /* We have nothing left to say to the other
 	    * side; close it. */
 		bufferevent_free(m_bev);
@@ -163,16 +162,16 @@ Connection* ConnectionController::CreateConnection(ConnectionController* pThis_,
 }
 
 bool ConnectionController::Shutdown(){
-    LOGF(INFO, "Shutdown listner");
+    LOG(INFO) << "Shutdown listner";
     event_base_loopexit(m_pebBaseListen, NULL);
 
-    LOGF(INFO, "Shutdown workers");
+    LOG(INFO) << "Shutdown workers";
     for (std::deque<event_base*>::const_iterator cit=m_vWorkersBase.begin();cit!=m_vWorkersBase.end();++cit) {
         event_base_loopbreak(*cit);
     }
     m_vWorkersBase.clear();
 
-    LOGF(INFO, "Shutdown complete");
+    LOG(INFO) << "Shutdown complete";
     return true;
 }
 
@@ -248,7 +247,7 @@ static void stubAcceptError(struct evconnlistener *listener, void *ctx) {
     ConnectionController* pThis = static_cast<ConnectionController*>(ctx);
     struct event_base *base = evconnlistener_get_base(listener);
     int err = EVUTIL_SOCKET_ERROR();
-    fprintf(stderr, "Got an error %d (%s) on the listener. "
+	LOGF(WARNING, "Got an error %d (%s) on the listener. "
         "Shutting down.\n", err, evutil_socket_error_to_string(err));
 
     pThis->Shutdown();
@@ -259,7 +258,7 @@ void ConnectionController::stubListenRun(ConnectionController* pThis_, int iList
     evconnlistener*         pelListener;
     sockaddr_in             sin;
 
-    LOGF(INFO, "Start listen");
+    LOG(INFO) << "Start listen";
 
 #ifdef WIN32
     evthread_use_windows_threads();
@@ -271,7 +270,7 @@ void ConnectionController::stubListenRun(ConnectionController* pThis_, int iList
 #endif
 
     pThis_->m_pebBaseListen = event_base_new_with_config(cfg);
-    LOGF(DEBUG, "LibEvent Method %s", event_base_get_method(pThis_->m_pebBaseListen));
+    LOG(DEBUG) << "LibEvent Method " << event_base_get_method(pThis_->m_pebBaseListen);
 
     if (!pThis_->m_pebBaseListen) {
         // fprintf(stderr, "Could not initialize libevent!\n");
@@ -322,11 +321,11 @@ void ConnectionController::stubListenRun(ConnectionController* pThis_, int iList
     event_base_free(pThis_->m_pebBaseListen);
     event_config_free(cfg);
 
-    LOGF(INFO, "Listen stoped");
+    LOG(INFO) << "Listen stoped";
 }
 
 void ConnectionController::stubWorker(ConnectionController* pThis_){
-    LOGF(INFO, "Start worker");
+    LOG(INFO) << "Start worker";
     event_base* base = event_base_new();
     pThis_->m_vWorkersBase.push_back(base);
 
@@ -334,11 +333,11 @@ void ConnectionController::stubWorker(ConnectionController* pThis_){
     event_base_dispatch(base);
 
     event_base_free(base);
-    LOGF(INFO, "Stop worker");
+    LOG(INFO) << "Stop worker";
 }
 
 bool ConnectionController::StartListen(int iListenPort_, int iPollSize_){
-    LOGF(INFO, "Start listen on port %d", iListenPort_);
+    LOG(INFO) << "Start listen on port " << iListenPort_;
     m_ptgWorkers = new boost::thread_group();
     for (int k=0; k<iPollSize_; ++k) {
 //        m_ptgWorkers->create_thread(boost::bind(&stubWorker,this));
@@ -346,7 +345,7 @@ bool ConnectionController::StartListen(int iListenPort_, int iPollSize_){
 
     m_ptListen = new boost::thread(boost::bind(&stubListenRun,this, iListenPort_));
 
-    LOGF(INFO, "Starting listen");
+    LOG(INFO) << "Starting listen";
     return true;
 }
 
