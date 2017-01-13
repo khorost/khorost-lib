@@ -10,18 +10,20 @@
 #include "app/server2hb.h"
 
 #define FRAMEWORK_2HTTP_BINARY_SERVER( TSERVER ) \
-TSERVER g__Server_; \
 int main(int argc_, char* argv_[]) { \
-    khorost::log::prepare(); \
-	LOGF(INFO, "Start application");\
-    if (!g__Server_.Prepare(argc_, argv_)){\
+	TSERVER _Server_; \
+	std::unique_ptr<g3::LogWorker>  logger(g3::LogWorker::createLogWorker()); \
+	g3::initializeLogging(logger.get()); \
+    khorost::log::appendColorSink(logger.get()); \
+	LOG(INFO) << "Start application";\
+    if (!_Server_.Prepare(argc_, argv_, logger.get())){\
         return -1;\
     }\
-    if (g__Server_.Startup()) {\
-        g__Server_.Run();\
+    if (_Server_.Startup()) {\
+        _Server_.Run();\
     }\
-    g__Server_.Finish();\
-/*    LOGF(INFO, "Terminate application");*/\
+    _Server_.Finish();\
+    LOG(INFO) << "Terminate application";\
     return 0; \
 }
 

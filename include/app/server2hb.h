@@ -65,7 +65,6 @@ namespace khorost {
 
         DB::Postgres                    m_dbConnect;
         Config                          m_Configure;
-
     private:
         class CBController : public Network::ConnectionController {
         public:
@@ -133,7 +132,7 @@ namespace khorost {
         virtual ~Server2HB ();
 
         virtual bool    Shutdown();
-        virtual bool    Prepare(int argc_, char* argv_[]);
+        virtual bool    Prepare(int argc_, char* argv_[], g3::LogWorker* logger_ = NULL);
         virtual bool    Startup();
         virtual bool    Run();
         virtual bool    Finish();

@@ -107,7 +107,7 @@ bool Server2HB::Shutdown() {
     return m_Connections.Shutdown();
 }
 
-bool Server2HB::Prepare(int argc_, char* argv_[]) {
+bool Server2HB::Prepare(int argc_, char* argv_[], g3::LogWorker* logger_) {
     g_pS2HB = this;
 #ifdef UNIX
     setlocale(LC_ALL, "");
@@ -123,7 +123,9 @@ bool Server2HB::Prepare(int argc_, char* argv_[]) {
     m_dictActionS2H.insert(std::pair<std::string, funcActionS2H>(S2H_PARAM_ACTION_AUTH, &Server2HB::ActionAuth));
 
     if (m_Configure.Load(std::string("configure.") + GetContextDefaultName() + std::string(".json"))) {
-        log::prepare(m_Configure.GetValue("log:path", "./"), GetContextDefaultName());
+		if (logger_ != NULL) {
+			logger_->addDefaultLogger(GetContextDefaultName(), m_Configure.GetValue("log:path", "./"), "s2");
+		}
 
         SetListenPort(m_Configure.GetValue("http:port", S2H_DEFAULT_TCP_PORT));
         SetHTTPDocRoot(m_Configure.GetValue("http:docroot", "./"));

@@ -9,8 +9,8 @@
 #include <g3log/std2_make_unique.hpp>
 
 namespace khorost {
-    namespace log{
-        void prepare(const std::string& sFolder_ = "", const std::string& sPrefix_ = "", const std::string& sID_ = "s2");
+    namespace log {
+        void appendColorSink(g3::LogWorker* logger_);
     }
 }
 

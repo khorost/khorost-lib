@@ -114,20 +114,13 @@ struct ColorCoutSink {
 
 std::unique_ptr<g3::LogWorker>  g_Logger;
 
-void khorost::log::prepare(const std::string& sFolder_, const std::string& sPrefix_, const std::string& sID_) {
-    if (g_Logger.get() == NULL) {
-        g_Logger = g3::LogWorker::createLogWorker();
-        g3::initializeLogging(g_Logger.get());
-
+void khorost::log::appendColorSink(g3::LogWorker* logger_) {
+	if (logger_!=NULL){
 #if defined(_WIN32) || defined(_WIN64)
-        g_Logger->addSink(std::make_unique<ColorCoutSinkWin32>(), &ColorCoutSinkWin32::ReceiveLogMessage);
+		logger_->addSink(std::make_unique<ColorCoutSinkWin32>(), &ColorCoutSinkWin32::ReceiveLogMessage);
 #else
-        g_Logger->addSink(std::make_unique<ColorCoutSink>(), &ColorCoutSink::ReceiveLogMessage);
+		logger_->addSink(std::make_unique<ColorCoutSink>(), &ColorCoutSink::ReceiveLogMessage);
 #endif  // WIN
-    }
-
-    if (!sFolder_.empty()) {
-        g_Logger->addDefaultLogger(sPrefix_, sFolder_, sID_);
     }
 }
 
