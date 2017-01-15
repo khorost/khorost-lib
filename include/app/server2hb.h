@@ -127,12 +127,44 @@ namespace khorost {
         Network::SessionPtr ProcessingSession(HTTPConnection& rConnect_, Network::HTTPTextProtocolHeader& rHTTP_);
 
         bool    ActionAuth(Network::Connection& rConnect_, Network::S2HSession* sp_, Network::HTTPTextProtocolHeader& rHTTP_);
+
+        std::string     m_sConfigFileName;
+#if defined(_WIN32) || defined(_WIN64)
+        bool                    m_bRunAsService;
+        std::string             m_sServiceName;
+        std::string             m_sServiceDisplayName;
+        SERVICE_STATUS          m_ss;
+        SERVICE_STATUS_HANDLE   m_ssHandle;
+
+        bool    CallServerConfigurator() { return true; }
+
+        bool    ServiceInstall();
+        bool    ServiceUninstall();
+
+        bool    ServiceStart();
+        bool    ServiceStop();
+    public:
+        void        ServiceReportEvent(LPTSTR szFunction);
+        void        ReportServiceStatus(DWORD dwCurrentState_, DWORD dwWin32ExitCode_, DWORD dwWaitHint_);
+
+        void        SetSSCurrentState(DWORD dwCurrentState_) { m_ss.dwCurrentState = dwCurrentState_; }
+        DWORD       GetSSCurrentState() { return m_ss.dwCurrentState; }
+
+        void        SetSSHandle(SERVICE_STATUS_HANDLE ssHandle_) { 
+            m_ssHandle = ssHandle_; 
+            m_ss.dwServiceType = SERVICE_WIN32_OWN_PROCESS;
+            m_ss.dwServiceSpecificExitCode = 0;
+        }
+        const char* GetServiceName() { return m_sServiceName.c_str(); }
+#endif
     public:
         Server2HB ();
         virtual ~Server2HB ();
 
         virtual bool    Shutdown();
-        virtual bool    Prepare(int argc_, char* argv_[], g3::LogWorker* logger_ = NULL);
+        virtual bool    CheckParams(int argc_, char* argv_[], int& nResult_, g3::LogWorker* logger_ = NULL);
+        virtual bool    PrepareToStart();
+        virtual bool    AutoExecute();
         virtual bool    Startup();
         virtual bool    Run();
         virtual bool    Finish();

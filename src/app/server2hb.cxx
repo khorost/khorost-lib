@@ -1,7 +1,15 @@
-﻿#include "app/server2hb.h"
+﻿#if defined(_WIN32) || defined(_WIN64)
+ #include <windows.h>
+ #include <shlwapi.h>
+ #include <strsafe.h>
+#endif
+
+#include "app/server2hb.h"
 
 #include <openssl/md5.h>
 #include <boost/algorithm/hex.hpp>
+#include <boost/program_options.hpp>
+namespace po = boost::program_options;
 
 khorost::Server2HB* khorost::g_pS2HB = NULL;
 
@@ -88,6 +96,242 @@ bool WinSignal(DWORD SigType_) {
     LOGF(INFO, "Stopped signal processed");
     return true;
 }
+
+void WINAPI ServiceControl(DWORD dwControlCode) {
+    switch (dwControlCode) {
+    case SERVICE_CONTROL_STOP:
+        g_pS2HB->ReportServiceStatus(SERVICE_STOP_PENDING, NO_ERROR, 0);
+        g_pS2HB->Shutdown();
+        g_pS2HB->ReportServiceStatus(SERVICE_STOPPED, NOERROR, 0);
+        break;
+    case SERVICE_CONTROL_INTERROGATE:
+        g_pS2HB->ReportServiceStatus(g_pS2HB->GetSSCurrentState(), NOERROR, 0);
+        break;
+    default:
+        g_pS2HB->ReportServiceStatus(g_pS2HB->GetSSCurrentState(), NOERROR, 0);
+        break;
+    }
+}
+
+void WINAPI ServiceMain(DWORD dwArgc, LPTSTR* plszArgv) {
+    if (g_pS2HB != NULL) {
+        char ServicePath[_MAX_PATH + 3];
+        // Получаем путь к exe-файлу
+        GetModuleFileName(NULL, ServicePath, _MAX_PATH);
+        PathRemoveFileSpec(ServicePath);
+        SetCurrentDirectory(ServicePath);
+
+        SERVICE_STATUS_HANDLE ssHandle = RegisterServiceCtrlHandler(g_pS2HB->GetServiceName(), ServiceControl);
+
+        if (ssHandle != NULL) {
+            g_pS2HB->SetSSHandle(ssHandle);
+        }
+
+        g_pS2HB->ReportServiceStatus(SERVICE_RUNNING, NO_ERROR, 0);
+
+        if (g_pS2HB->PrepareToStart() && g_pS2HB->AutoExecute() && g_pS2HB->Startup()) {
+            g_pS2HB->Run();
+        }
+
+        g_pS2HB->Finish();
+    }
+}
+
+void Server2HB::ReportServiceStatus(DWORD dwCurrentState_, DWORD dwWin32ExitCode_, DWORD dwWaitHint_) {
+    static DWORD dwCheckPoint = 1;
+
+    if (dwCurrentState_ == SERVICE_START_PENDING) {
+        m_ss.dwControlsAccepted = 0;
+    } else {
+        m_ss.dwControlsAccepted = SERVICE_ACCEPT_STOP;
+    }
+    m_ss.dwCurrentState = dwCurrentState_;
+    m_ss.dwWin32ExitCode = dwWin32ExitCode_;
+    m_ss.dwWaitHint = dwWaitHint_;
+
+    if ((dwCurrentState_ == SERVICE_RUNNING) ||
+        (dwCurrentState_ == SERVICE_STOPPED)) {
+        m_ss.dwCheckPoint = 0;
+    } else {
+        m_ss.dwCheckPoint = dwCheckPoint++;
+    }
+    SetServiceStatus(m_ssHandle, &m_ss);
+}
+
+bool Server2HB::ServiceInstall() {
+    LOG(DEBUG) << "ServiceInstalling...";
+
+    SC_HANDLE hSCManager;
+    SC_HANDLE hService;
+
+    hSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_CREATE_SERVICE);
+    if (!hSCManager) {
+        LOG(WARNING) << "ServiceInstall: Не удалось открыть SC Manager";
+        return false;
+    }
+
+    TCHAR ServicePath[_MAX_PATH + 3];
+
+    // Получаем путь к exe-файлу
+    GetModuleFileName(NULL, ServicePath + 1, _MAX_PATH);
+
+    // Заключаем в кавычки
+    ServicePath[0] = TEXT('\"');
+    ServicePath[lstrlen(ServicePath) + 1] = 0;
+    ServicePath[lstrlen(ServicePath)] = TEXT('\"');
+    lstrcat(ServicePath, " --service --cfg ");
+    lstrcat(ServicePath, m_sConfigFileName.c_str());
+
+    LOG(DEBUG) << ServicePath;
+
+    // Создаём службу
+    hService = CreateService(
+        hSCManager,
+        m_sServiceName.c_str(),
+        m_sServiceDisplayName.c_str(),
+        0,
+        SERVICE_WIN32_OWN_PROCESS,
+        SERVICE_AUTO_START,
+        SERVICE_ERROR_NORMAL,
+        ServicePath,
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+        NULL);
+
+    CloseServiceHandle(hSCManager);
+
+    if (!hService) {
+        LOG(WARNING) << "ServiceInstall: Не удалось создать службу";
+        return false;
+    }
+
+    CloseServiceHandle(hService);
+    LOG(DEBUG) << "ServiceInstalled";
+    return true;
+};
+
+bool Server2HB::ServiceUninstall() {
+    LOG(DEBUG) << "ServiceUninstall...";
+
+    SC_HANDLE hSCManager;
+    SC_HANDLE hService;
+
+    hSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
+    if (!hSCManager) {
+        LOG(WARNING) << "ServiceUninstall: Не удалось открыть SC Manager";
+        return false;
+    }
+
+    hService = OpenService(hSCManager, m_sServiceName.c_str(), DELETE | SERVICE_STOP);
+    if (!hService) {
+        LOG(WARNING) << "ServiceUninstall: Не удалось открыть службу";
+        CloseServiceHandle(hSCManager);
+        return true;
+    }
+
+    SERVICE_STATUS ss;
+
+    ControlService(hService, SERVICE_CONTROL_STOP, &ss);
+
+    DeleteService(hService);
+    CloseServiceHandle(hService);
+    CloseServiceHandle(hSCManager);
+
+    LOG(DEBUG) << "ServiceUninstalled";
+    return true;
+};
+
+bool Server2HB::ServiceStart() {
+    LOG(DEBUG) << "ServiceStarting...";
+
+    SC_HANDLE hSCManager;
+    SC_HANDLE hService;
+
+    hSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
+    if (!hSCManager) {
+        LOG(WARNING) << "ServiceStart: no open SC Manager";
+        return false;
+    }
+
+    hService = OpenService(hSCManager, m_sServiceName.c_str(), SERVICE_START);
+    if (!hService) {
+        LOG(WARNING) << "ServiceStart: not open service";
+        CloseServiceHandle(hSCManager);
+        return true;
+    }
+    if (!StartService(hService, 0, NULL)) {
+        LOG(WARNING) << "ServiceStart: not started";
+        return false;
+    }
+
+    CloseServiceHandle(hService);
+    CloseServiceHandle(hSCManager);
+
+    LOG(DEBUG) << "ServiceStarted";
+    return true;
+};
+
+bool Server2HB::ServiceStop() {
+    LOG(DEBUG) << "Service Stopping...";
+
+    SC_HANDLE hSCManager;
+    SC_HANDLE hService;
+
+    hSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
+    if (!hSCManager) {
+        LOG(WARNING) << "ServiceStop: Не удалось открыть SC Manager";
+        return false;
+    }
+
+    hService = OpenService(hSCManager, m_sServiceName.c_str(), SERVICE_STOP);
+    if (!hService) {
+        LOG(WARNING) << "ServiceStop: Не удалось открыть службу";
+        CloseServiceHandle(hSCManager);
+        return true;
+    }
+
+    SERVICE_STATUS ss;
+
+    ControlService(hService, SERVICE_CONTROL_STOP, &ss);
+
+    CloseServiceHandle(hService);
+    CloseServiceHandle(hSCManager);
+
+    LOG(DEBUG) << "Service Stopped...";
+    return true;
+};
+
+#define SVC_ERROR                        ((DWORD)0xC0020001L)
+
+void Server2HB::ServiceReportEvent(LPTSTR szFunction) {
+    HANDLE hEventSource;
+    LPCTSTR lpszStrings[2];
+    TCHAR Buffer[80];
+
+    hEventSource = RegisterEventSource(NULL, m_sServiceName.c_str());
+
+    if (NULL != hEventSource) {
+        StringCchPrintf(Buffer, 80, TEXT("%s failed with %d"), szFunction, GetLastError());
+
+        lpszStrings[0] = m_sServiceName.c_str();
+        lpszStrings[1] = Buffer;
+
+        ReportEvent(hEventSource,        // event log handle
+            EVENTLOG_ERROR_TYPE, // event type
+            0,                   // event category
+            SVC_ERROR,           // event identifier
+            NULL,                // no security identifier
+            2,                   // size of lpszStrings array
+            0,                   // no binary data
+            lpszStrings,         // array of strings
+            NULL);               // no binary data
+
+        DeregisterEventSource(hEventSource);
+    }
+}
+
 #endif  // UNIX
 
 
@@ -107,52 +351,157 @@ bool Server2HB::Shutdown() {
     return m_Connections.Shutdown();
 }
 
-bool Server2HB::Prepare(int argc_, char* argv_[], g3::LogWorker* logger_) {
+bool Server2HB::PrepareToStart() {
+    LOG(DEBUG) << "PrepareToStart";
+
+    khorost::Network::Init();
+
+    m_dictActionS2H.insert(std::pair<std::string, funcActionS2H>(S2H_PARAM_ACTION_AUTH, &Server2HB::ActionAuth));
+
+    SetListenPort(m_Configure.GetValue("http:port", S2H_DEFAULT_TCP_PORT));
+    SetHTTPDocRoot(m_Configure.GetValue("http:docroot", "./"));
+    SetSessionDriver(m_Configure.GetValue("http:session", "./session.db"));
+
+    SetConnect(
+        m_Configure.GetValue("storage:host", "localhost")
+        , m_Configure.GetValue("storage:port", 5432)
+        , m_Configure.GetValue("storage:db", "")
+        , m_Configure.GetValue("storage:user", "")
+        , m_Configure.GetValue("storage:password", "")
+    );
+
+    return true;
+}
+
+bool Server2HB::AutoExecute() {
+    LOG(DEBUG) << "AutoExecute";
+
+    Config::Iterator    cfgCreateUser = m_Configure["autoexec"]["Create"]["User"];
+    if (!cfgCreateUser.isNull()) {
+        for (Config::Iterator::ArrayIndex k = 0; k < cfgCreateUser.size(); ++k) {
+            Config::Iterator cfgUser = cfgCreateUser[k];
+
+            if (!m_dbBase.IsUserExist(cfgUser["Login"].asString())) {
+                m_dbBase.CreateUser(cfgUser);
+            }
+        }
+    }
+
+    return true;
+}
+
+bool Server2HB::CheckParams(int argc_, char* argv_[], int& nResult_, g3::LogWorker* logger_) {
     g_pS2HB = this;
-#ifdef UNIX
+
+    po::options_description desc("Allowable options");
+    desc.add_options()
+        ("name", po::value<std::string>(), "set service name")
+        ("install", "install service")
+        ("uninstall", "uninstall service")
+        ("start", "start service")
+        ("stop", "stop service")
+        ("restart", "restart service")
+        ("service", "run in service mode")
+        ("configure", "configure server")
+        ("cfg", po::value<std::string>(), "config file (default server.conf)")
+        ("console", "run in console mode (default)")
+        ;
+    po::variables_map vm;
+    try {
+        po::store(po::parse_command_line(argc_, argv_, desc), vm);
+    } catch (...) {
+        std::cout << desc << std::endl;
+        nResult_ = EXIT_FAILURE;
+        return false;
+    }
+
+    po::notify(vm);
+
+    m_sConfigFileName = std::string("configure.") + GetContextDefaultName() + std::string(".json");
+    if (vm.count("cfg")) {
+        m_sConfigFileName = vm["cfg"].as<std::string>();
+    }
+
+    if (m_Configure.Load(m_sConfigFileName)) {
+        LOG(INFO) << "Config file parsed";
+
+        if (logger_ != NULL) {
+            auto fs = logger_->addDefaultLogger(GetContextDefaultName(), m_Configure.GetValue("log:path", "./"), "s2");
+            std::future<std::string> log_file_name = fs->call(&g3::FileSink::fileName);
+            LOG(DEBUG) << "Append file log - \'" << log_file_name.get() << "\'";
+        }
+    } else {
+        LOG(WARNING) << "Config file not parsed";
+        return false;
+    }
+#if defined(_WIN32) || defined(_WIN64)
+    m_sServiceName = vm.count("name")?vm["name"].as<std::string>(): m_Configure.GetValue("service:name", std::string("khlsrv_") + GetContextDefaultName());
+    m_sServiceDisplayName = m_Configure.GetValue("service:displayName", std::string("Khorost Service (") + GetContextDefaultName() + ")");
+
+    if (vm.count("service")) {
+        m_bRunAsService = true;
+
+        LOG(INFO) << "Service = " << m_sServiceName;
+        SERVICE_TABLE_ENTRY DispatcherTable[] = {
+            { (LPSTR)m_sServiceName.c_str(), (LPSERVICE_MAIN_FUNCTION)ServiceMain },
+            { NULL, NULL }
+        };
+
+        if (!StartServiceCtrlDispatcher(DispatcherTable)) {
+            LOG(WARNING) << "InitAsService: Probable error 1063";
+        };
+        
+        LOG(DEBUG) << "Service shutdown";
+        return false;
+    }
+    if (vm.count("configure")) {
+        FreeConsole();
+        CallServerConfigurator();
+        return false;
+    }
+    if (vm.count("help")) {
+        std::cout << desc << std::endl;
+        return false;
+    }
+    // Управление сервисом
+    if (vm.count("install")) {
+        m_bRunAsService = true;
+        ServiceUninstall();
+        ServiceInstall();
+        LOG(INFO) << "Install Service";
+        return false;
+    } else if (vm.count("start")) {
+        m_bRunAsService = true;
+        ServiceStart();
+        LOG(INFO) << "Start Service";
+        return false;
+    } else if (vm.count("stop")) {
+        m_bRunAsService = true;
+        ServiceStop();
+        LOG(INFO) <<"Stop Service";
+        return false;
+    } else if (vm.count("restart")) {
+        m_bRunAsService = true;
+        ServiceStop();
+        LOG(INFO) << "Stop Service";
+        ServiceStart();
+        LOG(INFO) << "Start Service";
+        return false;
+    } else if (vm.count("uninstall")) {
+        m_bRunAsService = true;
+        ServiceUninstall();
+        LOG(INFO) << "Uninstall Service";
+        return false;
+    }
+
+    SetConsoleCtrlHandler((PHANDLER_ROUTINE)&WinSignal, TRUE);
+#else
     setlocale(LC_ALL, "");
 
     signal(SIGQUIT, SIG_DFL);
     signal(SIGTERM, UNIXSignal);
     signal(SIGINT, UNIXSignal);
-#else
-    SetConsoleCtrlHandler((PHANDLER_ROUTINE)&WinSignal, TRUE);
 #endif
-    khorost::Network::Init();
-
-    m_dictActionS2H.insert(std::pair<std::string, funcActionS2H>(S2H_PARAM_ACTION_AUTH, &Server2HB::ActionAuth));
-
-    if (m_Configure.Load(std::string("configure.") + GetContextDefaultName() + std::string(".json"))) {
-		if (logger_ != NULL) {
-			logger_->addDefaultLogger(GetContextDefaultName(), m_Configure.GetValue("log:path", "./"), "s2");
-		}
-
-        SetListenPort(m_Configure.GetValue("http:port", S2H_DEFAULT_TCP_PORT));
-        SetHTTPDocRoot(m_Configure.GetValue("http:docroot", "./"));
-        SetSessionDriver(m_Configure.GetValue("http:session", "./session.db"));
-
-        SetConnect(
-            m_Configure.GetValue("storage:host", "localhost")
-            , m_Configure.GetValue("storage:port", 5432)
-            , m_Configure.GetValue("storage:db", "")
-            , m_Configure.GetValue("storage:user", "")
-            , m_Configure.GetValue("storage:password", "")
-            );
-
-        Config::Iterator    cfgCreateUser = m_Configure["autoexec"]["Create"]["User"];
-        if (!cfgCreateUser.isNull()) {
-            for (Config::Iterator::ArrayIndex k = 0; k < cfgCreateUser.size(); ++k) {
-                Config::Iterator cfgUser = cfgCreateUser[k];
-
-                if (!m_dbBase.IsUserExist(cfgUser["Login"].asString())) {
-                    m_dbBase.CreateUser(cfgUser);
-                }
-            }
-            //        ReparseExportFiles();
-        }
-    } else {
-        LOGF(INFO, "Config file not found");
-    }
 
     return true;
 }

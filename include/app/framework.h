@@ -12,19 +12,20 @@
 #define FRAMEWORK_2HTTP_BINARY_SERVER( TSERVER ) \
 int main(int argc_, char* argv_[]) { \
 	TSERVER _Server_; \
+    int     nResult = EXIT_SUCCESS; \
 	std::unique_ptr<g3::LogWorker>  logger(g3::LogWorker::createLogWorker()); \
 	g3::initializeLogging(logger.get()); \
     khorost::log::appendColorSink(logger.get()); \
 	LOG(INFO) << "Start application";\
-    if (!_Server_.Prepare(argc_, argv_, logger.get())){\
-        return -1;\
+    if (!_Server_.CheckParams(argc_, argv_, nResult, logger.get())){\
+        return nResult;\
     }\
-    if (_Server_.Startup()) {\
+    if (_Server_.PrepareToStart() && _Server_.AutoExecute() && _Server_.Startup()) {\
         _Server_.Run();\
     }\
     _Server_.Finish();\
     LOG(INFO) << "Terminate application";\
-    return 0; \
+    return nResult; \
 }
 
 #endif // __FRAMEWORK__

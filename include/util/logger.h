@@ -3,7 +3,6 @@
 
 #include <string>
 
-#define G3_DYNAMIC_LOGGING
 #include <g3log/g3log.hpp>
 #include <g3log/logworker.hpp>
 #include <g3log/std2_make_unique.hpp>
