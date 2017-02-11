@@ -41,8 +41,8 @@ bool Postgres::CheckConnect() {
         pqxx::read_transaction txn(*m_dbConnection);
 
         pqxx::result r = txn.exec(
-            "SELECT id "
-            " FROM admin.users "
+            "SELECT app "
+            " FROM admin.khl_version "
             " LIMIT 1 ");
     } catch (const pqxx::broken_connection &) {
         if (times > 10) {

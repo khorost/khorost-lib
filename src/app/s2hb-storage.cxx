@@ -21,7 +21,7 @@ static void session_ip_update(S2HSession* httpSession_, pqxx::work& txn_) {
     httpSession_->GetIP(lIPs, true);
     for (auto it : lIPs) {
         txn_.exec(
-            "INSERT INTO admin.sessions_ip (id, ip) "
+            "INSERT INTO admin.khl_sessions_ip (id, ip) "
             " VALUES('" + httpSession_->GetSessionID() + "', '" + it + "' )"
             "  ON CONFLICT (id, ip) DO NOTHING "
             );
@@ -33,7 +33,7 @@ void S2HBStorage::SessionIPUpdate() {
 
     pqxx::result r = txn.exec(
         "SELECT DISTINCT ip "
-        " FROM admin.sessions_ip "
+        " FROM admin.khl_sessions_ip "
         " WHERE host is NULL " 
         " LIMIT 5"
         );
@@ -47,7 +47,7 @@ void S2HBStorage::SessionIPUpdate() {
             InetPton(AF_INET, row[0].as<std::string>().c_str(), &saGNI.sin_addr.s_addr);
             if (getnameinfo((struct sockaddr *)&saGNI, sizeof(struct sockaddr), hostname, sizeof(hostname), servInfo, sizeof(servInfo), NI_NUMERICSERV) == 0) {
                 txn.exec(
-                    "UPDATE admin.sessions_ip "
+                    "UPDATE admin.khl_sessions_ip "
                     " SET host = '" + std::string(hostname) + "' "
                     " WHERE ip = '" + row[0].as<std::string>() + "'");
             }
@@ -60,15 +60,15 @@ bool S2HBStorage::SessionUpdate(khorost::Network::ListSession& rLS_) {
     pqxx::work txn(*m_rDB.m_dbConnection);
 
     try {
-        m_rDB.m_dbConnection->prepare("SessionUpdate_0", "UPDATE admin.sessions "
+        m_rDB.m_dbConnection->prepare("SessionUpdate_0", "UPDATE admin.khl_sessions "
             " SET user_id = $1, dtLast = $2, dtExpire = $3 "
             " WHERE id = $4"
         );
-        m_rDB.m_dbConnection->prepare("SessionUpdate_1", "UPDATE admin.users "
+        m_rDB.m_dbConnection->prepare("SessionUpdate_1", "UPDATE admin.khl_users "
             " SET dtLast = $1, countConnect = countConnect + $2 "
             " WHERE id = $3 "
         );
-        m_rDB.m_dbConnection->prepare("SessionUpdate_2", "UPDATE admin.sessions "
+        m_rDB.m_dbConnection->prepare("SessionUpdate_2", "UPDATE admin.khl_sessions "
             " SET dtLast = $1, dtExpire = $2 "
             " WHERE id = $3"
         );
@@ -117,29 +117,29 @@ bool S2HBStorage::SessionUpdate(S2HSession* pSession_) {
         std::string sUserID = std::to_string(pSession_->GetUserID());
         pqxx::result r = txn.exec(
             "SELECT dtFirst "
-            "FROM admin.users "
+            "FROM admin.khl_users "
             "WHERE id = " + sUserID);
 
         if (r.size() > 0) {
             if (r[0][0].is_null()) {
                 txn.exec(
-                    "UPDATE admin.users SET dtFirst = TIMESTAMP \'" + sCreated + "\', dtLast = TIMESTAMP \'" + sLastActivity + "\', "
+                    "UPDATE admin.khl_users SET dtFirst = TIMESTAMP \'" + sCreated + "\', dtLast = TIMESTAMP \'" + sLastActivity + "\', "
                     " countConnect = 1 WHERE id = " + sUserID);
             } else {
                 // если первое подключение было не в рамках текущей сессии
                 txn.exec(
-                    "UPDATE admin.users SET dtLast = TIMESTAMP \'" + sLastActivity + "\', "
+                    "UPDATE admin.khl_users SET dtLast = TIMESTAMP \'" + sLastActivity + "\', "
                     " countConnect = countConnect + " + std::to_string(pSession_->GetCountUse()) + " WHERE id = " + sUserID);
                 pSession_->ResetCountUse();
             }
         }
         txn.exec(
-            "UPDATE admin.sessions "
+            "UPDATE admin.khl_sessions "
             " SET user_id = " + sUserID + " , dtLast = TIMESTAMP '" + sLastActivity + "', dtExpire = TIMESTAMP '" + sExpired + "' "
             " WHERE id = '" + pSession_->GetSessionID() + "'");
     } else {
         txn.exec(
-            "UPDATE admin.sessions "
+            "UPDATE admin.khl_sessions "
             " SET dtLast = TIMESTAMP '" + sLastActivity + "', dtExpire = TIMESTAMP '" + sExpired + "'"
             " WHERE id = '" + pSession_->GetSessionID() + "'");
     }
@@ -155,7 +155,7 @@ bool S2HBStorage::SessionLogger(const S2HSession* pSession_, const Json::Value& 
     pqxx::work txn(*m_rDB.m_dbConnection);
 
     txn.exec(
-        "INSERT INTO admin.sessions (id, dtFirst, dtLast, dtExpire, stats) "
+        "INSERT INTO admin.khl_sessions (id, dtFirst, dtLast, dtExpire, stats) "
         " VALUES ('" + pSession_->GetSessionID() + "', TIMESTAMP '" + to_iso_string(pSession_->GetCreated()) + "' , TIMESTAMP '" + to_iso_string(pSession_->GetLastActivity()) + "' , TIMESTAMP '" + to_iso_string(pSession_->GetExpired()) + "' , '" + Json::FastWriter().write(jsStat_) + "')");
 
     txn.commit();
@@ -168,7 +168,7 @@ bool S2HBStorage::IsUserExist(const std::string& sLogin_) {
 
     pqxx::result r = txn.exec(
         "SELECT id "
-        "FROM admin.users "
+        "FROM admin.khl_users "
         "WHERE login = " + txn.quote(sLogin_)
     );
     return r.size() > 0;
@@ -181,8 +181,8 @@ bool S2HBStorage::GetUserRoles(int& nUserID_, S2HSession* ps_) {
 
     char    sSQL[2048];
     sprintf(sSQL, "SELECT r.code "
-        " FROM admin.user_roles AS ur "
-        " INNER JOIN admin.roles AS r ON (ur.role_id = r.id) "
+        " FROM admin.khl_user_roles AS ur "
+        " INNER JOIN admin.khl_roles AS r ON (ur.role_id = r.id) "
         " WHERE ur.user_id = %d", nUserID_);
 
     pqxx::result r = txn.exec(sSQL);
@@ -202,7 +202,7 @@ bool S2HBStorage::GetUserInfo(int nUserID_, std::string& sLogin_, std::string& s
 
     pqxx::result r = txn.exec(
         "SELECT login, nickname, password, salt "
-        "FROM admin.users "
+        "FROM admin.khl_users "
         "WHERE id = " + std::to_string(nUserID_)
     );
 
@@ -223,7 +223,7 @@ bool S2HBStorage::GetUserInfo(const std::string& sLogin_, int& nUserID_, std::st
 
     pqxx::result r = txn.exec(
         "SELECT id, nickname, password, salt "
-        "FROM admin.users "
+        "FROM admin.khl_users "
         "WHERE login = " + txn.quote(sLogin_)
     );
 
@@ -254,7 +254,7 @@ bool S2HBStorage::CreateUser(Json::Value& jsUser_) {
     RecalcPasswordHash(sPwhash, sLogin, sPassword, sSalt);
 
     pqxx::result r = txn.exec(
-        "INSERT INTO admin.users ( "
+        "INSERT INTO admin.khl_users ( "
         " login, nickname, password, salt) "
         " VALUES(" + txn.quote(sLogin) + " , " + txn.quote(jsUser_["Nickname"].asString()) + " , " + txn.quote(sPwhash) + " , " + txn.quote(sSalt) + " )"
         " RETURNING id");
@@ -263,7 +263,7 @@ bool S2HBStorage::CreateUser(Json::Value& jsUser_) {
         int nUserID = r[0][0].as<int>();
 
         char    sSQL[2048];
-        sprintf(sSQL, "INSERT INTO admin.user_roles (user_id, role_id) "
+        sprintf(sSQL, "INSERT INTO admin.khl_user_roles (user_id, role_id) "
             " SELECT %d, id FROM admin.roles AS r WHERE r.code = $1", nUserID);
 
         m_rDB.m_dbConnection->prepare("InsertRole_0", sSQL);
@@ -286,7 +286,7 @@ bool S2HBStorage::UpdatePassword(int nUserID_, const std::string& sPasswordHash_
     pqxx::work txn(*m_rDB.m_dbConnection);
 
     txn.exec(
-        "UPDATE admin.users "
+        "UPDATE admin.khl_users "
         " SET password =  " + txn.quote(sPasswordHash_) +
         " WHERE id = " + std::to_string(nUserID_));
 
