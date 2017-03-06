@@ -164,6 +164,7 @@
     <ClCompile Include="..\src\net\session.cpp" />
     <ClCompile Include="..\src\system\fastfile.cpp" />
     <ClCompile Include="..\src\util\logger.cpp" />
+    <ClCompile Include="..\src\util\text.cxx" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\external\src\g3log\g2log.hpp" />
@@ -180,6 +181,7 @@
     <ClInclude Include="..\include\system\fastfile.h" />
     <ClInclude Include="..\include\util\autobuffer.h" />
     <ClInclude Include="..\include\util\logger.h" />
+    <ClInclude Include="..\include\util\text.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\external\src\g3log\filesinkhelper.ipp" />

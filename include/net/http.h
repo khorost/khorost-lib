@@ -199,6 +199,7 @@ namespace khorost {
             const char*    GetHeaderParameter(const std::string& sParam_, const char* sDefault_ = NULL) const;
             const char*    GetParameter(const std::string& sKey_, bool* pbExist_ = NULL) const;
             const char*    GetCookie(const std::string& sKey_, bool* pbExist_ = NULL) const;
+            const char*    GetCookieParameter(const std::string& sKey_, const char* sDefault_ = NULL) const;
             const boost::uint8_t*  GetBody() const { return reinterpret_cast<boost::uint8_t*>(m_abBody.GetHead()); }
             size_t          GetBodyLength() const { return m_abBody.GetFillSize(); }
             const char*     GetHost();

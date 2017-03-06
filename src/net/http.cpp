@@ -351,6 +351,15 @@ bool HTTPTextProtocolHeader::ParseString(char* pBuffer_, size_t nBufferSize_, si
     return true;
 }
 
+const char* HTTPTextProtocolHeader::GetCookieParameter(const std::string& sKey_, const char* sDefault_) const {
+    const char* psValue = GetCookie(sKey_);
+
+    if (psValue == NULL) {
+        psValue = GetParameter(sKey_, sDefault_);
+    }
+    return psValue;
+}
+
 const char* HTTPTextProtocolHeader::GetCookie(const std::string& sKey_, bool* pbExist_) const {
     if (pbExist_!=NULL) {
         *pbExist_ = false;

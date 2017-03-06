@@ -264,7 +264,7 @@ bool S2HBStorage::CreateUser(Json::Value& jsUser_) {
 
         char    sSQL[2048];
         sprintf(sSQL, "INSERT INTO admin.khl_user_roles (user_id, role_id) "
-            " SELECT %d, id FROM admin.roles AS r WHERE r.code = $1", nUserID);
+            " SELECT %d, id FROM admin.khl_roles AS r WHERE r.code = $1", nUserID);
 
         m_rDB.m_dbConnection->prepare("InsertRole_0", sSQL);
 
