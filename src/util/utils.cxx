@@ -1,6 +1,6 @@
 #include "util/text.h"
 
-std::string EscapeString(const std::string& s_) {
+std::string khorost::Data::EscapeString(const std::string& s_) {
     std::string r;
 
     for (std::string::const_iterator cit=s_.begin();cit!=s_.end();++cit) {
