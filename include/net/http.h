@@ -196,10 +196,10 @@ namespace khorost {
 
             const char*    GetQueryMethod() const { return m_abcQueryMethod.GetChunk(); }
             const char*    GetQueryURI() const { return m_abcQueryURI.GetChunk(); }
-            const char*    GetHeaderParameter(const std::string& sParam_, const char* sDefault_ = NULL) const;
-            const char*    GetParameter(const std::string& sKey_, bool* pbExist_ = NULL) const;
-            const char*    GetCookie(const std::string& sKey_, bool* pbExist_ = NULL) const;
-            const char*    GetCookieParameter(const std::string& sKey_, const char* sDefault_ = NULL) const;
+            const char*    GetHeaderParameter(const std::string& sParam_, const char* sDefault_ = nullptr) const;
+            const char*    GetParameter(const std::string& sKey_, bool* pbExist_ = nullptr) const;
+            const char*    GetCookie(const std::string& sKey_, bool* pbExist_ = nullptr) const;
+            const char*    GetCookieParameter(const std::string& sKey_, const char* sDefault_ = nullptr) const;
             const boost::uint8_t*  GetBody() const { return reinterpret_cast<boost::uint8_t*>(m_abBody.GetHead()); }
             size_t          GetBodyLength() const { return m_abBody.GetFillSize(); }
             const char*     GetHost();
@@ -270,10 +270,10 @@ namespace khorost {
                 m_curl = curl_easy_init();
             }
             virtual ~HTTPCurlT() {
-                if (m_curl != NULL) {
+                if (m_curl != nullptr) {
                     /* always cleanup */
                     curl_easy_cleanup(m_curl);
-                    m_curl = NULL;
+                    m_curl = nullptr;
                 }
             }
 
@@ -282,7 +282,7 @@ namespace khorost {
 
                 CURLcode    curlCode, nRespCode;
 
-                if (m_curl != NULL) {
+                if (m_curl != nullptr) {
                     curl_easy_setopt(m_curl, CURLOPT_URL, sURL_.c_str());
                     curl_easy_setopt(m_curl, CURLOPT_WRITEFUNCTION, WriteAutobufferCallback);
                     curl_easy_setopt(m_curl, CURLOPT_WRITEDATA, (void *)&abBuffer_);
@@ -307,7 +307,7 @@ namespace khorost {
             const Data::AutoBufferChar&   GetBuffer() const { return m_abBuffer; }
             const char* GetURIEncode(const char* pURIString_) {
 
-                if (pURIString_ == NULL || *pURIString_ == '\0') {
+                if (pURIString_ == nullptr || *pURIString_ == '\0') {
                     m_abBuffer.CheckSize(sizeof(char));
                     m_abBuffer[0] = '\0';
                 } else {

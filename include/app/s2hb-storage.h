@@ -12,10 +12,9 @@
 
 namespace khorost {
     namespace DB {
-        class S2HBStorage {
-            Postgres& m_rDB;
+        class S2HBStorage : public khorost::DB::LinkedPostgres {
         public:
-            S2HBStorage(Postgres& rDB_) : m_rDB(rDB_) {
+            S2HBStorage(Postgres& rDB_) : khorost::DB::LinkedPostgres(rDB_) {
             }
 
             bool    SessionLogger(const Network::S2HSession* pSession_, const Json::Value& jsStat_);

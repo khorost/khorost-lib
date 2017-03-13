@@ -30,8 +30,8 @@ using namespace khorost::Network;
 const char*   httpPacket::HTTP_QUERY_REQUEST_METHOD_GET     = "GET";
 const char*   httpPacket::HTTP_QUERY_REQUEST_METHOD_POST    = "POST";
 
-bool FindSubValue(const char* pSource_, size_t nSourceSize_, const char* pMatch_, size_t nMatchSize_, char cDivKV, char cDivKK, const char** pResult_ = NULL, size_t* pnResultSize_ = NULL) {
-    if (pSource_ == NULL) {
+bool FindSubValue(const char* pSource_, size_t nSourceSize_, const char* pMatch_, size_t nMatchSize_, char cDivKV, char cDivKK, const char** pResult_ = nullptr, size_t* pnResultSize_ = nullptr) {
+    if (pSource_ == nullptr) {
         return false;
     }
 
@@ -49,8 +49,8 @@ bool FindSubValue(const char* pSource_, size_t nSourceSize_, const char* pMatch_
         if (pSource_[pCheck] == '\"') {
             bInQuote = !bInQuote;
         } else if (!bInQuote && memcmp(pSource_ + pCheck, pMatch_, nMatchSize_) == 0) {
-            if (pResult_ != NULL && pnResultSize_ != NULL) {
-                *pResult_ = NULL;
+            if (pResult_ != nullptr && pnResultSize_ != nullptr) {
+                *pResult_ = nullptr;
                 *pnResultSize_ = 0;
 
                 for (pCheck += nMatchSize_, pMax = nSourceSize_; pCheck < pMax; ++pCheck) {
@@ -67,7 +67,7 @@ bool FindSubValue(const char* pSource_, size_t nSourceSize_, const char* pMatch_
                     }
                 }
 
-                if (*pResult_ != NULL) {
+                if (*pResult_ != nullptr) {
                     if (pCheck == pMax) {
                         --pCheck;
                     }
@@ -222,7 +222,7 @@ size_t  HTTPTextProtocolHeader::ProcessData(Network::Connection& rConnect_, cons
                 m_eBodyProcess = eSuccessful;
 
                 const char *pszContentType = GetHeaderParameter(HTTP_ATTRIBUTE_CONTENT_TYPE);
-                if (pszContentType!=NULL && FindSubValue(pszContentType, -1, HTTP_ATTRIBUTE_CONTENT_TYPE__FORM, sizeof(HTTP_ATTRIBUTE_CONTENT_TYPE__FORM) - 1, '=', ';')) {
+                if (pszContentType!= nullptr && FindSubValue(pszContentType, -1, HTTP_ATTRIBUTE_CONTENT_TYPE__FORM, sizeof(HTTP_ATTRIBUTE_CONTENT_TYPE__FORM) - 1, '=', ';')) {
 //                if (strcmp(HTTP_ATTRIBUTE_CONTENT_TYPE__FORM, pszContentType) == 0) {
                     size_t k = m_abParams.GetFillSize();
                     if (k != 0) {
@@ -255,11 +255,11 @@ size_t  HTTPTextProtocolHeader::ProcessData(Network::Connection& rConnect_, cons
 
 bool HTTPTextProtocolHeader::GetMultiPart(size_t& rszIterator_, std::string& rsName_, std::string& rsContentType_, const char*& rpBuffer_, size_t& rszBuffer) {
     const char *pszContentType = GetHeaderParameter(HTTP_ATTRIBUTE_CONTENT_TYPE);
-    if (pszContentType == NULL) {
+    if (pszContentType == nullptr) {
         return false;
     }
     
-    const char *pszBoundary = NULL;
+    const char *pszBoundary = nullptr;
     size_t szCT = strlen(pszContentType), szBoundary = 0;
 
     if (FindSubValue(pszContentType, szCT, HTTP_ATTRIBUTE_CONTENT_TYPE__MULTIPART_FORM_DATA, sizeof(HTTP_ATTRIBUTE_CONTENT_TYPE__MULTIPART_FORM_DATA) - 1, '=', ';')) {
@@ -354,27 +354,27 @@ bool HTTPTextProtocolHeader::ParseString(char* pBuffer_, size_t nBufferSize_, si
 const char* HTTPTextProtocolHeader::GetCookieParameter(const std::string& sKey_, const char* sDefault_) const {
     const char* psValue = GetCookie(sKey_);
 
-    if (psValue == NULL) {
+    if (psValue == nullptr) {
         psValue = GetParameter(sKey_, sDefault_);
     }
     return psValue;
 }
 
 const char* HTTPTextProtocolHeader::GetCookie(const std::string& sKey_, bool* pbExist_) const {
-    if (pbExist_!=NULL) {
+    if (pbExist_!= nullptr) {
         *pbExist_ = false;
     }
 
     for (std::list< std::pair<size_t, size_t> >::const_iterator cit=m_Cookies.begin(); cit!=m_Cookies.end(); ++cit) {
         if (strcmp(sKey_.c_str(), m_abHeader.GetPosition(cit->first))==0) {
-            if (pbExist_!=NULL) {
+            if (pbExist_!= nullptr) {
                 *pbExist_ = true;
             }
-            return cit->second!=-1?m_abHeader.GetPosition(cit->second):NULL;
+            return cit->second!=-1?m_abHeader.GetPosition(cit->second): nullptr;
         }
     }
 
-    return NULL;
+    return nullptr;
 }
 
 bool HTTPTextProtocolHeader::IsParameterExist(const std::string& sKey_) const {
@@ -414,20 +414,20 @@ void HTTPTextProtocolHeader::FillParameter2Array(const std::string& sKey_, std::
 }
 
 const char* HTTPTextProtocolHeader::GetParameter(const std::string& sKey_, bool* pbExist_) const {
-    if (pbExist_!=NULL) {
+    if (pbExist_!= nullptr) {
         *pbExist_ = false;
     }
 
     for (std::list< std::pair<size_t, size_t> >::const_iterator cit=m_ParamsValue.begin(); cit!=m_ParamsValue.end(); ++cit) {
         if (strcmp(sKey_.c_str(), m_abParams.GetPosition(cit->first))==0) {
-            if (pbExist_!=NULL) {
+            if (pbExist_!= nullptr) {
                 *pbExist_ = true;
             }
-            return cit->second!=-1?m_abParams.GetPosition(cit->second):NULL;
+            return cit->second!=-1?m_abParams.GetPosition(cit->second): nullptr;
         }
     }
 
-    return NULL;
+    return nullptr;
 }
 
 const char* HTTPTextProtocolHeader::GetHeaderParameter(const std::string& sParam_, const char* sDefault_) const {
@@ -445,7 +445,7 @@ void HTTPTextProtocolHeader::Response(Network::Connection& rConnect_, const char
 
     char  st[255];
 
-    if (nLength==-1 && psResponse_!=NULL) {
+    if (nLength==-1 && psResponse_!= nullptr) {
 //        ASSERT(psResponse_!=NULL);
         nLength = strlen(psResponse_);
     }
@@ -457,7 +457,7 @@ void HTTPTextProtocolHeader::Response(Network::Connection& rConnect_, const char
     rConnect_.SendString(m_Replay.m_sCodeReason);
     rConnect_.SendString(HTTP_ATTRIBUTE_ENDL, sizeof(HTTP_ATTRIBUTE_ENDL)-1);
     rConnect_.SendString("Server: phreeber" HTTP_ATTRIBUTE_ENDL);
-    time_t n = time(NULL);
+    time_t n = time(nullptr);
     strftime(st, sizeof(st), "%a, %d %b %Y %H:%M:%S GMT", gmtime(&n));
     rConnect_.SendString("Date: ");
     rConnect_.SendString(st);
@@ -470,12 +470,12 @@ void HTTPTextProtocolHeader::Response(Network::Connection& rConnect_, const char
     }
 
     const char* pAC = GetHeaderParameter(HTTP_ATTRIBUTE_CONNECTION);
-    if (pAC==NULL || strcmp(HTTP_ATTRIBUTE_CONNECTION__KEEP_ALIVE, pAC)!=0) {
+    if (pAC== nullptr || strcmp(HTTP_ATTRIBUTE_CONNECTION__KEEP_ALIVE, pAC)!=0) {
         m_Replay.m_bAutoClose = true;
     } else {
         m_Replay.m_bAutoClose = false;
     }
-    rConnect_.SendString(std::string("Connection: ") + std::string(pAC!=NULL?pAC:"close") + std::string(HTTP_ATTRIBUTE_ENDL));
+    rConnect_.SendString(std::string("Connection: ") + std::string(pAC!= nullptr ?pAC:"close") + std::string(HTTP_ATTRIBUTE_ENDL));
     for (std::deque<Replay::Cookie>::const_iterator cit = m_Replay.m_Cookies.begin(); cit != m_Replay.m_Cookies.end(); ++cit) {
         const Replay::Cookie& c = *cit;
         time_t gmt = to_time_t(c.m_dtExpire);
@@ -508,7 +508,7 @@ void HTTPTextProtocolHeader::Response(Network::Connection& rConnect_, const char
         rConnect_.SendString(HTTP_ATTRIBUTE_ENDL, sizeof(HTTP_ATTRIBUTE_ENDL)-1);
     }
     rConnect_.SendString(HTTP_ATTRIBUTE_ENDL, sizeof(HTTP_ATTRIBUTE_ENDL)-1);
-    if (psResponse_!=NULL) {
+    if (psResponse_!= nullptr) {
         rConnect_.SendString(psResponse_, nLength);
     }
 }
@@ -611,11 +611,11 @@ bool HTTPFileTransfer::SendFile(const std::string& sQueryURI_, Network::Connecti
             , { "jpg", HTTP_ATTRIBUTE_CONTENT_TYPE__IMAGE_JPG, HTTP_CODEPAGE_NULL }
             , { "jpeg", HTTP_ATTRIBUTE_CONTENT_TYPE__IMAGE_JPG, HTTP_CODEPAGE_NULL }
             , { "png", HTTP_ATTRIBUTE_CONTENT_TYPE__IMAGE_PNG, HTTP_CODEPAGE_NULL }
-            , { NULL, NULL, NULL }
+            , { nullptr, nullptr, nullptr }
         };
 
         const char* pIMS = rHTTP_.GetHeaderParameter("If-Modified-Since");
-        if (pIMS != NULL) {
+        if (pIMS != nullptr) {
             tm t;
             strptime(pIMS, "%a, %d-%b-%Y %H:%M:%S GMT", &t);
 #ifdef WIN32
@@ -627,7 +627,7 @@ bool HTTPFileTransfer::SendFile(const std::string& sQueryURI_, Network::Connecti
                 LOGF(DEBUG, "Dont send file '%s' length = %d. Response 304 (If-Modified-Since: '%s')", sQueryURI_.c_str(), ff.GetLength(), pIMS);
 
                 rHTTP_.SetResponseStatus(304, "Not Modified");
-                rHTTP_.Response(rConnect_, NULL, -1);
+                rHTTP_.Response(rConnect_, nullptr, -1);
                 return true;
             }
             tt = tt;
@@ -649,7 +649,7 @@ bool HTTPFileTransfer::SendFile(const std::string& sQueryURI_, Network::Connecti
 
         if (nExt > 0) {
             pExt += nExt;
-            for (int k = 0; s_SECT[k].m_Ext != NULL; ++k) {
+            for (int k = 0; s_SECT[k].m_Ext != nullptr; ++k) {
                 if (strcmp(s_SECT[k].m_Ext, pExt) == 0) {
                     rHTTP_.SetContentType(s_SECT[k].m_CT, s_SECT[k].m_CP);
                     break;
@@ -657,7 +657,7 @@ bool HTTPFileTransfer::SendFile(const std::string& sQueryURI_, Network::Connecti
             }
         }
         rHTTP_.SetLastModify(from_time_t(ff.GetTimeUpdate()));
-        rHTTP_.Response(rConnect_, NULL, ff.GetLength());
+        rHTTP_.Response(rConnect_, nullptr, ff.GetLength());
         rConnect_.SendData(reinterpret_cast<const boost::uint8_t*>(ff.GetMemory()), ff.GetLength());
 
         ff.Close();
@@ -723,7 +723,7 @@ const char* HTTPTextProtocolHeader::GetClientProxyIP() {
     if (idx==-1) {
         idx = GetHeaderIndex(HTTP_ATTRIBUTE_X_REAL_IP);
         if (idx==-1) {
-            return NULL;
+            return nullptr;
         }
     }
     return m_abHeader.GetPosition(idx);

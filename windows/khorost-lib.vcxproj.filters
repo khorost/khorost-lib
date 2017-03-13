@@ -79,7 +79,7 @@
     <ClCompile Include="..\external\src\g3log\time.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\util\text.cxx">
+    <ClCompile Include="..\src\util\utils.cxx">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -126,7 +126,7 @@
     <ClInclude Include="..\include\db\sqlite3.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\util\text.h">
+    <ClInclude Include="..\include\util\utils.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

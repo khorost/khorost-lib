@@ -53,6 +53,17 @@ namespace khorost {
             void    ExecuteCustomSQL(bool bReadOnly_, const std::string& sSQL_, Json::Value& jvResult_);
 
         };
+
+        class LinkedPostgres {
+        protected:
+            Postgres& m_rDB;
+        public:
+            LinkedPostgres(Postgres& rDB_) : m_rDB(rDB_) {}
+            virtual ~LinkedPostgres() {}
+
+        private:
+
+        };
     }
 }
 
