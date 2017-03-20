@@ -1,5 +1,7 @@
 ﻿#include "db/sqlite3.h"
 
+#include <string.h>
+
 #pragma comment(lib,"sqlite3.lib")
 
 using namespace khorost::DB;

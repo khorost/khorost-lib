@@ -119,7 +119,7 @@ void khorost::log::appendColorSink(g3::LogWorker* logger_) {
 #if defined(_WIN32) || defined(_WIN64)
 		logger_->addSink(std::make_unique<ColorCoutSinkWin32>(), &ColorCoutSinkWin32::ReceiveLogMessage);
 #else
-		logger_->addSink(std::make_unique<ColorCoutSink>(), &ColorCoutSink::ReceiveLogMessage);
+//		logger_->addSink(std::make_unique<ColorCoutSink>(), &ColorCoutSink::ReceiveLogMessage);
 #endif  // WIN
     }
 }

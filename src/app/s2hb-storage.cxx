@@ -1,6 +1,10 @@
 ﻿#include "app/s2hb-storage.h"
 
-#include <Ws2tcpip.h>
+#if defined(_WIN32) || defined(_WIN64)
+ #include <Ws2tcpip.h>
+#else
+
+#endif
 
 #include <vector>
 #include <string>
@@ -44,6 +48,7 @@ void S2HBStorage::SessionIPUpdate() {
             char    hostname[1024] = "NULL", servInfo[1024];
 
             saGNI.sin_family = AF_INET;
+#if defined(_WIN32) || defined(_WIN64)
             InetPton(AF_INET, row[0].as<std::string>().c_str(), &saGNI.sin_addr.s_addr);
             if (getnameinfo((struct sockaddr *)&saGNI, sizeof(struct sockaddr), hostname, sizeof(hostname), servInfo, sizeof(servInfo), NI_NUMERICSERV) == 0) {
                 txn.exec(
@@ -51,6 +56,9 @@ void S2HBStorage::SessionIPUpdate() {
                     " SET host = '" + std::string(hostname) + "' "
                     " WHERE ip = '" + row[0].as<std::string>() + "'");
             }
+#else 
+
+#endif
         }
         txn.commit();
     }
@@ -94,11 +102,11 @@ bool S2HBStorage::SessionUpdate(khorost::Network::ListSession& rLS_) {
         m_rDB.m_dbConnection->unprepare("SessionUpdate_1");
         m_rDB.m_dbConnection->unprepare("SessionUpdate_2");
     } catch (const pqxx::pqxx_exception &e) {
-        OutputDebugString(e.base().what());
+//        OutputDebugString(e.base().what());
         std::cerr << e.base().what() << std::endl;
         const pqxx::sql_error *s = dynamic_cast<const pqxx::sql_error*>(&e.base());
         if (s) {
-            OutputDebugString(s->query().c_str());
+//            OutputDebugString(s->query().c_str());
             std::cerr << "Query was: " << s->query() << std::endl;
         }
     }

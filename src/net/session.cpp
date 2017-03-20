@@ -1,4 +1,5 @@
 #include "net/session.h"
+#include "util/utils.h"
 
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
@@ -107,9 +108,9 @@ bool SessionControler::SessionDB::UpdateSession(Session* sp_, int nVersion_) {
     
     Stmt.BindParam(1, sp_->GetSessionID());
     Stmt.BindParam(2, nVersion_);
-    Stmt.BindParam(3, static_cast<int>(to_time_t(sp_->GetCreated())));
+    Stmt.BindParam(3, static_cast<int>(khorost::Data::EpochDiff(sp_->GetCreated()).total_seconds() ));
     Stmt.BindParam(4, static_cast<int>(time(NULL)));
-    Stmt.BindParam(5, static_cast<int>(to_time_t(sp_->GetExpired())));
+    Stmt.BindParam(5, static_cast<int>(khorost::Data::EpochDiff(sp_->GetExpired()).total_seconds() ));
 
     std::string se;
     sp_->ExportData(se);

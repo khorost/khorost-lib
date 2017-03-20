@@ -8,8 +8,8 @@
 #include <time.h>
 
 #include "net/http.h"
-
 #include "system/fastfile.h"
+#include "util/utils.h"
 
 #ifdef WIN32
 #include "shlwapi.h"
@@ -20,6 +20,7 @@
 #include <unistd.h>
 #include <limits.h>
 #include <stdlib.h>
+#define MAX_PATH 260
 #endif
 
 #pragma comment(lib,"shlwapi.lib")
@@ -478,7 +479,7 @@ void HTTPTextProtocolHeader::Response(Network::Connection& rConnect_, const char
     rConnect_.SendString(std::string("Connection: ") + std::string(pAC!= nullptr ?pAC:"close") + std::string(HTTP_ATTRIBUTE_ENDL));
     for (std::deque<Replay::Cookie>::const_iterator cit = m_Replay.m_Cookies.begin(); cit != m_Replay.m_Cookies.end(); ++cit) {
         const Replay::Cookie& c = *cit;
-        time_t gmt = to_time_t(c.m_dtExpire);
+        time_t gmt = khorost::Data::EpochDiff(c.m_dtExpire).total_seconds();
         strftime(st, sizeof(st), "%a, %d-%b-%Y %H:%M:%S GMT", gmtime(&gmt));
         rConnect_.SendString(std::string("Set-Cookie: ") + c.m_sCookie + std::string("=") + c.m_sValue + std::string("; Expires=") + std::string(st) + std::string("; Domain=.") + c.m_sDomain +  std::string("; Path=/" HTTP_ATTRIBUTE_ENDL));
     }
@@ -502,7 +503,7 @@ void HTTPTextProtocolHeader::Response(Network::Connection& rConnect_, const char
 
     if (!m_Replay.m_tLastModify.is_not_a_date_time()) {
         rConnect_.SendString(HTTP_ATTRIBUTE_LAST_MODIFIED HTTP_ATTRIBUTE_DIV);
-        time_t gmt = to_time_t(m_Replay.m_tLastModify);
+        time_t gmt = khorost::Data::EpochDiff(m_Replay.m_tLastModify).total_seconds();
         strftime(st, sizeof(st), "%a, %d-%b-%Y %H:%M:%S GMT", gmtime(&gmt));
         rConnect_.SendString(st);
         rConnect_.SendString(HTTP_ATTRIBUTE_ENDL, sizeof(HTTP_ATTRIBUTE_ENDL)-1);
@@ -624,7 +625,7 @@ bool HTTPFileTransfer::SendFile(const std::string& sQueryURI_, Network::Connecti
             time_t tt = timegm(&t);
 #endif  // WIN32
             if (tt >= ff.GetTimeUpdate()) {
-                LOGF(DEBUG, "Dont send file '%s' length = %d. Response 304 (If-Modified-Since: '%s')", sQueryURI_.c_str(), ff.GetLength(), pIMS);
+                LOGF(DEBUG, "Dont send file '%s' length = %zu. Response 304 (If-Modified-Since: '%s')", sQueryURI_.c_str(), ff.GetLength(), pIMS);
 
                 rHTTP_.SetResponseStatus(304, "Not Modified");
                 rHTTP_.Response(rConnect_, nullptr, -1);
@@ -645,7 +646,7 @@ bool HTTPFileTransfer::SendFile(const std::string& sQueryURI_, Network::Connecti
             }
         }
 
-        LOGF(DEBUG, "Send file '%s' length = %d", sQueryURI_.c_str(), ff.GetLength());
+        LOGF(DEBUG, "Send file '%s' length = %zu", sQueryURI_.c_str(), ff.GetLength());
 
         if (nExt > 0) {
             pExt += nExt;

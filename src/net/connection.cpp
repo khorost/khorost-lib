@@ -186,7 +186,7 @@ bool ConnectionController::RemoveConnection(Connection* pConnection_){
     boost::mutex::scoped_lock lock(m_mutex);
 
     LOGF(DEBUG
-        , "Close connect #%d. Receive %d bytes, send %d bytes"
+        , "Close connect #%d. Receive %zu bytes, send %zu bytes"
         , pConnection_->GetID(), pConnection_->GetReceiveBytes(), pConnection_->GetSendBytes());
 
     return true;

@@ -159,7 +159,7 @@ namespace khorost {
                 m_ProcessCommandCB[type_] = func_;
             }
 
-            size_t	DoProcessCB(typename TC& rConnect_, const boost::uint8_t* pBuffer_, size_t nBufferSize_) {
+            size_t	DoProcessCB(TC& rConnect_, const boost::uint8_t* pBuffer_, size_t nBufferSize_) {
                 size_t	nProcessBytes = 0, nHeaderSize = cbPacket::GetHeaderSize();
 
                 while (nBufferSize_ >= nHeaderSize) {
@@ -172,7 +172,7 @@ namespace khorost {
 
                             LOGF(DEBUG, "Process packet type = 0x%04X size = %d bytes", typePacket, sizePacket);
 
-                            DictionaryProcessCommandCB::iterator	itDPCCB = m_ProcessCommandCB.find(typePacket);
+                            auto	itDPCCB = m_ProcessCommandCB.find(typePacket);
                             if (itDPCCB != m_ProcessCommandCB.end()) {
                                 funcProcessCommandCB pf = itDPCCB->second;
                                 (m_Context->*pf)(rConnect_, typePacket, pBuffer_, sizePacket);
