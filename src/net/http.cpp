@@ -20,7 +20,7 @@
 #include <unistd.h>
 #include <limits.h>
 #include <stdlib.h>
-#define MAX_PATH 260
+#define MAX_PATH PATH_MAX
 #endif
 
 #pragma comment(lib,"shlwapi.lib")
