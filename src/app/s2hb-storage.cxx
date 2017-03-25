@@ -48,17 +48,14 @@ void S2HBStorage::SessionIPUpdate() {
             char    hostname[1024] = "NULL", servInfo[1024];
 
             saGNI.sin_family = AF_INET;
-#if defined(_WIN32) || defined(_WIN64)
-            InetPton(AF_INET, row[0].as<std::string>().c_str(), &saGNI.sin_addr.s_addr);
+
+            inet_pton(AF_INET, row[0].as<std::string>().c_str(), &saGNI.sin_addr);
             if (getnameinfo((struct sockaddr *)&saGNI, sizeof(struct sockaddr), hostname, sizeof(hostname), servInfo, sizeof(servInfo), NI_NUMERICSERV) == 0) {
                 txn.exec(
                     "UPDATE admin.khl_sessions_ip "
                     " SET host = '" + std::string(hostname) + "' "
                     " WHERE ip = '" + row[0].as<std::string>() + "'");
             }
-#else 
-
-#endif
         }
         txn.commit();
     }
