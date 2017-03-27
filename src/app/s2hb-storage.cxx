@@ -1,9 +1,11 @@
 ﻿#include "app/s2hb-storage.h"
+#include "util/logger.h"
 
 #if defined(_WIN32) || defined(_WIN64)
  #include <Ws2tcpip.h>
 #else
-
+ #include <arpa/inet.h>
+ #include <netdb.h>
 #endif
 
 #include <vector>
@@ -49,12 +51,15 @@ void S2HBStorage::SessionIPUpdate() {
 
             saGNI.sin_family = AF_INET;
 
-            inet_pton(AF_INET, row[0].as<std::string>().c_str(), &saGNI.sin_addr);
+            auto sIP = row[0].as<std::string>();
+
+            inet_pton(AF_INET, sIP.c_str(), &saGNI.sin_addr);
             if (getnameinfo((struct sockaddr *)&saGNI, sizeof(struct sockaddr), hostname, sizeof(hostname), servInfo, sizeof(servInfo), NI_NUMERICSERV) == 0) {
+                LOG(DEBUG) << "[IP_UPDATE] getnameinfo('" << sIP << "') = '" << hostname << "'"  ;
                 txn.exec(
                     "UPDATE admin.khl_sessions_ip "
                     " SET host = '" + std::string(hostname) + "' "
-                    " WHERE ip = '" + row[0].as<std::string>() + "'");
+                    " WHERE ip = '" + sIP + "' AND host is NULL ");
             }
         }
         txn.commit();

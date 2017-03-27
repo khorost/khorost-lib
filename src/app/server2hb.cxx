@@ -594,6 +594,7 @@ void Server2HB::stubTimerRun(Server2HB* pThis_) {
             pThis_->TimerSessionUpdate();
         }
         if ((ptNow - ptSessionIPUpdate).hours() > 1) {
+            LOG(DEBUG) << "Every Hours check";
             ptSessionIPUpdate = ptNow;
             pThis_->m_dbBase.SessionIPUpdate();
         }
