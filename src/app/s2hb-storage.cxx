@@ -53,6 +53,8 @@ void S2HBStorage::SessionIPUpdate() {
 
             auto sIP = row[0].as<std::string>();
 
+            LOG(DEBUG) << "[IP_UPDATE] check('" << sIP << "')";
+
             inet_pton(AF_INET, sIP.c_str(), &saGNI.sin_addr);
             if (getnameinfo((struct sockaddr *)&saGNI, sizeof(struct sockaddr), hostname, sizeof(hostname), servInfo, sizeof(servInfo), NI_NUMERICSERV) == 0) {
                 LOG(DEBUG) << "[IP_UPDATE] getnameinfo('" << sIP << "') = '" << hostname << "'"  ;

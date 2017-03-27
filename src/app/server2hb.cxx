@@ -589,11 +589,12 @@ void Server2HB::stubTimerRun(Server2HB* pThis_) {
 
     while (!pThis_->m_bShutdownTimer) {
         ptime  ptNow = second_clock::universal_time();
-        if ((ptNow - ptSessionUpdate).minutes() > 10) {
+        if ((ptNow - ptSessionUpdate).minutes() >= 10) {
+            LOG(DEBUG) << "Every 10 minutes check";
             ptSessionUpdate = ptNow;
             pThis_->TimerSessionUpdate();
         }
-        if ((ptNow - ptSessionIPUpdate).hours() > 1) {
+        if ((ptNow - ptSessionIPUpdate).hours() >= 1) {
             LOG(DEBUG) << "Every Hours check";
             ptSessionIPUpdate = ptNow;
             pThis_->m_dbBase.SessionIPUpdate();
