@@ -24,6 +24,7 @@
 #endif
 
 #pragma comment(lib,"shlwapi.lib")
+#pragma comment(lib,"libcurl.lib")
 
 using namespace khorost;
 using namespace khorost::Network;

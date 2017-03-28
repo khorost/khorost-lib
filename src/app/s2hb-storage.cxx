@@ -41,7 +41,7 @@ void S2HBStorage::SessionIPUpdate() {
         "SELECT DISTINCT ip "
         " FROM admin.khl_sessions_ip "
         " WHERE host is NULL " 
-        " LIMIT 5"
+        " LIMIT 10"
         );
 
     if (r.size() != 0) {
@@ -61,6 +61,12 @@ void S2HBStorage::SessionIPUpdate() {
                 txn.exec(
                     "UPDATE admin.khl_sessions_ip "
                     " SET host = '" + std::string(hostname) + "' "
+                    " WHERE ip = '" + sIP + "' AND host is NULL ");
+            } else {
+                LOG(DEBUG) << "[IP_UPDATE] getnameinfo('" << sIP << "') failed";
+                txn.exec(
+                    "UPDATE admin.khl_sessions_ip "
+                    " SET host = 'n/a' "
                     " WHERE ip = '" + sIP + "' AND host is NULL ");
             }
         }
