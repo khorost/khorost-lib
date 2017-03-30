@@ -9,10 +9,45 @@
 #endif // WIN32
 
 #include <iostream>
+#include <boost/make_shared.hpp>
+
+#include "util/logger.h"
 
 using namespace khorost::DB;
 
-bool Postgres::Reconnect() {
+void DBPool::Prepare(int nCount_, const std::string& sConnectParam_) {
+    std::lock_guard<std::mutex> locker(m_mutex);
+
+    for (auto n = 0; n < nCount_; ++n) {
+        m_FreePool.emplace(boost::make_shared<DBConnectionPool>(sConnectParam_));
+    }
+}
+
+DBConnectionPoolPtr DBPool::GetConnectionPool() {
+    std::unique_lock<std::mutex> locker(m_mutex);
+
+    while (m_FreePool.empty()) {
+        m_condition.wait(locker);
+    }
+
+    auto conn = m_FreePool.front();
+    m_FreePool.pop();
+    
+    LOG(DEBUG) << "[get from pool] size = " << m_FreePool.size();
+
+    return conn;
+}
+
+void DBPool::ReleaseConnectionPool(DBConnectionPoolPtr pdbc_) {
+    std::unique_lock<std::mutex> locker(m_mutex);
+    m_FreePool.push(pdbc_);
+    locker.unlock();
+    m_condition.notify_one();
+
+    LOG(DEBUG) << "[return to pool] size = " << m_FreePool.size();
+}
+
+std::string Postgres::GetConnectParam() const {
     std::string sc;
     sc += " host = " + m_sHost;
     sc += " port = " + std::to_string(m_nPort);
@@ -20,25 +55,19 @@ bool Postgres::Reconnect() {
     sc += " user = " + m_sLogin;
     sc += " password = " + m_sPassword;
 
-    m_dbConnection.reset(new pqxx::connection(sc));
-    return true;
+    return sc;
 }
 
-bool Postgres::Disconnect() {
-    m_dbConnection.reset(NULL);
-    return true;
-}
-
-bool Postgres::CheckConnect() {
+bool DBConnectionPool::CheckConnect() {
     static int times = 0;
     try {
         times++;
-        if (!m_dbConnection->is_open()) {
-            m_dbConnection->activate();
+        if (!m_spConnect->is_open()) {
+            m_spConnect->activate();
         }
         times = 0;
         // hack
-        pqxx::read_transaction txn(*m_dbConnection);
+        pqxx::nontransaction txn(GetHandle());
 
         pqxx::result r = txn.exec(
             "SELECT app "
@@ -93,11 +122,13 @@ static void sExecuteCustomSQL(pqxx::transaction_base& txn_, const std::string& s
 }
 
 void Postgres::ExecuteCustomSQL(bool bReadOnly_, const std::string& sSQL_, Json::Value& jvResult_) {
+    DBConnection            conn(*this);
+
     if (bReadOnly_) {
-        pqxx::read_transaction txn(*m_dbConnection);
+        pqxx::read_transaction txn(conn.GetHandle());
         sExecuteCustomSQL(txn, sSQL_, jvResult_);
     } else {
-        pqxx::work txn(*m_dbConnection);
+        pqxx::work txn(conn.GetHandle());
         sExecuteCustomSQL(txn, sSQL_, jvResult_);
         txn.commit();
     }

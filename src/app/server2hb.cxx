@@ -665,8 +665,6 @@ bool Server2HB::ActionAuth(Network::Connection& rConnect_, S2HSession* pSession_
         std::string sLogin, sNickname, sPwHash, sSalt;
         int nUserID;
 
-        m_dbConnect.CheckConnect();
-
         const char* pQueryQ = rHTTP_.GetParameter(S2H_PARAM_QUESTION);
         if (strcmp(pActionParam, S2H_PARAM_ACTION_AUTH_PRE) == 0) {
             if (m_dbBase.GetUserInfo(pQueryQ != NULL ? pQueryQ : "", nUserID, sNickname, sPwHash, sSalt)) {

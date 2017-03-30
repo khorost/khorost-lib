@@ -11,15 +11,82 @@
 # include <unistd.h>
 #endif  
 
+#include <queue>
 #include <string>
+#include <mutex>
+#include <condition_variable>
 #include <pqxx/pqxx>
+#include <boost/shared_ptr.hpp>
 #include <boost/scoped_ptr.hpp>
 #include <json/json.h>
 
 namespace khorost {
     namespace DB {
+        class DBConnectionPool {
+            boost::scoped_ptr<pqxx::connection>    m_spConnect;
+        public:
+            DBConnectionPool(const std::string& sConnectParam_) {
+                Reconnect(sConnectParam_);
+            }
+            virtual ~DBConnectionPool() {
+            }
 
-        class Postgres {
+            pqxx::connection& GetHandle() {
+                return *m_spConnect;
+            }
+
+            void    Reconnect(const std::string& sConnectParam_) {
+                m_spConnect.reset(new pqxx::connection(sConnectParam_));
+            }
+            void    Disconnect() {
+                m_spConnect.reset(nullptr);
+            }
+            bool    CheckConnect();
+        };
+
+        typedef	boost::shared_ptr<DBConnectionPool>	DBConnectionPoolPtr;
+
+        class DBPool {
+            std::queue<DBConnectionPoolPtr>  m_FreePool;
+
+            std::mutex m_mutex;
+            std::condition_variable m_condition;
+
+        public:
+            DBPool() {
+            }
+
+            void Prepare(int nCount_, const std::string& sConnectParam_);
+
+            DBConnectionPoolPtr GetConnectionPool();
+            void    ReleaseConnectionPool(DBConnectionPoolPtr pdbc_);
+        };
+
+        class DBConnection {
+            DBPool&             m_dbPool;
+            DBConnectionPoolPtr m_pdbConnectionPool;
+        public:
+            DBConnection(DBPool& dbp_) : m_dbPool(dbp_), m_pdbConnectionPool(nullptr) {
+                m_pdbConnectionPool = m_dbPool.GetConnectionPool();
+            }
+            virtual ~DBConnection() {
+                ReleaseConnectionPool();
+            }
+
+            pqxx::connection& GetHandle() {
+                return m_pdbConnectionPool->GetHandle();
+            }
+
+            void    ReleaseConnectionPool() {
+                if (m_pdbConnectionPool != nullptr) {
+                    m_dbPool.ReleaseConnectionPool(m_pdbConnectionPool);
+                    m_pdbConnectionPool = nullptr;
+                }
+            }
+        };
+
+
+        class Postgres : public DBPool  {
             int         m_nPort;
             std::string m_sHost;
             std::string m_sDatabase;
@@ -30,15 +97,9 @@ namespace khorost {
             Postgres() {
             }
             virtual ~Postgres() {
-                Disconnect();
             }
 
-            boost::scoped_ptr<pqxx::connection> m_dbConnection;
-
-            bool Reconnect();
-            bool Disconnect();
-
-            bool CheckConnect();
+            std::string GetConnectParam() const;
 
             void    SetConnect(std::string sHost_, int nPort_, std::string sDatabase_, std::string sLogin_, std::string sPassword_) {
                 m_sHost = sHost_;
@@ -47,7 +108,7 @@ namespace khorost {
                 m_sLogin = sLogin_;
                 m_sPassword = sPassword_;
 
-                Reconnect();
+                Prepare(5, GetConnectParam());
             }
 
             void    ExecuteCustomSQL(bool bReadOnly_, const std::string& sSQL_, Json::Value& jvResult_);

@@ -35,7 +35,8 @@ static void session_ip_update(S2HSession* httpSession_, pqxx::work& txn_) {
 }
 
 void S2HBStorage::SessionIPUpdate() {
-    pqxx::work txn(*m_rDB.m_dbConnection);
+    DBConnection            conn(m_rDB);
+    pqxx::work              txn(conn.GetHandle());
 
     pqxx::result r = txn.exec(
         "SELECT DISTINCT ip "
@@ -75,18 +76,20 @@ void S2HBStorage::SessionIPUpdate() {
 }
 
 bool S2HBStorage::SessionUpdate(khorost::Network::ListSession& rLS_) {
-    pqxx::work txn(*m_rDB.m_dbConnection);
+    DBConnection            conn(m_rDB);
+    pqxx::connection&       rcn = conn.GetHandle();
+    pqxx::work              txn(rcn);
 
     try {
-        m_rDB.m_dbConnection->prepare("SessionUpdate_0", "UPDATE admin.khl_sessions "
+        rcn.prepare("SessionUpdate_0", "UPDATE admin.khl_sessions "
             " SET user_id = $1, dtLast = $2, dtExpire = $3 "
             " WHERE id = $4"
         );
-        m_rDB.m_dbConnection->prepare("SessionUpdate_1", "UPDATE admin.khl_users "
+        rcn.prepare("SessionUpdate_1", "UPDATE admin.khl_users "
             " SET dtLast = $1, countConnect = countConnect + $2 "
             " WHERE id = $3 "
         );
-        m_rDB.m_dbConnection->prepare("SessionUpdate_2", "UPDATE admin.khl_sessions "
+        rcn.prepare("SessionUpdate_2", "UPDATE admin.khl_sessions "
             " SET dtLast = $1, dtExpire = $2 "
             " WHERE id = $3"
         );
@@ -108,9 +111,9 @@ bool S2HBStorage::SessionUpdate(khorost::Network::ListSession& rLS_) {
 
         txn.commit();
 
-        m_rDB.m_dbConnection->unprepare("SessionUpdate_0");
-        m_rDB.m_dbConnection->unprepare("SessionUpdate_1");
-        m_rDB.m_dbConnection->unprepare("SessionUpdate_2");
+        rcn.unprepare("SessionUpdate_0");
+        rcn.unprepare("SessionUpdate_1");
+        rcn.unprepare("SessionUpdate_2");
     } catch (const pqxx::pqxx_exception &e) {
 //        OutputDebugString(e.base().what());
         std::cerr << e.base().what() << std::endl;
@@ -125,7 +128,8 @@ bool S2HBStorage::SessionUpdate(khorost::Network::ListSession& rLS_) {
 }
 
 bool S2HBStorage::SessionUpdate(S2HSession* pSession_) {
-    pqxx::work txn(*m_rDB.m_dbConnection);
+    DBConnection            conn(m_rDB);
+    pqxx::work              txn(conn.GetHandle());
 
     std::string sLastActivity = to_iso_string(pSession_->GetLastActivity());
     std::string sCreated = to_iso_string(pSession_->GetCreated());
@@ -170,7 +174,8 @@ bool S2HBStorage::SessionUpdate(S2HSession* pSession_) {
 }
 
 bool S2HBStorage::SessionLogger(const S2HSession* pSession_, const Json::Value& jsStat_) {
-    pqxx::work txn(*m_rDB.m_dbConnection);
+    DBConnection            conn(m_rDB);
+    pqxx::work              txn(conn.GetHandle());
 
     txn.exec(
         "INSERT INTO admin.khl_sessions (id, dtFirst, dtLast, dtExpire, stats) "
@@ -182,7 +187,8 @@ bool S2HBStorage::SessionLogger(const S2HSession* pSession_, const Json::Value& 
 }
 
 bool S2HBStorage::IsUserExist(const std::string& sLogin_) {
-    pqxx::read_transaction txn(*m_rDB.m_dbConnection);
+    DBConnection            conn(m_rDB);
+    pqxx::nontransaction    txn(conn.GetHandle());
 
     pqxx::result r = txn.exec(
         "SELECT id "
@@ -193,7 +199,8 @@ bool S2HBStorage::IsUserExist(const std::string& sLogin_) {
 }
 
 bool S2HBStorage::GetUserRoles(int& nUserID_, S2HSession* ps_) {
-    pqxx::read_transaction txn(*m_rDB.m_dbConnection);
+    DBConnection            conn(m_rDB);
+    pqxx::read_transaction  txn(conn.GetHandle());
 
     ps_->ResetRoles();
 
@@ -216,7 +223,8 @@ bool S2HBStorage::GetUserRoles(int& nUserID_, S2HSession* ps_) {
 }
 
 bool S2HBStorage::GetUserInfo(int nUserID_, std::string& sLogin_, std::string& sNickname_, std::string& sPWHash_, std::string& sSalt_) {
-    pqxx::read_transaction txn(*m_rDB.m_dbConnection);
+    DBConnection            conn(m_rDB);
+    pqxx::read_transaction  txn(conn.GetHandle());
 
     pqxx::result r = txn.exec(
         "SELECT login, nickname, password, salt "
@@ -237,7 +245,8 @@ bool S2HBStorage::GetUserInfo(int nUserID_, std::string& sLogin_, std::string& s
 }
 
 bool S2HBStorage::GetUserInfo(const std::string& sLogin_, int& nUserID_, std::string& sNickname_, std::string& sPWHash_, std::string& sSalt_) {
-    pqxx::read_transaction txn(*m_rDB.m_dbConnection);
+    DBConnection            conn(m_rDB);
+    pqxx::read_transaction  txn(conn.GetHandle());
 
     pqxx::result r = txn.exec(
         "SELECT id, nickname, password, salt "
@@ -260,7 +269,9 @@ bool S2HBStorage::GetUserInfo(const std::string& sLogin_, int& nUserID_, std::st
 void RecalcPasswordHash(std::string& sPwHash_, const std::string& sLogin_, const std::string& sPassword_, const std::string& sSalt_);
 
 bool S2HBStorage::CreateUser(Json::Value& jsUser_) {
-    pqxx::work txn(*m_rDB.m_dbConnection);
+    DBConnection            conn(m_rDB);
+    pqxx::connection&       rcn = conn.GetHandle();
+    pqxx::work              txn(rcn);
 
     std::string sLogin = jsUser_["Login"].asString();
     std::string sPassword = jsUser_["Password"].asString();
@@ -284,7 +295,7 @@ bool S2HBStorage::CreateUser(Json::Value& jsUser_) {
         sprintf(sSQL, "INSERT INTO admin.khl_user_roles (user_id, role_id) "
             " SELECT %d, id FROM admin.khl_roles AS r WHERE r.code = $1", nUserID);
 
-        m_rDB.m_dbConnection->prepare("InsertRole_0", sSQL);
+        rcn.prepare("InsertRole_0", sSQL);
 
         Json::Value jsRoles = jsUser_["Role"];
         for (Json::Value::ArrayIndex k = 0; k < jsRoles.size(); ++k) {
@@ -292,7 +303,7 @@ bool S2HBStorage::CreateUser(Json::Value& jsUser_) {
             txn.prepared("InsertRole_0")(jsR.asString()).exec();
         }
 
-        m_rDB.m_dbConnection->unprepare("InsertRole_0");
+        rcn.unprepare("InsertRole_0");
     }
 
     txn.commit();
@@ -301,7 +312,8 @@ bool S2HBStorage::CreateUser(Json::Value& jsUser_) {
 }
 
 bool S2HBStorage::UpdatePassword(int nUserID_, const std::string& sPasswordHash_) {
-    pqxx::work txn(*m_rDB.m_dbConnection);
+    DBConnection            conn(m_rDB);
+    pqxx::work              txn(conn.GetHandle());
 
     txn.exec(
         "UPDATE admin.khl_users "
