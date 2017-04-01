@@ -540,11 +540,15 @@ bool Server2HB::ProcessHTTP(HTTPConnection& rConnect_) {
 
     if (strcmp(pQueryURI, GetURLPrefixAction())==0) {
         const char* pQueryAction = rHTTP.GetParameter(GetURLParamAction());
+
         if (pQueryAction != NULL) {
-            if (!ProcessHTTPCommand(pQueryAction, s2hSession, rConnect_, rHTTP)) {
+            LOG(DEBUG) << "[HTTP_PROCESS] pQueryAction=" << pQueryAction;
+            if (ProcessHTTPCommand(pQueryAction, s2hSession, rConnect_, rHTTP)) {
                 return true;
             }
         }
+
+        LOG(DEBUG) << "[HTTP_PROCESS] worker pQueryAction not found";
 
         rHTTP.SetResponseStatus(404, "Not found");
         rHTTP.Response(rConnect_, "File not found");
