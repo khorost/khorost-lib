@@ -9,6 +9,7 @@
 #include "app/s2h-session.h"
 #include "app/s2hb-storage.h"
 #include "app/config.h"
+#include "net/geoip.h"
 
 namespace khorost {
     class Server2HB : public Network::ConnectionContext {
@@ -65,6 +66,7 @@ namespace khorost {
 
         DB::Postgres                    m_dbConnect;
         Config                          m_Configure;
+        Network::GeoIPDatabase          m_dbGeoIP;
     private:
         class CBController : public Network::ConnectionController {
         public:

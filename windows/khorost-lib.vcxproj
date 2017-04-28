@@ -72,8 +72,8 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <OutDir>$(SolutionDir)lib\bin-$(PlatformShortName)\</OutDir>
     <IntDir>$(SolutionDir)bin\$(Configuration)\$(PlatformShortName)\$(ProjectName)\</IntDir>
-    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);$(CPP_SDK)\boost14\include;$(CPP_SDK)\apache-log4cxx.MD\include;$(CPP_SDK)\libcurl\include;$(CPP_SDK)\libevent\include;$(CPP_SDK)\libsqlite3\include;$(ProjectDir)..\include;$(ProjectDir)..\external\include;$(CPP_SDK)\openssl\include;$(CPP_SDK)\libmongo\include;$(CPP_SDK)\libpqxx\include;$(CPP_SDK)\libmysql\include</IncludePath>
-    <LibraryPath>$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86);$(NETFXKitsDir)Lib\um\x86;$(CPP_SDK)\libpqxx\lib;$(CPP_SDK)\boost14\lib;$(CPP_SDK)\apache-log4cxx.MD\lib;$(CPP_SDK)\libevent\lib;$(CPP_SDK)\libsqlite3\lib;$(CPP_SDK)\libmysql\lib\opt;$(CPP_SDK)\libmongo\lib;$(CPP_SDK)\openssl\lib;$(CPP_SDK)\libcurl\lib</LibraryPath>
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);$(CPP_SDK)\boost14\include;$(CPP_SDK)\apache-log4cxx.MD\include;$(CPP_SDK)\libcurl\include;$(CPP_SDK)\libevent\include;$(CPP_SDK)\libsqlite3\include;$(ProjectDir)..\include;$(ProjectDir)..\external\include;$(CPP_SDK)\openssl\include;$(CPP_SDK)\libmongo\include;$(CPP_SDK)\libpqxx\include;$(CPP_SDK)\libmysql\include;$(CPP_SDK)\libImageMagick\include;$(CPP_SDK)\libwebsocketpp\include;$(CPP_SDK)\libgeoip\include</IncludePath>
+    <LibraryPath>$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86);$(NETFXKitsDir)Lib\um\x86;$(CPP_SDK)\libpqxx\lib;$(CPP_SDK)\boost14\lib;$(CPP_SDK)\apache-log4cxx.MD\lib;$(CPP_SDK)\libevent\lib;$(CPP_SDK)\libsqlite3\lib;$(CPP_SDK)\libmysql\lib\opt;$(CPP_SDK)\libmongo\lib;$(CPP_SDK)\openssl\lib;$(CPP_SDK)\libcurl\lib;$(CPP_SDK)\libgeoip\lib;$(CPP_SDK)\libImageMagick\lib</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <IntDir>$(SolutionDir)bin\$(Configuration)\$(PlatformShortName)\$(ProjectName)\</IntDir>
@@ -160,6 +160,7 @@
     <ClCompile Include="..\src\db\sqlite3.cpp" />
     <ClCompile Include="..\src\net\compactbinary.cpp" />
     <ClCompile Include="..\src\net\connection.cpp" />
+    <ClCompile Include="..\src\net\geoip.cxx" />
     <ClCompile Include="..\src\net\http.cpp" />
     <ClCompile Include="..\src\net\session.cpp" />
     <ClCompile Include="..\src\system\fastfile.cpp" />
@@ -176,6 +177,7 @@
     <ClInclude Include="..\include\db\sqlite3.h" />
     <ClInclude Include="..\include\net\compactbinary.h" />
     <ClInclude Include="..\include\net\connection.h" />
+    <ClInclude Include="..\include\net\geoip.h" />
     <ClInclude Include="..\include\net\http.h" />
     <ClInclude Include="..\include\net\session.h" />
     <ClInclude Include="..\include\system\fastfile.h" />

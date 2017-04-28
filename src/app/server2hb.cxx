@@ -370,6 +370,8 @@ bool Server2HB::PrepareToStart() {
         , m_Configure.GetValue("storage:password", "")
     );
 
+    m_dbGeoIP.OpenDatabase(m_Configure.GetValue("geoip:db", ""));
+
     return true;
 }
 
@@ -517,6 +519,7 @@ bool Server2HB::Run() {
 }
 
 bool Server2HB::Finish() {
+    m_dbGeoIP.CloseDatabase();
     khorost::Network::Destroy();
     return true;
 }

@@ -33,7 +33,9 @@ DBConnectionPoolPtr DBPool::GetConnectionPool() {
     auto conn = m_FreePool.front();
     m_FreePool.pop();
     
-    LOG(DEBUG) << "[get from pool] size = " << m_FreePool.size();
+    if (m_FreePool.size() < 3) {
+        LOG(DEBUG) << "[get from pool] size = " << m_FreePool.size();
+    }
 
     return conn;
 }
@@ -44,7 +46,9 @@ void DBPool::ReleaseConnectionPool(DBConnectionPoolPtr pdbc_) {
     locker.unlock();
     m_condition.notify_one();
 
-    LOG(DEBUG) << "[return to pool] size = " << m_FreePool.size();
+    if (m_FreePool.size() < 4) {
+        LOG(DEBUG) << "[return to pool] size = " << m_FreePool.size();
+    }
 }
 
 std::string Postgres::GetConnectParam() const {
