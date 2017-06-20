@@ -6,5 +6,6 @@ namespace khorost {
     namespace Data {
         std::string EscapeString(const std::string& s_);
         boost::posix_time::time_duration    EpochDiff(boost::posix_time::ptime pt_);
+        boost::posix_time::ptime            EpochMicroseconds2ptime(uint64_t ms_);
     }
 }

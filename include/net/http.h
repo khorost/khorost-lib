@@ -208,6 +208,7 @@ namespace khorost {
 
             void            FillParameter2Array(const std::string& sKey_, std::vector<int>& rArray_);
             int             GetParameter(const std::string& sKey_, int nDefault_) const;
+            int64_t         GetParameter64(const std::string& sKey_, int64_t nDefault_) const;
             const char*     GetParameter(const std::string& sKey_, const char* sDefault_) const;
             size_t          GetParameterIndex(const std::string& sKey_) const;
             size_t          GetHeaderIndex(const std::string& sKey_) const;

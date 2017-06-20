@@ -680,6 +680,12 @@ int HTTPTextProtocolHeader::GetParameter(const std::string& sKey_, int nDefault_
     return bExist?atoi(pValue):nDefault_;
 }
 
+int64_t HTTPTextProtocolHeader::GetParameter64(const std::string& sKey_, int64_t nDefault_) const {
+    bool bExist;
+    const char* pValue = GetParameter(sKey_, &bExist);
+    return bExist ? _atoi64(pValue) : nDefault_;
+}
+
 const char* HTTPTextProtocolHeader::GetParameter(const std::string& sKey_, const char* sDefault_) const {
     bool bExist;
     const char* pValue = GetParameter(sKey_, &bExist);
