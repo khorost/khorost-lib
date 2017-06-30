@@ -138,3 +138,6 @@ void Postgres::ExecuteCustomSQL(bool bReadOnly_, const std::string& sSQL_, Json:
     }
 }
 
+std::string LinkedPostgres::Convert2Timestamp(boost::posix_time::ptime pt_) const {
+    return pt_.is_infinity() ? "null" : ("'" + boost::posix_time::to_iso_extended_string(pt_) + "+00'");
+}

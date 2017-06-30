@@ -18,6 +18,8 @@
 #include <pqxx/pqxx>
 #include <boost/shared_ptr.hpp>
 #include <boost/scoped_ptr.hpp>
+#include "boost/date_time/posix_time/posix_time.hpp"
+
 #include <json/json.h>
 
 namespace khorost {
@@ -122,6 +124,7 @@ namespace khorost {
             LinkedPostgres(Postgres& rDB_) : m_rDB(rDB_) {}
             virtual ~LinkedPostgres() {}
 
+            std::string Convert2Timestamp(boost::posix_time::ptime pt_) const;
         private:
 
         };
