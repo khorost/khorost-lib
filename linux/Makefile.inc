@@ -12,7 +12,7 @@ KHL_INC =  -I/usr/include/mysql
 KHL_LIB = -L/usr/local/lib -lmysqlclient \
 	-lz -levent -levent_pthreads -lboost_thread -lboost_filesystem \
 	-lboost_system -llog4cxx -lsqlite3 -lcurl -lboost_regex -lpthread \
-	-lstdc++ -lcrypto -lpqxx -lpq  -lboost_program_options -lboost_date_time
+	-lstdc++ -lcrypto -lpqxx -lpq  -lboost_program_options -lboost_date_time -lm
 
 
 KHL_EXT_SRC = json/jsoncpp.cpp g3log/time.cpp g3log/logworker.cpp g3log/logmessage.cpp g3log/loglevels.cpp \
