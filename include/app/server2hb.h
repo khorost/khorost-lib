@@ -90,6 +90,7 @@ namespace khorost {
 
         int			            m_nHTTPListenPort;
         std::string             m_strDocRoot;       // место хранения вебсервера
+        std::string             m_sStorageRoot;     // альтернативное место сервера
 
         DB::S2HBStorage                 m_dbBase;
         Network::S2HSessionController   m_Sessions;
@@ -124,6 +125,9 @@ namespace khorost {
         }
         virtual const char* GetURLParamActionParam() const {
             return "ap";
+        }
+        virtual const char* GetURLPrefixStorage() const {
+            return "/storage/";
         }
 
         Network::SessionPtr ProcessingSession(HTTPConnection& rConnect_, Network::HTTPTextProtocolHeader& rHTTP_);
@@ -181,8 +185,9 @@ namespace khorost {
         }
         void	SetListenPort(int nPort_) { m_nHTTPListenPort = nPort_; }
         //        void    SetStorageFolder(const std::string& strFolder_);
-        void    SetHTTPDocRoot(const std::string& sDocRoot_) {
+        void    SetHTTPDocRoot(const std::string& sDocRoot_, const std::string& sStorageRoot_) {
             m_strDocRoot = sDocRoot_;
+            m_sStorageRoot = sStorageRoot_;
         }
         void    SetSessionDriver(const std::string& sDriver_) {
             m_Sessions.Open(sDriver_);

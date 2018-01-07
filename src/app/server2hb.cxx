@@ -10,6 +10,8 @@
 #include <boost/algorithm/hex.hpp>
 #include <boost/program_options.hpp>
 namespace po = boost::program_options;
+#include <boost/filesystem.hpp>
+namespace fs = boost::filesystem;
 
 khorost::Server2HB* khorost::g_pS2HB = NULL;
 
@@ -359,7 +361,7 @@ bool Server2HB::PrepareToStart() {
     m_dictActionS2H.insert(std::pair<std::string, funcActionS2H>(S2H_PARAM_ACTION_AUTH, &Server2HB::ActionAuth));
 
     SetListenPort(m_Configure.GetValue("http:port", S2H_DEFAULT_TCP_PORT));
-    SetHTTPDocRoot(m_Configure.GetValue("http:docroot", "./"));
+    SetHTTPDocRoot(m_Configure.GetValue("http:docroot", "./"), m_Configure.GetValue("http:storageroot", "./"));
     SetSessionDriver(m_Configure.GetValue("http:session", "./session.db"));
 
     SetConnect(
@@ -573,7 +575,14 @@ bool Server2HB::ProcessHTTPCommand(const std::string& sQueryAction_, Network::S2
 
 bool Server2HB::ProcessHTTPFileServer(const std::string& sQueryURI_, Network::S2HSession* sp_, HTTPConnection& rConnect_, HTTPTextProtocolHeader& rHTTP_) {
     HTTPFileTransfer    hft;
-    return hft.SendFile(sQueryURI_, rConnect_, rHTTP_, m_strDocRoot);
+
+    const std::string prefix = GetURLPrefixStorage();
+
+    if (prefix == sQueryURI_.substr(0, prefix.size())) {
+        return hft.SendFile(sQueryURI_.substr(prefix.size() - 1), rConnect_, rHTTP_, m_sStorageRoot);
+    } else {
+        return hft.SendFile(sQueryURI_, rConnect_, rHTTP_, m_strDocRoot);
+    }
 }
 
 void Server2HB::TimerSessionUpdate() {
