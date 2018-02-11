@@ -85,6 +85,9 @@
     <ClCompile Include="..\src\net\geoip.cxx">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\net\mail.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\util\autobuffer.h">
@@ -133,6 +136,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\include\net\geoip.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\net\mail.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

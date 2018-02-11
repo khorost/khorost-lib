@@ -162,6 +162,7 @@
     <ClCompile Include="..\src\net\connection.cpp" />
     <ClCompile Include="..\src\net\geoip.cxx" />
     <ClCompile Include="..\src\net\http.cpp" />
+    <ClCompile Include="..\src\net\mail.cxx" />
     <ClCompile Include="..\src\net\session.cpp" />
     <ClCompile Include="..\src\system\fastfile.cpp" />
     <ClCompile Include="..\src\util\logger.cpp" />
@@ -179,6 +180,7 @@
     <ClInclude Include="..\include\net\connection.h" />
     <ClInclude Include="..\include\net\geoip.h" />
     <ClInclude Include="..\include\net\http.h" />
+    <ClInclude Include="..\include\net\mail.h" />
     <ClInclude Include="..\include\net\session.h" />
     <ClInclude Include="..\include\system\fastfile.h" />
     <ClInclude Include="..\include\util\autobuffer.h" />
