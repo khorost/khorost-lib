@@ -1,4 +1,5 @@
 #include <queue>
+#include <string.h>
 
 #include "net/mail.h"
 #include "util/logger.h"

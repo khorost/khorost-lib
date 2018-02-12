@@ -678,6 +678,12 @@ bool HTTPFileTransfer::SendFile(const std::string& sQueryURI_, Network::Connecti
     return true;
 }
 
+bool HTTPTextProtocolHeader::GetParameter(const std::string& sKey_, bool bDefault_) const {
+    bool bExist;
+    const char* pValue = GetParameter(sKey_, &bExist);
+    return bExist ? strcmp(pValue, "true") == 0 : bDefault_;
+}
+
 int HTTPTextProtocolHeader::GetParameter(const std::string& sKey_, int nDefault_) const {
     bool bExist;
     const char* pValue = GetParameter(sKey_, &bExist);
