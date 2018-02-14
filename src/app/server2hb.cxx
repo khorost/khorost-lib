@@ -752,16 +752,15 @@ bool Server2HB::ActionAuth(Network::Connection& rConnect_, S2HSession* pSession_
     return true;
 }
 
-bool Server2HB::JSON_PingPong(Network::HTTPTextProtocolHeader& rHTTP_, Json::Value& jvRoot_) {
+void Server2HB::JSON_PingPong(Network::HTTPTextProtocolHeader& rHTTP_, Json::Value& jvRoot_) const {
     bool bExist = false;
     const char* pPing = rHTTP_.GetParameter(S2H_PARAM_ACTION_PING, &bExist);
     if (bExist) {
         jvRoot_[S2H_JSON_PONG] = pPing;
     }
-    return true;
 }
 
-std::string Server2HB::JSONWrite(const Json::Value& jvRoot_, bool bStyled_) {
+std::string Server2HB::JSONWrite(const Json::Value& jvRoot_, bool bStyled_) const {
     if (bStyled_) {
         return Json::StyledWriter().write(jvRoot_);
     } else {
@@ -769,7 +768,7 @@ std::string Server2HB::JSONWrite(const Json::Value& jvRoot_, bool bStyled_) {
     }
 }
 
-bool Server2HB::JSON_FillAuth(Network::S2HSession* pSession_, bool bFullInfo_, Json::Value& jvRoot_) {
+bool Server2HB::JSON_FillAuth(Network::S2HSession* pSession_, bool bFullInfo_, Json::Value& jvRoot_) const {
     jvRoot_[S2H_JSON_AUTH] = pSession_->IsAuthenticate();
     if (bFullInfo_ && pSession_->IsAuthenticate()) {
         jvRoot_[S2H_JSON_NICKNAME] = pSession_->GetNickname();

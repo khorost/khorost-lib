@@ -175,10 +175,10 @@ namespace khorost {
         virtual bool    Run();
         virtual bool    Finish();
 
-        std::string JSONWrite(const Json::Value& jvRoot_, bool bStyled_);
+        std::string JSONWrite(const Json::Value& jvRoot_, bool bStyled_) const;
 
-        bool        JSON_PingPong(Network::HTTPTextProtocolHeader& rHTTP_, Json::Value& jvRoot_);
-        bool        JSON_FillAuth(Network::S2HSession* pSession_, bool bFullInfo_, Json::Value& jvRoot_);
+        void        JSON_PingPong(Network::HTTPTextProtocolHeader& rHTTP_, Json::Value& jvRoot_) const;
+        bool        JSON_FillAuth(Network::S2HSession* pSession_, bool bFullInfo_, Json::Value& jvRoot_) const;
 
         void    SetConnect(std::string sHost_, int nPort_, std::string sDatabase_, std::string sLogin_, std::string sPassword_) {
             m_dbConnect.SetConnect(sHost_, nPort_, sDatabase_, sLogin_, sPassword_);
