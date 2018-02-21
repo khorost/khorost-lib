@@ -109,6 +109,7 @@ namespace khorost {
                     std::string m_sValue;
                     boost::posix_time::ptime      m_dtExpire;
                     std::string m_sDomain;
+                    bool m_http_only;
 
                     Cookie() {
                     }
@@ -117,11 +118,12 @@ namespace khorost {
                             *this = right_;
                         }
                     }
-                    Cookie(const std::string& sCookie_, const std::string& sValue_, boost::posix_time::ptime dtExpire_, const std::string& sDomain_) {
+                    Cookie(const std::string& sCookie_, const std::string& sValue_, boost::posix_time::ptime dtExpire_, const std::string& sDomain_, bool http_only) {
                         m_sCookie = sCookie_;
                         m_sValue = sValue_;
                         m_dtExpire = dtExpire_;
                         m_sDomain = sDomain_;
+                        m_http_only = http_only;
                     }
                     Cookie& operator=(const Cookie& right_) {
                         if (this != &right_) {
@@ -129,6 +131,7 @@ namespace khorost {
                             m_sValue = right_.m_sValue;
                             m_dtExpire = right_.m_dtExpire;
                             m_sDomain = right_.m_sDomain;
+                            m_http_only = right_.m_http_only;
                         }
                         return *this;
                     }
@@ -215,7 +218,7 @@ namespace khorost {
             size_t          GetHeaderIndex(const std::string& sKey_) const;
             bool            IsParameterExist(const std::string& sKey_) const;
 
-            void    SetCookie(const std::string& sCookie_, const std::string& sValue_, boost::posix_time::ptime dtExpire_, const std::string& sDomain_);
+            void    SetCookie(const std::string& sCookie_, const std::string& sValue_, boost::posix_time::ptime dtExpire_, const std::string& sDomain_, bool http_only);
             void    SetResponseStatus(int nCode_, const std::string& sCodeReason_) {
                 m_Replay.m_nCode = nCode_;
                 m_Replay.m_sCodeReason = sCodeReason_;

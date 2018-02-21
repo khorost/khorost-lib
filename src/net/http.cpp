@@ -486,7 +486,10 @@ void HTTPTextProtocolHeader::Response(Network::Connection& rConnect_, const char
         const Replay::Cookie& c = *cit;
         time_t gmt = khorost::Data::EpochDiff(c.m_dtExpire).total_seconds();
         strftime(st, sizeof(st), "%a, %d-%b-%Y %H:%M:%S GMT", gmtime(&gmt));
-        rConnect_.SendString(std::string("Set-Cookie: ") + c.m_sCookie + std::string("=") + c.m_sValue + std::string("; Expires=") + std::string(st) + std::string("; Domain=.") + c.m_sDomain +  std::string("; Path=/" HTTP_ATTRIBUTE_ENDL));
+        rConnect_.SendString(
+            std::string("Set-Cookie: ") + c.m_sCookie + std::string("=") + c.m_sValue + std::string("; Expires=") + 
+            std::string(st) + std::string("; Domain=.") + c.m_sDomain + std::string("; Path=/") + 
+            (c.m_http_only ? std::string("; HttpOnly ") : "") + HTTP_ATTRIBUTE_ENDL);
     }
 
     rConnect_.SendString(std::string(HTTP_ATTRIBUTE_CONTENT_TYPE HTTP_ATTRIBUTE_DIV) + m_Replay.m_sContentType);
@@ -519,8 +522,8 @@ void HTTPTextProtocolHeader::Response(Network::Connection& rConnect_, const char
     }
 }
 
-void HTTPTextProtocolHeader::SetCookie(const std::string& sCookie_, const std::string& sValue_, boost::posix_time::ptime dtExpire_, const std::string& sDomain_) {
-    m_Replay.m_Cookies.push_back(Replay::Cookie(sCookie_, sValue_, dtExpire_, sDomain_));
+void HTTPTextProtocolHeader::SetCookie(const std::string& sCookie_, const std::string& sValue_, boost::posix_time::ptime dtExpire_, const std::string& sDomain_, bool http_only) {
+    m_Replay.m_Cookies.push_back(Replay::Cookie(sCookie_, sValue_, dtExpire_, sDomain_, http_only));
 }
 
 #ifdef WIN32

@@ -660,7 +660,7 @@ SessionPtr Server2HB::ProcessingSession(HTTPConnection& rConnect_, HTTPTextProto
         }
     }
 
-    rHTTP_.SetCookie(GetSessionCode(), sp->GetSessionID(), sp->GetExpired(), rHTTP_.GetHost());
+    rHTTP_.SetCookie(GetSessionCode(), sp->GetSessionID(), sp->GetExpired(), rHTTP_.GetHost(), true);
 
     LOGF(DEBUG, "%s = '%s' ClientIP = '%s' ConnectID = #%d InS = '%s' "
         , GetSessionCode(), sp->GetSessionID().c_str(), sIP, rConnect_.GetID()
@@ -714,7 +714,8 @@ bool Server2HB::ActionAuth(Network::Connection& rConnect_, S2HSession* pSession_
         } else if (strcmp(pActionParam, S2H_PARAM_ACTION_AUTH_RESET) == 0) {
             pSession_->Reset();
             pSession_->SetExpired(second_clock::universal_time());
-            rHTTP_.SetCookie(GetSessionCode(), pSession_->GetSessionID(), pSession_->GetExpired(), rHTTP_.GetHost());
+            rHTTP_.SetCookie(GetSessionCode(), pSession_->GetSessionID(), pSession_->GetExpired(), rHTTP_.GetHost(),
+                             true);
             m_dbBase.SessionUpdate(pSession_);
             m_Sessions.RemoveSession(pSession_);
         } else if (strcmp(pActionParam, S2H_PARAM_ACTION_AUTH_CHANGEPASS) == 0) {
