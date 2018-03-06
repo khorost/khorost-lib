@@ -37,7 +37,10 @@
 #define HTTP_ATTRIBUTE_USER_AGENT           "User-Agent"
 #define HTTP_ATTRIBUTE_ACCEPT_ENCODING      "Accept-Encoding"
 #define HTTP_ATTRIBUTE_ACCEPT               "Accept"
-#define HTTP_ATTRIBUTE_REFERER               "Referer"
+#define HTTP_ATTRIBUTE_REFERER              "Referer"
+#define HTTP_ATTRIBUTE__ORIGIN                              "Origin"
+#define HTTP_ATTRIBUTE__ACCESS_CONTROL_ALLOW_ORIGIN         "Access-Control-Allow-Origin"
+#define HTTP_ATTRIBUTE__ACCESS_CONTROL_ALLOW_CREDENTIALS    "Access-Control-Allow-Credentials"
 
 #define HTTP_LANGUAGE_RU                    "ru"
 #define HTTP_LANGUAGE_EN                    "en"

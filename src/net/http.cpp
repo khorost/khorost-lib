@@ -469,36 +469,45 @@ void HTTPTextProtocolHeader::Response(Network::Connection& rConnect_, const char
     rConnect_.SendString(st);
     rConnect_.SendString(HTTP_ATTRIBUTE_ENDL, sizeof(HTTP_ATTRIBUTE_ENDL) - 1);
 
-    if (m_Replay.m_sRedirectURL.size()>0) {
+    if (!m_Replay.m_sRedirectURL.empty()) {
         rConnect_.SendString("Location: ");
         rConnect_.SendString(m_Replay.m_sRedirectURL);
         rConnect_.SendString(HTTP_ATTRIBUTE_ENDL, sizeof(HTTP_ATTRIBUTE_ENDL) - 1);
     }
 
-    const char* pAC = GetHeaderParameter(HTTP_ATTRIBUTE_CONNECTION);
+    const auto pAC = GetHeaderParameter(HTTP_ATTRIBUTE_CONNECTION);
     if (pAC== nullptr || strcmp(HTTP_ATTRIBUTE_CONNECTION__KEEP_ALIVE, pAC)!=0) {
         m_Replay.m_bAutoClose = true;
     } else {
         m_Replay.m_bAutoClose = false;
     }
-    rConnect_.SendString(std::string("Connection: ") + std::string(pAC!= nullptr ?pAC:"close") + std::string(HTTP_ATTRIBUTE_ENDL));
-    for (std::deque<Replay::Cookie>::const_iterator cit = m_Replay.m_Cookies.begin(); cit != m_Replay.m_Cookies.end(); ++cit) {
-        const Replay::Cookie& c = *cit;
-        time_t gmt = khorost::Data::EpochDiff(c.m_dtExpire).total_seconds();
+    rConnect_.SendString(
+        std::string("Connection: ") + std::string(pAC != nullptr ? pAC : "close") + std::string(HTTP_ATTRIBUTE_ENDL));
+
+    // CORS
+    const auto origin = GetHeaderParameter(HTTP_ATTRIBUTE__ORIGIN);
+    if (origin != nullptr) {
+        rConnect_.SendString(HTTP_ATTRIBUTE__ACCESS_CONTROL_ALLOW_ORIGIN ": " + std::string(origin) + std::string(HTTP_ATTRIBUTE_ENDL));
+        rConnect_.SendString(HTTP_ATTRIBUTE__ACCESS_CONTROL_ALLOW_CREDENTIALS ": true" HTTP_ATTRIBUTE_ENDL);
+    }
+
+    for (const auto& c : m_Replay.m_Cookies) {
+        time_t gmt = Data::EpochDiff(c.m_dtExpire).total_seconds();
         strftime(st, sizeof(st), "%a, %d-%b-%Y %H:%M:%S GMT", gmtime(&gmt));
+
         rConnect_.SendString(
-            std::string("Set-Cookie: ") + c.m_sCookie + std::string("=") + c.m_sValue + std::string("; Expires=") + 
-            std::string(st) + std::string("; Domain=.") + c.m_sDomain + std::string("; Path=/") + 
+            std::string("Set-Cookie: ") + c.m_sCookie + std::string("=") + c.m_sValue + std::string("; Expires=") +
+            std::string(st) + std::string("; Domain=.") + c.m_sDomain + std::string("; Path=/") +
             (c.m_http_only ? std::string("; HttpOnly ") : "") + HTTP_ATTRIBUTE_ENDL);
     }
 
     rConnect_.SendString(std::string(HTTP_ATTRIBUTE_CONTENT_TYPE HTTP_ATTRIBUTE_DIV) + m_Replay.m_sContentType);
-    if (m_Replay.m_sContentTypeCP!=HTTP_CODEPAGE_NULL) {
+    if (!m_Replay.m_sContentTypeCP.empty()) {
         rConnect_.SendString(std::string("; charset=") + m_Replay.m_sContentTypeCP);
     }
     rConnect_.SendString(HTTP_ATTRIBUTE_ENDL, sizeof(HTTP_ATTRIBUTE_ENDL)-1);
 
-    if (m_Replay.m_sContentDisposition.size()!=0) {
+    if (!m_Replay.m_sContentDisposition.empty()) {
         rConnect_.SendString(std::string(HTTP_ATTRIBUTE_CONTENT_DISPOSITION HTTP_ATTRIBUTE_DIV) + m_Replay.m_sContentDisposition);
         rConnect_.SendString(HTTP_ATTRIBUTE_ENDL, sizeof(HTTP_ATTRIBUTE_ENDL)-1);
     }
@@ -511,7 +520,7 @@ void HTTPTextProtocolHeader::Response(Network::Connection& rConnect_, const char
 
     if (!m_Replay.m_tLastModify.is_not_a_date_time()) {
         rConnect_.SendString(HTTP_ATTRIBUTE_LAST_MODIFIED HTTP_ATTRIBUTE_DIV);
-        time_t gmt = khorost::Data::EpochDiff(m_Replay.m_tLastModify).total_seconds();
+        time_t gmt = Data::EpochDiff(m_Replay.m_tLastModify).total_seconds();
         strftime(st, sizeof(st), "%a, %d-%b-%Y %H:%M:%S GMT", gmtime(&gmt));
         rConnect_.SendString(st);
         rConnect_.SendString(HTTP_ATTRIBUTE_ENDL, sizeof(HTTP_ATTRIBUTE_ENDL)-1);
