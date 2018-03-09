@@ -33,8 +33,8 @@
 using namespace khorost;
 using namespace khorost::Network;
 
-const char*   httpPacket::HTTP_QUERY_REQUEST_METHOD_GET     = "GET";
-const char*   httpPacket::HTTP_QUERY_REQUEST_METHOD_POST    = "POST";
+const char*   http_packet::HTTP_QUERY_REQUEST_METHOD_GET     = "GET";
+const char*   http_packet::HTTP_QUERY_REQUEST_METHOD_POST    = "POST";
 
 bool FindSubValue(const char* pSource_, size_t nSourceSize_, const char* pMatch_, size_t nMatchSize_, char cDivKV, char cDivKK, const char** pResult_ = nullptr, size_t* pnResultSize_ = nullptr) {
     if (pSource_ == nullptr) {
@@ -371,12 +371,12 @@ const char* HTTPTextProtocolHeader::GetCookie(const std::string& sKey_, bool* pb
         *pbExist_ = false;
     }
 
-    for (std::list< std::pair<size_t, size_t> >::const_iterator cit=m_Cookies.begin(); cit!=m_Cookies.end(); ++cit) {
-        if (strcmp(sKey_.c_str(), m_abHeader.GetPosition(cit->first))==0) {
-            if (pbExist_!= nullptr) {
+    for (const auto& cit : m_Cookies) {
+        if (strcmp(sKey_.c_str(), m_abHeader.GetPosition(cit.first)) == 0) {
+            if (pbExist_ != nullptr) {
                 *pbExist_ = true;
             }
-            return cit->second!=-1?m_abHeader.GetPosition(cit->second): nullptr;
+            return cit.second != -1 ? m_abHeader.GetPosition(cit.second) : nullptr;
         }
     }
 
@@ -384,8 +384,8 @@ const char* HTTPTextProtocolHeader::GetCookie(const std::string& sKey_, bool* pb
 }
 
 bool HTTPTextProtocolHeader::IsParameterExist(const std::string& sKey_) const {
-    for (std::list< std::pair<size_t, size_t> >::const_iterator cit=m_ParamsValue.begin(); cit!=m_ParamsValue.end(); ++cit) {
-        if (strcmp(sKey_.c_str(), m_abParams.GetPosition(cit->first))==0) {
+    for (const auto& cit : m_ParamsValue) {
+        if (strcmp(sKey_.c_str(), m_abParams.GetPosition(cit.first)) == 0) {
             return true;
         }
     }
@@ -393,18 +393,18 @@ bool HTTPTextProtocolHeader::IsParameterExist(const std::string& sKey_) const {
 }
 
 size_t HTTPTextProtocolHeader::GetParameterIndex(const std::string& sKey_) const {
-    for (std::list< std::pair<size_t, size_t> >::const_iterator cit=m_ParamsValue.begin(); cit!=m_ParamsValue.end(); ++cit) {
-        if (strcmp(sKey_.c_str(), m_abParams.GetPosition(cit->first))==0) {
-            return cit->second;
+    for (const auto& cit : m_ParamsValue) {
+        if (strcmp(sKey_.c_str(), m_abParams.GetPosition(cit.first)) == 0) {
+            return cit.second;
         }
     }
     return -1;
 }
 
 size_t HTTPTextProtocolHeader::GetHeaderIndex(const std::string& sKey_) const {
-    for (std::list< std::pair<size_t, size_t> >::const_iterator cit=m_HeaderValue.begin(); cit!=m_HeaderValue.end(); ++cit) {
-        if (strcmp(sKey_.c_str(), m_abHeader.GetPosition(cit->first))==0) {
-            return cit->second;
+    for (const auto& cit : m_HeaderValue) {
+        if (strcmp(sKey_.c_str(), m_abHeader.GetPosition(cit.first)) == 0) {
+            return cit.second;
         }
     }
     return -1;
@@ -412,7 +412,7 @@ size_t HTTPTextProtocolHeader::GetHeaderIndex(const std::string& sKey_) const {
 
 void HTTPTextProtocolHeader::FillParameter2Array(const std::string& sKey_, std::vector<int>& rArray_) {
     std::string sKey2 = sKey_ + "[]";
-    for (auto p : m_ParamsValue) {
+    for (const auto& p : m_ParamsValue) {
         if (strcmp(sKey_.c_str(), m_abParams.GetPosition(p.first)) == 0 || strcmp(sKey2.c_str(), m_abParams.GetPosition(p.first)) == 0) {
             rArray_.push_back(atoi( m_abParams.GetPosition(p.second)));
         }
@@ -424,12 +424,12 @@ const char* HTTPTextProtocolHeader::GetParameter(const std::string& sKey_, bool*
         *pbExist_ = false;
     }
 
-    for (std::list< std::pair<size_t, size_t> >::const_iterator cit=m_ParamsValue.begin(); cit!=m_ParamsValue.end(); ++cit) {
-        if (strcmp(sKey_.c_str(), m_abParams.GetPosition(cit->first))==0) {
-            if (pbExist_!= nullptr) {
+    for (const auto& cit : m_ParamsValue) {
+        if (strcmp(sKey_.c_str(), m_abParams.GetPosition(cit.first)) == 0) {
+            if (pbExist_ != nullptr) {
                 *pbExist_ = true;
             }
-            return cit->second!=-1?m_abParams.GetPosition(cit->second): nullptr;
+            return cit.second != -1 ? m_abParams.GetPosition(cit.second) : nullptr;
         }
     }
 
@@ -437,9 +437,9 @@ const char* HTTPTextProtocolHeader::GetParameter(const std::string& sKey_, bool*
 }
 
 const char* HTTPTextProtocolHeader::GetHeaderParameter(const std::string& sParam_, const char* sDefault_) const {
-    for (std::list< std::pair<size_t, size_t> >::const_iterator cit=m_HeaderValue.begin(); cit!=m_HeaderValue.end(); ++cit) {
-        if (strcmp(sParam_.c_str(), m_abHeader.GetPosition(cit->first))==0) {
-            return m_abHeader.GetPosition(cit->second);
+    for (const auto& cit : m_HeaderValue) {
+        if (strcmp(sParam_.c_str(), m_abHeader.GetPosition(cit.first)) == 0) {
+            return m_abHeader.GetPosition(cit.second);
         }
     }
 
@@ -532,7 +532,7 @@ void HTTPTextProtocolHeader::Response(Network::Connection& rConnect_, const char
 }
 
 void HTTPTextProtocolHeader::SetCookie(const std::string& sCookie_, const std::string& sValue_, boost::posix_time::ptime dtExpire_, const std::string& sDomain_, bool http_only) {
-    m_Replay.m_Cookies.push_back(Replay::Cookie(sCookie_, sValue_, dtExpire_, sDomain_, http_only));
+    m_Replay.m_Cookies.emplace_back(sCookie_, sValue_, dtExpire_, sDomain_, http_only);
 }
 
 #ifdef WIN32
@@ -548,7 +548,7 @@ bool HTTPFileTransfer::SendFile(const std::string& sQueryURI_, Network::Connecti
 
     // TODO сделать корректировку по абсолютно-относительным переходам
     std::string     sFileName;
-    if(sFileName_=="") {
+    if(sFileName_.empty()) {
         sFileName = sDocRoot_ + sQueryURI_;
     } else {
         sFileName = sDocRoot_ + sFileName_;

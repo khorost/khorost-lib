@@ -9,62 +9,63 @@
 
 using namespace khorost::Network;
 
-S2HSession::S2HSession(const std::string& sSessionID_, boost::posix_time::ptime dtCreated, boost::posix_time::ptime dtExpired) :
+S2HSession::S2HSession(const std::string& sSessionID_, boost::posix_time::ptime dtCreated,
+                       boost::posix_time::ptime dtExpired) :
     Session(sSessionID_, dtCreated, dtExpired) {
-    Reset();
+    reset();
 }
 
-S2HSession::~S2HSession(){
-}
-
-bool S2HSession::ExportData(std::string& sData_) {
+bool S2HSession::ExportData(std::string& data) {
     Json::Value root, roles;
     Json::FastWriter writer;
 
-    root["bAuthenticate"]   = m_bAuthenticate;
-    root["sNickname"]       = m_sNickname;
+    root["bAuthenticate"] = m_bAuthenticate;
+    root["sNickname"] = m_sNickname;
     root["sPosition"] = m_sPosition;
     root["idUser"] = m_idUser;
 
-    FillRoles(roles);
+    fill_roles(roles);
 
     root["Roles"] = roles;
-    sData_ = writer.write(root);
-    return Session::ExportData(sData_);
+    data = writer.write(root);
+
+    return Session::ExportData(data);
 }
 
-void S2HSession::FillRoles(Json::Value& jv_) {
-    for (std::set<std::string>::const_iterator cit = m_dRoles.begin(); cit != m_dRoles.end(); ++cit) {
-        jv_.append(*cit);
+void S2HSession::fill_roles(Json::Value& value) {
+    for (const auto& r : m_dRoles) {
+        value.append(r);
     }
 }
 
-void S2HSession::Reset() {
+void S2HSession::reset() {
     m_bAuthenticate = false;
     m_idUser = 0;
     m_sNickname = "";
     m_sPosition = "участник";
-    m_dRoles.empty();
+    m_dRoles.clear();
 }
 
-bool S2HSession::ImportData(const std::string& sData_){
-    Json::Value root, roles;
+bool S2HSession::ImportData(const std::string& data) {
+    Json::Value root;
     Json::Reader reader;
 
-    if (!reader.parse(sData_, root)) {
+    if (!reader.parse(data, root)) {
         return false;
     }
 
+    reset();
+
     m_bAuthenticate = root.get("bAuthenticate", false).asBool();
-    m_sNickname     = root.get("sNickname", "").asString();
+    m_sNickname = root.get("sNickname", "").asString();
     m_sPosition = root.get("sPosition", "участник").asString();
     m_idUser = root.get("idUser", "").asInt();
 
-    roles = root["Roles"];
-    m_dRoles.empty();
-    for (auto rit = roles.begin(); rit != roles.end(); ++rit) {
-        m_dRoles.insert((*rit).asString());
+    const auto roles = root["Roles"];
+
+    for (const auto& r : roles) {
+        m_dRoles.insert(r.asString());
     }
 
-    return Session::ImportData(sData_);
+    return Session::ImportData(data);
 }

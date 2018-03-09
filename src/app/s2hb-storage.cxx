@@ -46,7 +46,7 @@ void S2HBStorage::SessionIPUpdate() {
         );
 
     if (r.size() != 0) {
-        for (auto row : r) {
+        for (const auto& row : r) {
             struct sockaddr_in saGNI = { 0 };
             char    hostname[1024] = "NULL", servInfo[1024];
 
@@ -95,9 +95,9 @@ bool S2HBStorage::SessionUpdate(khorost::Network::ListSession& rLS_) {
         );
 
         for (auto sp : rLS_) {
-            Network::S2HSession* pSession = reinterpret_cast<Network::S2HSession*>(sp.get());
+            S2HSession* pSession = reinterpret_cast<Network::S2HSession*>(sp.get());
             std::string sLastActivity = to_iso_string(pSession->GetLastActivity());
-            std::string sExpired = to_iso_string(pSession->GetExpired());
+            std::string sExpired = to_iso_string(pSession->get_expired());
 
             if (pSession->IsAuthenticate()) {
                 txn.prepared("SessionUpdate_0")(pSession->GetUserID())(sLastActivity)(sExpired)(pSession->GetSessionID()).exec();
@@ -133,7 +133,7 @@ bool S2HBStorage::SessionUpdate(S2HSession* pSession_) {
 
     std::string sLastActivity = to_iso_string(pSession_->GetLastActivity());
     std::string sCreated = to_iso_string(pSession_->GetCreated());
-    std::string sExpired = to_iso_string(pSession_->GetExpired());
+    std::string sExpired = to_iso_string(pSession_->get_expired());
 
     if (pSession_->GetUserID() != 0) {
         std::string sUserID = std::to_string(pSession_->GetUserID());
@@ -179,7 +179,7 @@ bool S2HBStorage::SessionLogger(const S2HSession* pSession_, const Json::Value& 
 
     txn.exec(
         "INSERT INTO admin.khl_sessions (id, dtFirst, dtLast, dtExpire, stats) "
-        " VALUES ('" + pSession_->GetSessionID() + "', TIMESTAMP '" + to_iso_string(pSession_->GetCreated()) + "' , TIMESTAMP '" + to_iso_string(pSession_->GetLastActivity()) + "' , TIMESTAMP '" + to_iso_string(pSession_->GetExpired()) + "' , '" + Json::FastWriter().write(jsStat_) + "')");
+        " VALUES ('" + pSession_->GetSessionID() + "', TIMESTAMP '" + to_iso_string(pSession_->GetCreated()) + "' , TIMESTAMP '" + to_iso_string(pSession_->GetLastActivity()) + "' , TIMESTAMP '" + to_iso_string(pSession_->get_expired()) + "' , '" + Json::FastWriter().write(jsStat_) + "')");
 
     txn.commit();
 

@@ -110,7 +110,7 @@ bool SessionControler::SessionDB::UpdateSession(Session* sp_, int nVersion_) {
     Stmt.BindParam(2, nVersion_);
     Stmt.BindParam(3, static_cast<int>(khorost::Data::EpochDiff(sp_->GetCreated()).total_seconds() ));
     Stmt.BindParam(4, static_cast<int>(time(NULL)));
-    Stmt.BindParam(5, static_cast<int>(khorost::Data::EpochDiff(sp_->GetExpired()).total_seconds() ));
+    Stmt.BindParam(5, static_cast<int>(khorost::Data::EpochDiff(sp_->get_expired()).total_seconds() ));
 
     std::string se;
     sp_->ExportData(se);
@@ -180,7 +180,7 @@ void SessionControler::CheckAliveSessions() {
     for (DictSession::iterator it = m_SessionMemory.begin(); it != m_SessionMemory.end();){
         DictSession::iterator sit = it++;
         SessionPtr  sp = sit->second;
-        if (sp->GetExpired() < ptNow) {
+        if (sp->get_expired() < ptNow) {
             m_SessionMemory.erase(sit);
             m_SessionDB.RemoveSession(sp.get());
         }
@@ -212,9 +212,9 @@ SessionPtr SessionControler::GetSession(const std::string& sSession_, bool& bCre
 
     if (it!=m_SessionMemory.end()) {
         SessionPtr  sp = it->second;
-        if (sp->GetExpired()>ptNow) {
+        if (sp->get_expired()>ptNow) {
             sp->GetExpireShift(td);
-            sp->SetExpired(ptNow + td);
+            sp->set_expired(ptNow + td);
 
             bCreate_ = false;
             return sp;

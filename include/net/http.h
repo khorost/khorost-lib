@@ -72,7 +72,7 @@
 
 namespace khorost {
     namespace Network {
-        class httpPacket {
+        class http_packet {
         public:
             static  const   char*   HTTP_QUERY_REQUEST_METHOD_GET;
             static  const   char*   HTTP_QUERY_REQUEST_METHOD_POST;
@@ -84,9 +84,9 @@ namespace khorost {
             Data::AutoBufferChunkChar   m_abcQueryURI;
             Data::AutoBufferChunkChar   m_abcQueryVersion;
 
-            int     m_nContentLength;
-            size_t  m_nHost;
-            size_t  m_nPort;
+            int     m_nContentLength{};
+            size_t  m_nHost{};
+            size_t  m_nPort{};
 
             typedef std::list< std::pair<size_t, size_t> > ListPairs;
 
@@ -107,39 +107,40 @@ namespace khorost {
 
             // ****************************************************************
             struct Replay{
-                struct Cookie {
+                struct cookie {
                     std::string m_sCookie;
                     std::string m_sValue;
-                    boost::posix_time::ptime      m_dtExpire;
+                    boost::posix_time::ptime m_dtExpire;
                     std::string m_sDomain;
-                    bool m_http_only;
+                    bool m_http_only = false;
 
-                    Cookie() {
-                    }
-                    Cookie(const Cookie& right_) {
-                        if (this != &right_) {
-                            *this = right_;
+                    cookie() = default;
+                    ~cookie() = default;
+
+                    cookie(const cookie& right) {
+                        if (this != &right) {
+                            *this = right;
                         }
                     }
-                    Cookie(const std::string& sCookie_, const std::string& sValue_, boost::posix_time::ptime dtExpire_, const std::string& sDomain_, bool http_only) {
+                    cookie(const std::string& sCookie_, const std::string& sValue_, boost::posix_time::ptime dtExpire_, const std::string& sDomain_, const bool http_only) {
                         m_sCookie = sCookie_;
                         m_sValue = sValue_;
                         m_dtExpire = dtExpire_;
                         m_sDomain = sDomain_;
                         m_http_only = http_only;
                     }
-                    Cookie& operator=(const Cookie& right_) {
-                        if (this != &right_) {
-                            m_sCookie = right_.m_sCookie;
-                            m_sValue = right_.m_sValue;
-                            m_dtExpire = right_.m_dtExpire;
-                            m_sDomain = right_.m_sDomain;
-                            m_http_only = right_.m_http_only;
+                    cookie& operator=(const cookie& right) {
+                        if (this != &right) {
+                            m_sCookie = right.m_sCookie;
+                            m_sValue = right.m_sValue;
+                            m_dtExpire = right.m_dtExpire;
+                            m_sDomain = right.m_sDomain;
+                            m_http_only = right.m_http_only;
                         }
                         return *this;
                     }
                 };
-                std::deque<Cookie>  m_Cookies;
+                std::deque<cookie>  m_Cookies;
                 bool                m_bAutoClose;
                 int                 m_nCode;
                 std::string         m_sCodeReason;

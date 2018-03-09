@@ -17,13 +17,13 @@ Connection::Connection(ConnectionController* pThis_, int ID_, evutil_socket_t fd
     m_ID = ID_;
     m_fd = fd_;
     memcpy(&m_sa, sa_, sizeof(m_sa));
-    m_bev = NULL;
+    m_bev = nullptr;
 
     m_nReceiveBytes = m_nSendBytes = 0;
 }
 
 Connection::~Connection(){
-    if (m_bev!=NULL) {
+    if (m_bev!= nullptr) {
         bufferevent_free(m_bev);
     }
 }
@@ -69,10 +69,10 @@ void Connection::stubConnWrite(bufferevent* bev_, void* ctx_) {
 
     if (evbuffer_get_length(output) == 0) {
 		bufferevent_free(bev_);
-        pThis->m_bev = NULL;
+        pThis->m_bev = nullptr;
 
         ConnectionController* cc = pThis->GetController();
-        if (cc!=NULL){
+        if (cc!= nullptr){
             cc->RemoveConnection(pThis);
         }
 
@@ -104,7 +104,7 @@ void Connection::stubConnEvent(bufferevent* bev_, short events_, void* ctx_){
 	} 
 
     ConnectionController* cc = pThis->GetController();
-    if (cc!=NULL){
+    if (cc!= nullptr){
         cc->RemoveConnection(pThis);
     }
 
@@ -115,7 +115,7 @@ bool Connection::OpenConnection(){
     event_base* base = m_pController->GetBaseListen();
 
     m_bev = bufferevent_socket_new(base, m_fd, BEV_OPT_CLOSE_ON_FREE | BEV_OPT_THREADSAFE );
-    bufferevent_setcb(m_bev, stubConnRead, NULL, stubConnEvent, this);
+    bufferevent_setcb(m_bev, stubConnRead, nullptr, stubConnEvent, this);
     bufferevent_enable(m_bev, EV_READ|EV_WRITE);
 
     return true;
@@ -130,14 +130,14 @@ bool Connection::CloseConnection() {
         /* We still have to flush data from the other
 		 * side, but when that's done, close the other
 		 * side. */
-        bufferevent_setcb(m_bev, NULL, Connection::stubConnWrite, Connection::stubConnEvent, this);
+        bufferevent_setcb(m_bev, nullptr, Connection::stubConnWrite, Connection::stubConnEvent, this);
 	    bufferevent_disable(m_bev, EV_READ);
     } else {
         LOG(DEBUG) << "Close connection";
 	    /* We have nothing left to say to the other
 	    * side; close it. */
 		bufferevent_free(m_bev);
-        m_bev = NULL;
+        m_bev = nullptr;
 
         // TODO необходима разрегистрация соединения
     }
@@ -148,8 +148,8 @@ bool Connection::CloseConnection() {
 ConnectionController::ConnectionController(ConnectionContext* pContext_){
     m_nUniqID = 0;
     m_pContext = pContext_;
-    m_ptListen = NULL;
-    m_ptgWorkers = NULL;
+    m_ptListen = nullptr;
+    m_ptgWorkers = nullptr;
 }
 
 ConnectionController::~ConnectionController(){
@@ -163,7 +163,7 @@ Connection* ConnectionController::CreateConnection(ConnectionController* pThis_,
 
 bool ConnectionController::Shutdown(){
     LOG(INFO) << "Shutdown listner";
-    event_base_loopexit(m_pebBaseListen, NULL);
+    event_base_loopexit(m_pebBaseListen, nullptr);
 
     LOG(INFO) << "Shutdown workers";
     for (std::deque<event_base*>::const_iterator cit=m_vWorkersBase.begin();cit!=m_vWorkersBase.end();++cit) {
@@ -175,7 +175,7 @@ bool ConnectionController::Shutdown(){
     return true;
 }
 
-bool ConnectionController::WaitListen() {
+bool ConnectionController::WaitListen() const {
     m_ptListen->join();
     m_ptgWorkers->join_all();
 
@@ -246,7 +246,7 @@ void ConnectionController::stubAccept(
 static void stubAcceptError(struct evconnlistener *listener, void *ctx) {
     ConnectionController* pThis = static_cast<ConnectionController*>(ctx);
     struct event_base *base = evconnlistener_get_base(listener);
-    int err = EVUTIL_SOCKET_ERROR();
+    const int err = EVUTIL_SOCKET_ERROR();
 	LOGF(WARNING, "Got an error %d (%s) on the listener. "
         "Shutting down.\n", err, evutil_socket_error_to_string(err));
 
@@ -286,10 +286,10 @@ void ConnectionController::stubListenRun(ConnectionController* pThis_, int iList
     pelListener = evconnlistener_new_bind(
         pThis_->m_pebBaseListen
         , stubAccept
-        , (void*)pThis_
+        , static_cast<void*>(pThis_)
         , LEV_OPT_REUSEABLE|LEV_OPT_CLOSE_ON_FREE
         , -1
-        , (struct sockaddr*)&sin
+        , reinterpret_cast<struct sockaddr*>(&sin)
         , sizeof(sin));
 
     if (!pelListener) {

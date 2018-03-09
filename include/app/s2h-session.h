@@ -23,7 +23,7 @@ namespace khorost {
             std::set<std::string>   m_dRoles;
         public:
             S2HSession(const std::string& sSessionID_, boost::posix_time::ptime dtCreated, boost::posix_time::ptime dtExpired);
-            virtual ~S2HSession();
+            virtual ~S2HSession() = default;
 
             virtual void        GetExpireShift(boost::posix_time::time_duration& td_) {
                 if (m_bAuthenticate) {
@@ -35,7 +35,7 @@ namespace khorost {
             virtual bool        ExportData(std::string& sData_);
             virtual bool        ImportData(const std::string& sData_);
 
-            void    Reset();
+            void    reset();
 
             // ****************************************************************
             bool IsAuthenticate() const { return m_bAuthenticate; }
@@ -53,7 +53,7 @@ namespace khorost {
             void        ResetRoles() { m_dRoles.empty(); }
             void        AppendRole(const std::string& sRole_) { m_dRoles.insert(sRole_); }
             bool        IsRoleExist(const std::string& sRole_) const { return m_dRoles.find(sRole_) != m_dRoles.end(); }
-            void        FillRoles(Json::Value& jv_);
+            void        fill_roles(Json::Value& value);
         };
 
         class S2HSessionController : public SessionControler {

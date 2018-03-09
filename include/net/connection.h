@@ -125,7 +125,7 @@ namespace khorost {
 
             // Запуск слушащего сокета. Управление возвращается сразу
             bool	StartListen(int iListenPort_, int iPollSize_ = 0);
-            bool    WaitListen();
+            bool    WaitListen() const;
             bool    Shutdown();
 
             event_base* GetBaseListen() { return m_pebBaseListen; }

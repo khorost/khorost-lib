@@ -132,7 +132,7 @@ namespace khorost {
 
         Network::SessionPtr ProcessingSession(HTTPConnection& rConnect_, Network::HTTPTextProtocolHeader& rHTTP_);
 
-        bool    ActionAuth(Network::Connection& rConnect_, Network::S2HSession* sp_, Network::HTTPTextProtocolHeader& rHTTP_);
+        bool    action_auth(Network::Connection& rConnect_, Network::S2HSession* sp_, Network::HTTPTextProtocolHeader& rHTTP_);
 
         std::string     m_sConfigFileName;
 #if defined(_WIN32) || defined(_WIN64)
@@ -142,7 +142,7 @@ namespace khorost {
         SERVICE_STATUS          m_ss;
         SERVICE_STATUS_HANDLE   m_ssHandle;
 
-        bool    CallServerConfigurator() { return true; }
+        bool    CallServerConfigurator() const { return true; }
 
         bool    ServiceInstall();
         bool    ServiceUninstall();
@@ -154,18 +154,18 @@ namespace khorost {
         void        ReportServiceStatus(DWORD dwCurrentState_, DWORD dwWin32ExitCode_, DWORD dwWaitHint_);
 
         void        SetSSCurrentState(DWORD dwCurrentState_) { m_ss.dwCurrentState = dwCurrentState_; }
-        DWORD       GetSSCurrentState() { return m_ss.dwCurrentState; }
+        DWORD       GetSSCurrentState() const { return m_ss.dwCurrentState; }
 
         void        SetSSHandle(SERVICE_STATUS_HANDLE ssHandle_) { 
             m_ssHandle = ssHandle_; 
             m_ss.dwServiceType = SERVICE_WIN32_OWN_PROCESS;
             m_ss.dwServiceSpecificExitCode = 0;
         }
-        const char* GetServiceName() { return m_sServiceName.c_str(); }
+        const char* GetServiceName() const { return m_sServiceName.c_str(); }
 #endif
     public:
         Server2HB ();
-        virtual ~Server2HB ();
+        virtual ~Server2HB () = default;
 
         virtual bool    Shutdown();
         virtual bool    CheckParams(int argc_, char* argv_[], int& nResult_, g3::LogWorker* logger_ = NULL);
@@ -175,10 +175,8 @@ namespace khorost {
         virtual bool    Run();
         virtual bool    Finish();
 
-        std::string JSONWrite(const Json::Value& jvRoot_, bool bStyled_) const;
-
-        void        JSON_PingPong(Network::HTTPTextProtocolHeader& rHTTP_, Json::Value& jvRoot_) const;
-        bool        JSON_FillAuth(Network::S2HSession* pSession_, bool bFullInfo_, Json::Value& jvRoot_) const;
+        static std::string json_string(const Json::Value& value, bool styled);
+        static void json_fill_auth(Network::S2HSession* session, bool full_info, Json::Value& value);
 
         void    SetConnect(std::string sHost_, int nPort_, std::string sDatabase_, std::string sLogin_, std::string sPassword_) {
             m_dbConnect.SetConnect(sHost_, nPort_, sDatabase_, sLogin_, sPassword_);

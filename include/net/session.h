@@ -31,8 +31,8 @@ namespace khorost {
 
             boost::posix_time::ptime    GetCreated() const { return m_dtCreated; }
 
-            boost::posix_time::ptime    GetExpired() const { return m_dtExpired; }
-            void                        SetExpired(boost::posix_time::ptime t_) { m_dtExpired = t_; }
+            boost::posix_time::ptime    get_expired() const { return m_dtExpired; }
+            void                        set_expired(boost::posix_time::ptime t_) { m_dtExpired = t_; }
 
             boost::posix_time::ptime    GetLastActivity() const { return m_dtLastActivity; }
             void                        SetLastActivity(boost::posix_time::ptime t_);
