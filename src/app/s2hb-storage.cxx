@@ -244,26 +244,26 @@ bool S2HBStorage::GetUserInfo(int nUserID_, std::string& sLogin_, std::string& s
     return true;
 }
 
-bool S2HBStorage::GetUserInfo(const std::string& sLogin_, int& nUserID_, std::string& sNickname_, std::string& sPWHash_, std::string& sSalt_) {
+bool S2HBStorage::get_user_info(const std::string& login, int& user_id, std::string& nickname, std::string& password_hash, std::string& salt) const {
     DBConnection            conn(m_rDB);
     pqxx::read_transaction  txn(conn.GetHandle());
 
-    pqxx::result r = txn.exec(
+    auto r = txn.exec(
         "SELECT id, nickname, password, salt "
         "FROM admin.khl_users "
-        "WHERE login = " + txn.quote(sLogin_)
+        "WHERE login = " + txn.quote(login)
     );
 
-    if (r.size() == 0) {
-        return false;
+    if (!r.empty()) {
+        user_id = r[0][0].as<int>();
+        nickname = r[0][1].as<std::string>();
+        password_hash = r[0][2].as<std::string>();
+        salt = r[0][3].as<std::string>();
+
+        return true;
     }
 
-    nUserID_ = r[0][0].as<int>();
-    sNickname_ = r[0][1].as<std::string>();
-    sPWHash_ = r[0][2].as<std::string>();
-    sSalt_ = r[0][3].as<std::string>();
-
-    return true;
+    return false;
 }
 
 void RecalcPasswordHash(std::string& sPwHash_, const std::string& sLogin_, const std::string& sPassword_, const std::string& sSalt_);

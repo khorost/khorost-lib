@@ -215,11 +215,11 @@ namespace khorost {
 #define S2H_PARAM_LOGIN_PASSWORD            "loginpwd"
 #define S2H_PARAM_PASSWORD                  "pwd"
 
-#define S2H_JSON_AUTH                       "Auth"
-#define S2H_JSON_NICKNAME                   "Nickname"
-#define S2H_JSON_SALT                       "Salt"
-#define S2H_JSON_REASON                     "Reason"
-#define S2H_JSON_ROLES                      "Roles"
+#define S2H_JSON_AUTH                       "auth"
+#define S2H_JSON_NICKNAME                   "nickname"
+#define S2H_JSON_SALT                       "salt"
+#define S2H_JSON_REASON                     "reason"
+#define S2H_JSON_ROLES                      "roles"
 
 #define S2H_DEFAULT_TCP_PORT                7709
 

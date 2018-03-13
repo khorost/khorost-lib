@@ -26,7 +26,7 @@ namespace khorost {
             bool    UpdatePassword(int nUserID_, const std::string& sPasswordHash_);
 
             bool    IsUserExist(const std::string& sLogin_);
-            bool    GetUserInfo(const std::string& sLogin_, int& nUserID_, std::string& sNickname_, std::string& sPWHash_, std::string& sSalt_);
+            bool    get_user_info(const std::string& sLogin_, int& nUserID_, std::string& sNickname_, std::string& sPWHash_, std::string& sSalt_) const;
             bool    GetUserInfo(int nUserID_, std::string& sLogin_, std::string& sNickname_, std::string& sPWHash_, std::string& sSalt_);
             bool    GetUserRoles(int& nUserID_, Network::S2HSession* ps_);
         };

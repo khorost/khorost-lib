@@ -673,16 +673,41 @@ bool Server2HB::action_auth(Network::Connection& rConnect_, Network::S2HSession*
 
     LOGF(DEBUG, "[ActionAuth]");
     Json::Value jvRoot;
+    std::string sLogin, sNickname, sPwHash, sSalt;
+    int nUserID;
 
     const char* pActionParam = rHTTP_.GetParameter(GetURLParamActionParam());
-    if (pActionParam != nullptr) {
-        LOGF(DEBUG, "[ActionAuth] ActionParam = '%s'", pActionParam);
-        std::string sLogin, sNickname, sPwHash, sSalt;
-        int nUserID;
+    if (pActionParam == nullptr) {
+        Json::Reader reader;
+        Json::Value auth;
 
-        const char* pQueryQ = rHTTP_.GetParameter(S2H_PARAM_QUESTION);
+        const auto pBody = reinterpret_cast<const char*>(rHTTP_.GetBody());
+        if (reader.parse(pBody, pBody + rHTTP_.GetBodyLength(), auth)) {
+            const auto login = auth["login"].asString();
+            const auto password = auth["password"].asString();
+
+            if (m_dbBase.get_user_info(login, nUserID, sNickname, sPwHash, sSalt)) {
+                std::string calculate_passowrd_hash;
+                RecalcPasswordHash(calculate_passowrd_hash, login, password, sSalt);
+                if (calculate_passowrd_hash == sPwHash) {
+                    pSession_->SetUserID(nUserID);
+                    pSession_->SetNickname(sNickname);
+                    // TODO: pSession->SetPostion(/*------* /);
+                    pSession_->SetAuthenticate(true);
+
+                    m_dbBase.GetUserRoles(nUserID, pSession_);
+                    m_dbBase.SessionUpdate(pSession_);
+
+                    m_Sessions.UpdateSession(pSession_);
+                }
+            }
+        }
+    } else {
+        LOGF(DEBUG, "[ActionAuth] ActionParam = '%s'", pActionParam);
+
+        const auto pQueryQ = rHTTP_.GetParameter(S2H_PARAM_QUESTION);
         if (strcmp(pActionParam, S2H_PARAM_ACTION_AUTH_PRE) == 0) {
-            if (m_dbBase.GetUserInfo(pQueryQ != NULL ? pQueryQ : "", nUserID, sNickname, sPwHash, sSalt)) {
+            if (m_dbBase.get_user_info(pQueryQ != nullptr ? pQueryQ : "", nUserID, sNickname, sPwHash, sSalt)) {
                 jvRoot[S2H_JSON_SALT] = sSalt;
             } else {
                 // не найден пользователь. но так в принципе наверно не стоит 
@@ -692,7 +717,7 @@ bool Server2HB::action_auth(Network::Connection& rConnect_, Network::S2HSession*
             }
         } else if (strcmp(pActionParam, S2H_PARAM_ACTION_AUTH_DO) == 0) {
 
-            if (m_dbBase.GetUserInfo(pQueryQ != NULL ? pQueryQ : "", nUserID, sNickname, sPwHash, sSalt)) {
+            if (m_dbBase.get_user_info(pQueryQ != nullptr ? pQueryQ : "", nUserID, sNickname, sPwHash, sSalt)) {
                 if (IsPasswordHashEqual2(rHTTP_.GetParameter(S2H_PARAM_HASH, ""), sPwHash, pSession_->GetSessionID())) {
                     pSession_->SetUserID(nUserID);
                     pSession_->SetNickname(sNickname);
@@ -728,7 +753,7 @@ bool Server2HB::action_auth(Network::Connection& rConnect_, Network::S2HSession*
                 std::string sNewPassword = rHTTP_.GetParameter(S2H_PARAM_PASSWORD, "");
                 if (rHTTP_.IsParameterExist(S2H_PARAM_LOGIN_PASSWORD)) {
                     sLogin = rHTTP_.GetParameter(S2H_PARAM_LOGIN_PASSWORD, "");
-                    if (m_dbBase.GetUserInfo(sLogin, nUserID, sNickname, sPwHash, sSalt)) {
+                    if (m_dbBase.get_user_info(sLogin, nUserID, sNickname, sPwHash, sSalt)) {
                         RecalcPasswordHash(sPwHash, sLogin, sNewPassword, sSalt);
                         m_dbBase.UpdatePassword(nUserID, sPwHash);
                     } else {
