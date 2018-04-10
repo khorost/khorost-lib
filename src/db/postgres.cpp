@@ -32,7 +32,7 @@ DBConnectionPoolPtr DBPool::GetConnectionPool() {
 
     auto conn = m_FreePool.front();
     m_FreePool.pop();
-    
+
     if (m_FreePool.size() < 3) {
         LOG(DEBUG) << "[get from pool] size = " << m_FreePool.size();
     }
@@ -77,7 +77,7 @@ bool DBConnectionPool::CheckConnect() {
             "SELECT app "
             " FROM admin.khl_version "
             " LIMIT 1 ");
-    } catch (const pqxx::broken_connection &) {
+    } catch (const pqxx::broken_connection&) {
         if (times > 10) {
             times = 0;
             return false;
@@ -88,7 +88,7 @@ bool DBConnectionPool::CheckConnect() {
 }
 
 static void sExecuteCustomSQL(pqxx::transaction_base& txn_, const std::string& sSQL_, Json::Value& jvResult_) {
-    try{
+    try {
         pqxx::result r = txn_.exec(sSQL_);
 
         Json::Value jvHeader, jvTable;
@@ -110,15 +110,15 @@ static void sExecuteCustomSQL(pqxx::transaction_base& txn_, const std::string& s
         }
         jvResult_["Header"] = jvHeader;
         jvResult_["Table"] = jvTable;
-    } catch (const pqxx::pqxx_exception &e) {
+    } catch (const pqxx::pqxx_exception& e) {
         Json::Value jvError;
         jvError["What"] = e.base().what();
-//        OutputDebugString(e.base().what());
+        //        OutputDebugString(e.base().what());
         std::cerr << e.base().what() << std::endl;
-        const pqxx::sql_error *s = dynamic_cast<const pqxx::sql_error*>(&e.base());
-        if (s!=NULL) {
+        const pqxx::sql_error* s = dynamic_cast<const pqxx::sql_error*>(&e.base());
+        if (s != NULL) {
             jvError["Query"] = s->query();
-//            OutputDebugString(s->query().c_str());
+            //            OutputDebugString(s->query().c_str());
             std::cerr << "Query was: " << s->query() << std::endl;
         }
         jvResult_["Error"] = jvError;
@@ -126,7 +126,7 @@ static void sExecuteCustomSQL(pqxx::transaction_base& txn_, const std::string& s
 }
 
 void Postgres::ExecuteCustomSQL(bool bReadOnly_, const std::string& sSQL_, Json::Value& jvResult_) {
-    DBConnection            conn(*this);
+    DBConnection conn(*this);
 
     if (bReadOnly_) {
         pqxx::read_transaction txn(conn.GetHandle());
@@ -138,6 +138,17 @@ void Postgres::ExecuteCustomSQL(bool bReadOnly_, const std::string& sSQL_, Json:
     }
 }
 
-std::string LinkedPostgres::Convert2Timestamp(boost::posix_time::ptime pt_) const {
-    return pt_.is_infinity() ? "null" : ("'" + boost::posix_time::to_iso_extended_string(pt_) + "+00'");
+std::string LinkedPostgres::to_string(const pqxx::transaction_base& txn,
+                                      const boost::posix_time::ptime& timestamp, const bool nullable_infinity) {
+    if (timestamp.is_pos_infinity()) {
+        return nullable_infinity ? "null" : "'infinity'::timestamp";
+    } else if (timestamp.is_neg_infinity()) {
+        return nullable_infinity ? "null" : "'-infinity'::timestamp";
+    } else {
+        return "'" + to_iso_extended_string(timestamp) + "+00'";
+    }
+}
+
+std::string LinkedPostgres::to_string(const pqxx::transaction_base& txn, const Json::Value& info) {
+    return info.isNull() ? "null" : (txn.quote(Json::FastWriter().write(info)) + "::jsonb");
 }

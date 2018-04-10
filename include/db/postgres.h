@@ -122,9 +122,10 @@ namespace khorost {
             Postgres& m_rDB;
         public:
             LinkedPostgres(Postgres& rDB_) : m_rDB(rDB_) {}
-            virtual ~LinkedPostgres() {}
+            virtual ~LinkedPostgres() = default;
 
-            std::string Convert2Timestamp(boost::posix_time::ptime pt_) const;
+            static std::string to_string(const pqxx::transaction_base& txn, const boost::posix_time::ptime& timestamp, bool nullable_infinity = true);
+            static std::string to_string(const pqxx::transaction_base& txn, const Json::Value& info);
         private:
 
         };
