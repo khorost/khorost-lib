@@ -179,7 +179,7 @@ bool S2HBStorage::SessionLogger(const S2HSession* pSession_, const Json::Value& 
 
     txn.exec(
         "INSERT INTO admin.khl_sessions (id, dtFirst, dtLast, dtExpire, stats) "
-        " VALUES ('" + pSession_->GetSessionID() + "', TIMESTAMP '" + to_iso_string(pSession_->GetCreated()) + "' , TIMESTAMP '" + to_iso_string(pSession_->GetLastActivity()) + "' , TIMESTAMP '" + to_iso_string(pSession_->get_expired()) + "' , '" + Json::FastWriter().write(jsStat_) + "')");
+        " VALUES ('" + pSession_->GetSessionID() + "', TIMESTAMP '" + to_iso_string(pSession_->GetCreated()) + "' , TIMESTAMP '" + to_iso_string(pSession_->GetLastActivity()) + "' , TIMESTAMP '" + to_iso_string(pSession_->get_expired()) + "' , " + txn.quote(Json::FastWriter().write(jsStat_)) + ")");
 
     txn.commit();
 

@@ -215,7 +215,9 @@ void FastFile::Close(size_ff nSize_) {
 		    nSize_ = m_nFileSize;
         }
 
-	    ftruncate(m_hFile, nSize_);
+	    if (ftruncate(m_hFile, nSize_)==-1) {
+            // cout << errno;
+	    }
 
 	    close(m_hFile);
 	    m_hFile = -1;
