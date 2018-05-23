@@ -527,7 +527,7 @@ void Server2HB::HTTPConnection::GetClientIP(char* pBuffer_, size_t nBufferSize_)
     if (pPIP != nullptr) {
         strncpy(pBuffer_, pPIP, nBufferSize_);
     } else {
-        Network::Connection::GetClientIP(pBuffer_, nBufferSize_);
+        Connection::GetClientIP(pBuffer_, nBufferSize_);
     }
 }
 
@@ -541,10 +541,20 @@ bool Server2HB::process_http_action(const std::string& action, const std::string
     return false;
 }
 
-bool Server2HB::ProcessHTTP(HTTPConnection& connection) {
+void Server2HB::parse_action(const std::string& query, std::string& action, std::string& params) {
+    const auto pos = query.find_first_of('/');
+    if (pos != std::string::npos) {
+        action = query.substr(0, pos);
+        params = query.substr(pos + 1);
+    } else {
+        action = query;
+        params.clear();
+    }
+}
+
+bool Server2HB::process_http(HTTPConnection& connection) {
     auto& http = connection.GetHTTP();
-    auto session = ProcessingSession(connection, http);
-    auto s2_h_session = reinterpret_cast<Network::S2HSession*>(session.get());
+    const auto s2_h_session = reinterpret_cast<Network::S2HSession*>(ProcessingSession(connection, http).get());
     const auto query_uri = http.GetQueryURI();
     const auto url_prefix_action = GetURLPrefixAction();
     const auto size_upa = strlen(url_prefix_action);
@@ -552,17 +562,10 @@ bool Server2HB::ProcessHTTP(HTTPConnection& connection) {
     LOGF(DEBUG, "[HTTP_PROCESS] URI='%s'", query_uri);
 
     if (strncmp(query_uri, url_prefix_action, size_upa) == 0) {
-        std::string query_uri_action(query_uri + size_upa);
-        const auto pos = query_uri_action.find_first_of('/');
-        if (pos != std::string::npos) {
-            if (process_http_action(query_uri_action.substr(0, pos), query_uri_action.substr(pos + 1), s2_h_session,
-                                    connection, http)) {
-                return true;
-            }
-        } else {
-            if (process_http_action(query_uri_action, "", s2_h_session, connection, http)) {
-                return true;
-            }
+        std::string action, params;
+        parse_action(query_uri + size_upa, action, params);
+        if (process_http_action(action, params, s2_h_session, connection, http)) {
+            return true;
         }
 
         LOG(DEBUG) << "[HTTP_PROCESS] worker pQueryAction not found";
@@ -572,18 +575,18 @@ bool Server2HB::ProcessHTTP(HTTPConnection& connection) {
 
         return false;
     }
-    return ProcessHTTPFileServer(query_uri, s2_h_session, connection, http);
+    return process_http_file_server(query_uri, s2_h_session, connection, http);
 }
 
-bool Server2HB::ProcessHTTPFileServer(const std::string& sQueryURI_, Network::S2HSession* sp_, HTTPConnection& rConnect_, Network::HTTPTextProtocolHeader& rHTTP_) {
+bool Server2HB::process_http_file_server(const std::string& query_uri, Network::S2HSession* session, HTTPConnection& connection, Network::HTTPTextProtocolHeader& http) {
     Network::HTTPFileTransfer    hft;
 
     const std::string prefix = GetURLPrefixStorage();
 
-    if (prefix == sQueryURI_.substr(0, prefix.size())) {
-        return hft.SendFile(sQueryURI_.substr(prefix.size() - 1), rConnect_, rHTTP_, m_sStorageRoot);
+    if (prefix == query_uri.substr(0, prefix.size())) {
+        return hft.SendFile(query_uri.substr(prefix.size() - 1), connection, http, m_sStorageRoot);
     } else {
-        return hft.SendFile(sQueryURI_, rConnect_, rHTTP_, m_strDocRoot);
+        return hft.SendFile(query_uri, connection, http, m_strDocRoot);
     }
 }
 

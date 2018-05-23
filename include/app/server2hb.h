@@ -39,7 +39,7 @@ namespace khorost {
                 size_t nProcessBytes = m_HTTP.ProcessData(*this, pBuffer_, nBufferSize_);
                 if (nProcessBytes != 0) {
                     if (m_HTTP.IsReady()) {
-                        pServer->ProcessHTTP(*this);
+                        pServer->process_http(*this);
                         if (m_HTTP.IsAutoClose()) {
                             CloseConnection();
                         }
@@ -107,9 +107,9 @@ namespace khorost {
         DictionaryActionS2H    m_dictActionS2H;
     protected:
         virtual bool process_http_action(const std::string& action, const std::string& uri_params, Network::S2HSession* session, HTTPConnection& connection, Network::HTTPTextProtocolHeader& http);
-        bool    ProcessHTTP(HTTPConnection& rConnect_);
+        bool    process_http(HTTPConnection& rConnect_);
 
-        virtual bool    ProcessHTTPFileServer(const std::string& sQueryURI_, Network::S2HSession* sp_, HTTPConnection& rConnect_, Network::HTTPTextProtocolHeader& rHTTP_);
+        virtual bool    process_http_file_server(const std::string& query_uri, Network::S2HSession* session, HTTPConnection& connection, Network::HTTPTextProtocolHeader& http);
         
         virtual const char* GetContextDefaultName() const {
             return "s2h"; 
@@ -175,6 +175,7 @@ namespace khorost {
         virtual bool    Run();
         virtual bool    Finish();
 
+        void parse_action(const std::string& query, std::string& action, std::string& params);
         static std::string json_string(const Json::Value& value, bool styled = false);
         static void json_fill_auth(Network::S2HSession* session, bool full_info, Json::Value& value);
 
