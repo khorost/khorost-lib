@@ -101,14 +101,14 @@ namespace khorost {
         bool                                m_bShutdownTimer;
         boost::shared_ptr<boost::thread>    m_TimerThread;
         // ****************************************************************
-        typedef bool (Server2HB::*funcActionS2H)(Network::Connection& rConnect_, Network::S2HSession* sp_, Network::HTTPTextProtocolHeader& rHTTP_);
+        typedef bool (Server2HB::*funcActionS2H)(const std::string& uri_params, Network::Connection& connection, Network::S2HSession* session, Network::HTTPTextProtocolHeader& http);
         typedef std::map<std::string, funcActionS2H>		DictionaryActionS2H;
 
         DictionaryActionS2H    m_dictActionS2H;
     protected:
+        virtual bool process_http_action(const std::string& action, const std::string& uri_params, Network::S2HSession* session, HTTPConnection& connection, Network::HTTPTextProtocolHeader& http);
         bool    ProcessHTTP(HTTPConnection& rConnect_);
 
-        virtual bool    ProcessHTTPCommand(const std::string& sQueryAction_, Network::S2HSession* sp_, HTTPConnection& rConnect_, Network::HTTPTextProtocolHeader& rHTTP_);
         virtual bool    ProcessHTTPFileServer(const std::string& sQueryURI_, Network::S2HSession* sp_, HTTPConnection& rConnect_, Network::HTTPTextProtocolHeader& rHTTP_);
         
         virtual const char* GetContextDefaultName() const {
@@ -132,7 +132,7 @@ namespace khorost {
 
         Network::SessionPtr ProcessingSession(HTTPConnection& rConnect_, Network::HTTPTextProtocolHeader& rHTTP_);
 
-        bool    action_auth(Network::Connection& rConnect_, Network::S2HSession* sp_, Network::HTTPTextProtocolHeader& rHTTP_);
+        bool    action_auth(const std::string& params_uri, Network::Connection& connection, Network::S2HSession* session, Network::HTTPTextProtocolHeader& http);
 
         std::string     m_sConfigFileName;
 #if defined(_WIN32) || defined(_WIN64)
@@ -175,7 +175,7 @@ namespace khorost {
         virtual bool    Run();
         virtual bool    Finish();
 
-        static std::string json_string(const Json::Value& value, bool styled);
+        static std::string json_string(const Json::Value& value, bool styled = false);
         static void json_fill_auth(Network::S2HSession* session, bool full_info, Json::Value& value);
 
         void    SetConnect(std::string sHost_, int nPort_, std::string sDatabase_, std::string sLogin_, std::string sPassword_) {

@@ -352,7 +352,7 @@ bool Server2HB::Shutdown() {
 bool Server2HB::PrepareToStart() {
     LOG(DEBUG) << "PrepareToStart";
 
-    khorost::Network::Init();
+    Network::Init();
 
     m_dictActionS2H.insert(std::pair<std::string, funcActionS2H>(S2H_PARAM_ACTION_AUTH, &Server2HB::action_auth));
 
@@ -531,42 +531,48 @@ void Server2HB::HTTPConnection::GetClientIP(char* pBuffer_, size_t nBufferSize_)
     }
 }
 
-bool Server2HB::ProcessHTTP(HTTPConnection& rConnect_) {
-    Network::HTTPTextProtocolHeader&     rHTTP = rConnect_.GetHTTP();
-    Network::SessionPtr                  sp = ProcessingSession(rConnect_, rHTTP);
-    Network::S2HSession*                 s2hSession = reinterpret_cast<Network::S2HSession*>(sp.get());
-    const char*                 pQueryURI = rHTTP.GetQueryURI();
+bool Server2HB::process_http_action(const std::string& action, const std::string& uri_params, Network::S2HSession* session,
+    HTTPConnection& connection, Network::HTTPTextProtocolHeader& http) {
+    const auto it = m_dictActionS2H.find(action);
+    if (it != m_dictActionS2H.end()) {
+        const auto func_action = it->second;
+        return (this->*func_action)(uri_params, connection, session, http);
+    }
+    return false;
+}
 
-    LOGF(DEBUG, "[HTTP_PROCESS] URI='%s'", pQueryURI);
+bool Server2HB::ProcessHTTP(HTTPConnection& connection) {
+    auto& http = connection.GetHTTP();
+    auto session = ProcessingSession(connection, http);
+    auto s2_h_session = reinterpret_cast<Network::S2HSession*>(session.get());
+    const auto query_uri = http.GetQueryURI();
+    const auto url_prefix_action = GetURLPrefixAction();
+    const auto size_upa = strlen(url_prefix_action);
 
-    if (strcmp(pQueryURI, GetURLPrefixAction())==0) {
-        const char* pQueryAction = rHTTP.GetParameter(GetURLParamAction());
+    LOGF(DEBUG, "[HTTP_PROCESS] URI='%s'", query_uri);
 
-        if (pQueryAction != NULL) {
-            LOG(DEBUG) << "[HTTP_PROCESS] pQueryAction=" << pQueryAction;
-            if (ProcessHTTPCommand(pQueryAction, s2hSession, rConnect_, rHTTP)) {
+    if (strncmp(query_uri, url_prefix_action, size_upa) == 0) {
+        std::string query_uri_action(query_uri + size_upa);
+        const auto pos = query_uri_action.find_first_of('/');
+        if (pos != std::string::npos) {
+            if (process_http_action(query_uri_action.substr(0, pos), query_uri_action.substr(pos + 1), s2_h_session,
+                                    connection, http)) {
+                return true;
+            }
+        } else {
+            if (process_http_action(query_uri_action, "", s2_h_session, connection, http)) {
                 return true;
             }
         }
 
         LOG(DEBUG) << "[HTTP_PROCESS] worker pQueryAction not found";
 
-        rHTTP.SetResponseStatus(404, "Not found");
-        rHTTP.Response(rConnect_, "File not found");
+        http.SetResponseStatus(404, "Not found");
+        http.Response(connection, "File not found");
 
         return false;
-    } else {
-        return ProcessHTTPFileServer(pQueryURI, s2hSession, rConnect_, rHTTP);
     }
-}
-
-bool Server2HB::ProcessHTTPCommand(const std::string& sQueryAction_, Network::S2HSession* sp_, HTTPConnection& rConnect_, Network::HTTPTextProtocolHeader& rHTTP_) {
-    const auto it = m_dictActionS2H.find(sQueryAction_);
-    if (it != m_dictActionS2H.end()) {
-        const funcActionS2H action = it->second;
-        return (this->*action)(rConnect_, sp_, rHTTP_);
-    }
-    return false;
+    return ProcessHTTPFileServer(query_uri, s2_h_session, connection, http);
 }
 
 bool Server2HB::ProcessHTTPFileServer(const std::string& sQueryURI_, Network::S2HSession* sp_, HTTPConnection& rConnect_, Network::HTTPTextProtocolHeader& rHTTP_) {
@@ -619,16 +625,16 @@ void Server2HB::stubTimerRun(Server2HB* pThis_) {
     pThis_->TimerSessionUpdate();
 }
 
-Network::SessionPtr Server2HB::ProcessingSession(HTTPConnection& rConnect_, Network::HTTPTextProtocolHeader& rHTTP_) {
+Network::SessionPtr Server2HB::ProcessingSession(HTTPConnection& connection, Network::HTTPTextProtocolHeader& http) {
     using namespace boost::posix_time;
 
     bool        bCreated = false;
-    const char* pQuerySession = rHTTP_.GetCookie(GetSessionCode());
+    const char* pQuerySession = http.GetCookie(GetSessionCode());
     Network::SessionPtr  sp = m_Sessions.GetSession(pQuerySession != nullptr ? pQuerySession : "", bCreated);
     Network::S2HSession* s2hSession = reinterpret_cast<Network::S2HSession*>(sp.get());
 
     char sIP[255];
-    rConnect_.GetClientIP(sIP, sizeof(sIP));
+    connection.GetClientIP(sIP, sizeof(sIP));
 
     if (s2hSession != nullptr) {
         s2hSession->SetLastActivity(second_clock::universal_time());
@@ -637,19 +643,19 @@ Network::SessionPtr Server2HB::ProcessingSession(HTTPConnection& rConnect_, Netw
         if (bCreated) {
             Json::Value    jvStats;
 
-            const char* pHP = rHTTP_.GetHeaderParameter(HTTP_ATTRIBUTE_USER_AGENT);
+            const char* pHP = http.GetHeaderParameter(HTTP_ATTRIBUTE_USER_AGENT);
             if (pHP != nullptr) {
                 jvStats["UserAgent"] = pHP;
             }
-            pHP = rHTTP_.GetHeaderParameter(HTTP_ATTRIBUTE_ACCEPT_ENCODING);
+            pHP = http.GetHeaderParameter(HTTP_ATTRIBUTE_ACCEPT_ENCODING);
             if (pHP != nullptr) {
                 jvStats["AcceptEncoding"] = pHP;
             }
-            pHP = rHTTP_.GetHeaderParameter(HTTP_ATTRIBUTE_ACCEPT_LANGUAGE);
+            pHP = http.GetHeaderParameter(HTTP_ATTRIBUTE_ACCEPT_LANGUAGE);
             if (pHP != nullptr) {
                 jvStats["AcceptLanguage"] = pHP;
             }
-            pHP = rHTTP_.GetHeaderParameter(HTTP_ATTRIBUTE_REFERER);
+            pHP = http.GetHeaderParameter(HTTP_ATTRIBUTE_REFERER);
             if (pHP != nullptr) {
                 jvStats["Referer"] = pHP;
             }
@@ -657,18 +663,16 @@ Network::SessionPtr Server2HB::ProcessingSession(HTTPConnection& rConnect_, Netw
         }
     }
 
-    rHTTP_.SetCookie(GetSessionCode(), sp->GetSessionID(), sp->get_expired(), rHTTP_.GetHost(), true);
+    http.SetCookie(GetSessionCode(), sp->GetSessionID(), sp->get_expired(), http.GetHost(), true);
 
     LOGF(DEBUG, "%s = '%s' ClientIP = '%s' ConnectID = #%d InS = '%s' "
-        , GetSessionCode(), sp->GetSessionID().c_str(), sIP, rConnect_.GetID()
+        , GetSessionCode(), sp->GetSessionID().c_str(), sIP, connection.GetID()
         , pQuerySession != NULL ? (strcmp(sp->GetSessionID().c_str(), pQuerySession) == 0 ? "+" : pQuerySession) : "-"
-    )
-
-;
+    );
     return sp;
 }
 
-bool Server2HB::action_auth(Network::Connection& rConnect_, Network::S2HSession* pSession_, Network::HTTPTextProtocolHeader& rHTTP_) {
+bool Server2HB::action_auth(const std::string& uri_params, Network::Connection& connection, Network::S2HSession* session, Network::HTTPTextProtocolHeader& http) {
     using namespace boost::posix_time;
 
     LOGF(DEBUG, "[ActionAuth]");
@@ -676,13 +680,13 @@ bool Server2HB::action_auth(Network::Connection& rConnect_, Network::S2HSession*
     std::string sLogin, sNickname, sPwHash, sSalt;
     int nUserID;
 
-    const char* pActionParam = rHTTP_.GetParameter(GetURLParamActionParam());
+    const char* pActionParam = http.GetParameter(GetURLParamActionParam());
     if (pActionParam == nullptr) {
         Json::Reader reader;
         Json::Value auth;
 
-        const auto pBody = reinterpret_cast<const char*>(rHTTP_.GetBody());
-        if (reader.parse(pBody, pBody + rHTTP_.GetBodyLength(), auth)) {
+        const auto pBody = reinterpret_cast<const char*>(http.GetBody());
+        if (reader.parse(pBody, pBody + http.GetBodyLength(), auth)) {
             const auto login = auth["login"].asString();
             const auto password = auth["password"].asString();
 
@@ -690,22 +694,22 @@ bool Server2HB::action_auth(Network::Connection& rConnect_, Network::S2HSession*
                 std::string calculate_passowrd_hash;
                 RecalcPasswordHash(calculate_passowrd_hash, login, password, sSalt);
                 if (calculate_passowrd_hash == sPwHash) {
-                    pSession_->SetUserID(nUserID);
-                    pSession_->SetNickname(sNickname);
+                    session->SetUserID(nUserID);
+                    session->SetNickname(sNickname);
                     // TODO: pSession->SetPostion(/*------* /);
-                    pSession_->SetAuthenticate(true);
+                    session->SetAuthenticate(true);
 
-                    m_dbBase.GetUserRoles(nUserID, pSession_);
-                    m_dbBase.SessionUpdate(pSession_);
+                    m_dbBase.GetUserRoles(nUserID, session);
+                    m_dbBase.SessionUpdate(session);
 
-                    m_Sessions.UpdateSession(pSession_);
+                    m_Sessions.UpdateSession(session);
                 }
             }
         }
     } else {
         LOGF(DEBUG, "[ActionAuth] ActionParam = '%s'", pActionParam);
 
-        const auto pQueryQ = rHTTP_.GetParameter(S2H_PARAM_QUESTION);
+        const auto pQueryQ = http.GetParameter(S2H_PARAM_QUESTION);
         if (strcmp(pActionParam, S2H_PARAM_ACTION_AUTH_PRE) == 0) {
             if (m_dbBase.get_user_info(pQueryQ != nullptr ? pQueryQ : "", nUserID, sNickname, sPwHash, sSalt)) {
                 jvRoot[S2H_JSON_SALT] = sSalt;
@@ -713,20 +717,20 @@ bool Server2HB::action_auth(Network::Connection& rConnect_, Network::S2HSession*
                 // не найден пользователь. но так в принципе наверно не стоит 
                 LOGF(WARNING, "User not found");
                 // посылаем fake данные к проверке подключения
-                jvRoot[S2H_JSON_SALT] = pSession_->GetSessionID();
+                jvRoot[S2H_JSON_SALT] = session->GetSessionID();
             }
         } else if (strcmp(pActionParam, S2H_PARAM_ACTION_AUTH_DO) == 0) {
 
             if (m_dbBase.get_user_info(pQueryQ != nullptr ? pQueryQ : "", nUserID, sNickname, sPwHash, sSalt)) {
-                if (IsPasswordHashEqual2(rHTTP_.GetParameter(S2H_PARAM_HASH, ""), sPwHash, pSession_->GetSessionID())) {
-                    pSession_->SetUserID(nUserID);
-                    pSession_->SetNickname(sNickname);
+                if (IsPasswordHashEqual2(http.GetParameter(S2H_PARAM_HASH, ""), sPwHash, session->GetSessionID())) {
+                    session->SetUserID(nUserID);
+                    session->SetNickname(sNickname);
                     // TODO: pSession->SetPostion(/*------* /);
-                    pSession_->SetAuthenticate(true);
+                    session->SetAuthenticate(true);
 
-                    m_dbBase.GetUserRoles(nUserID, pSession_);
-                    m_dbBase.SessionUpdate(pSession_);
-                    m_Sessions.UpdateSession(pSession_);
+                    m_dbBase.GetUserRoles(nUserID, session);
+                    m_dbBase.SessionUpdate(session);
+                    m_Sessions.UpdateSession(session);
                 } else {
                     // не найден пользователь
                     LOGF(WARNING, "Password not correct");
@@ -736,23 +740,23 @@ bool Server2HB::action_auth(Network::Connection& rConnect_, Network::S2HSession*
                 LOGF(WARNING, "User not found");
             }
         } else if (strcmp(pActionParam, S2H_PARAM_ACTION_AUTH_RESET) == 0) {
-            pSession_->reset();
-            pSession_->set_expired(second_clock::universal_time());
+            session->reset();
+            session->set_expired(second_clock::universal_time());
 
-            rHTTP_.SetCookie(GetSessionCode(), pSession_->GetSessionID(), pSession_->get_expired(), rHTTP_.GetHost(),true);
+            http.SetCookie(GetSessionCode(), session->GetSessionID(), session->get_expired(), http.GetHost(),true);
 
-            m_dbBase.SessionUpdate(pSession_);
-            m_Sessions.RemoveSession(pSession_);
+            m_dbBase.SessionUpdate(session);
+            m_Sessions.RemoveSession(session);
         } else if (strcmp(pActionParam, S2H_PARAM_ACTION_AUTH_CHANGEPASS) == 0) {
 
-            std::string sAdminPassword = rHTTP_.GetParameter(S2H_PARAM_ADMIN_PASSWORD, "");
+            std::string sAdminPassword = http.GetParameter(S2H_PARAM_ADMIN_PASSWORD, "");
             if (!sAdminPassword.empty()
-                && m_dbBase.GetUserInfo(pSession_->GetUserID(), sLogin, sNickname, sPwHash, sSalt)
+                && m_dbBase.GetUserInfo(session->GetUserID(), sLogin, sNickname, sPwHash, sSalt)
                 && IsPasswordHashEqual3(sPwHash, sLogin, sAdminPassword, sSalt)) {
 
-                std::string sNewPassword = rHTTP_.GetParameter(S2H_PARAM_PASSWORD, "");
-                if (rHTTP_.IsParameterExist(S2H_PARAM_LOGIN_PASSWORD)) {
-                    sLogin = rHTTP_.GetParameter(S2H_PARAM_LOGIN_PASSWORD, "");
+                std::string sNewPassword = http.GetParameter(S2H_PARAM_PASSWORD, "");
+                if (http.IsParameterExist(S2H_PARAM_LOGIN_PASSWORD)) {
+                    sLogin = http.GetParameter(S2H_PARAM_LOGIN_PASSWORD, "");
                     if (m_dbBase.get_user_info(sLogin, nUserID, sNickname, sPwHash, sSalt)) {
                         RecalcPasswordHash(sPwHash, sLogin, sNewPassword, sSalt);
                         m_dbBase.UpdatePassword(nUserID, sPwHash);
@@ -761,7 +765,7 @@ bool Server2HB::action_auth(Network::Connection& rConnect_, Network::S2HSession*
                     }
                 } else {
                     RecalcPasswordHash(sPwHash, sLogin, sNewPassword, sSalt);
-                    m_dbBase.UpdatePassword(pSession_->GetUserID(), sPwHash);
+                    m_dbBase.UpdatePassword(session->GetUserID(), sPwHash);
                 }
             } else {
                 jvRoot[S2H_JSON_REASON] = "UserNotFound";
@@ -770,10 +774,10 @@ bool Server2HB::action_auth(Network::Connection& rConnect_, Network::S2HSession*
         // if (strcmp(pActionParam, PMX_PARAM_ACTION_AUTH_CHECK)==0) - пройдет по умолчанию и передаст информацию об авторизации
     }
 
-    json_fill_auth(pSession_, true, jvRoot);
+    json_fill_auth(session, true, jvRoot);
 
-    rHTTP_.SetContentType(HTTP_ATTRIBUTE_CONTENT_TYPE__APP_JS);
-    rHTTP_.Response(rConnect_, json_string(jvRoot, rHTTP_.GetParameter(S2H_PARAM_HUMMAN_JSON, 0) == 1));
+    http.SetContentType(HTTP_ATTRIBUTE_CONTENT_TYPE__APP_JS);
+    http.Response(connection, json_string(jvRoot, http.GetParameter(S2H_PARAM_HUMMAN_JSON, 0) == 1));
 
     return true;
 }
