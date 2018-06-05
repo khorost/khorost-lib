@@ -126,6 +126,7 @@ namespace khorost {
 
             static std::string to_string(const pqxx::transaction_base& txn, const boost::posix_time::ptime& timestamp, bool nullable_infinity = true);
             static std::string to_string(const pqxx::transaction_base& txn, const Json::Value& info);
+            static std::string to_string(const pqxx::transaction_base& txn, const bool value);
         private:
 
         };

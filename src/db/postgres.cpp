@@ -152,3 +152,7 @@ std::string LinkedPostgres::to_string(const pqxx::transaction_base& txn,
 std::string LinkedPostgres::to_string(const pqxx::transaction_base& txn, const Json::Value& info) {
     return info.isNull() ? "null" : (txn.quote(Json::FastWriter().write(info)) + "::jsonb");
 }
+
+std::string LinkedPostgres::to_string(const pqxx::transaction_base& txn, const bool value) {
+    return value ? "true" : "false";
+}
