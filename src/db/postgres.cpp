@@ -73,7 +73,7 @@ bool DBConnectionPool::CheckConnect() {
         // hack
         pqxx::nontransaction txn(GetHandle());
 
-        pqxx::result r = txn.exec(
+        auto r = txn.exec(
             "SELECT app "
             " FROM admin.khl_version "
             " LIMIT 1 ");
@@ -89,16 +89,19 @@ bool DBConnectionPool::CheckConnect() {
 
 static void sExecuteCustomSQL(pqxx::transaction_base& txn_, const std::string& sSQL_, Json::Value& jvResult_) {
     try {
-        pqxx::result r = txn_.exec(sSQL_);
+        auto r = txn_.exec(sSQL_);
 
         Json::Value jvHeader, jvTable;
-        for (pqxx::row::size_type c = 0; c < r.columns(); ++c) {
+        auto columns = r.columns();
+        for (decltype(columns) c = 0; c < columns; ++c) {
             jvHeader.append(r.column_name(c));
         }
 
-        for (pqxx::result::const_iterator i = r.begin(); i != r.end(); i++) {
+        for (auto i = r.begin(); i != r.end(); ++i) {
             Json::Value jvRow;
-            for (pqxx::row::size_type f = 0; f < i->size(); ++f) {
+
+            auto isize = i->size();
+            for (decltype(isize) f = 0; f < isize; ++f) {
                 if (i[f].is_null()) {
                     jvRow[i[f].name()] = Json::nullValue;
                 } else {
