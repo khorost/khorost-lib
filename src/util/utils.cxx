@@ -1,4 +1,5 @@
 #include "util/utils.h"
+#include <regex>
 
 std::string khorost::Data::EscapeString(const std::string& s_) {
     std::string r;
@@ -25,3 +26,25 @@ boost::posix_time::time_duration khorost::Data::EpochDiff(boost::posix_time::pti
 boost::posix_time::ptime khorost::Data::EpochMicroseconds2ptime(uint64_t ms_) {
     return s_time_t_epoch + boost::posix_time::microseconds(ms_);
 }
+
+// The trimming method comes from https://stackoverflow.com/a/1798170/1613961
+std::string trim(const std::string& str, const std::string& newline = "\r\n") {
+    const auto strBegin = str.find_first_not_of(newline);
+    if (strBegin == std::string::npos)
+        return ""; // no content
+
+    const auto strEnd = str.find_last_not_of(newline);
+    const auto strRange = strEnd - strBegin + 1;
+
+    return str.substr(strBegin, strRange);
+}
+
+std::string khorost::Data::clear_html_tags(const std::string source) {
+    std::regex stripFormatting("<[^>]*(>|$)"); //match any character between '<' and '>', even when end tag is missing
+
+    std::string s1 = std::regex_replace(source, stripFormatting, "");
+    std::string s2 = trim(s1);
+    std::string s3 = std::regex_replace(s2, std::regex("\\&nbsp;"), " ");
+    return s3;
+}
+
