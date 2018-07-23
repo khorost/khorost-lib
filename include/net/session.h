@@ -9,93 +9,96 @@
 #include "boost/date_time/posix_time/posix_time.hpp"
 
 #include "db/sqlite3.h"
+#include <boost/make_shared.hpp>
 
 namespace khorost {
     namespace Network {
-        typedef std::map<std::string, bool>	DictIP;
-        class Session {
+        typedef std::map<std::string, bool>	dict_ip;
 
-            std::string                 m_sSessionID;
-            boost::posix_time::ptime    m_dtCreated;
-            boost::posix_time::ptime    m_dtExpired;
-            boost::posix_time::ptime    m_dtLastActivity;
+        class session {
 
-            int                         m_nCount;
-            DictIP                      m_IPs;
-            bool                        m_bStatsUpdate;
+            std::string                 m_session_id;
+            boost::posix_time::ptime    m_created;
+            boost::posix_time::ptime    m_expired;
+            boost::posix_time::ptime    m_last_activity;
+
+            int                         m_count;
+            dict_ip                      m_ips;
+            bool                        m_stats_update;
         public:
-            Session(const std::string& sSessionID_, boost::posix_time::ptime dtCreated_, boost::posix_time::ptime dtExpired_);
-            virtual ~Session();
+            session(const std::string& session_id, const boost::posix_time::ptime created, const boost::posix_time::ptime expired);
+            virtual ~session() = default;
 
-            const std::string&          GetSessionID() const { return m_sSessionID; }
+            virtual void reset();
 
-            boost::posix_time::ptime    GetCreated() const { return m_dtCreated; }
+            const std::string&          get_session_id() const { return m_session_id; }
 
-            boost::posix_time::ptime    get_expired() const { return m_dtExpired; }
-            void                        set_expired(boost::posix_time::ptime t_) { m_dtExpired = t_; }
+            boost::posix_time::ptime    get_created() const { return m_created; }
 
-            boost::posix_time::ptime    GetLastActivity() const { return m_dtLastActivity; }
-            void                        SetLastActivity(boost::posix_time::ptime t_);
+            boost::posix_time::ptime    get_expired() const { return m_expired; }
+            void                        set_expired(const boost::posix_time::ptime value) { m_expired = value; }
 
-            int                         GetCountUse() const { return m_nCount; }
-            void                        ResetCountUse() { m_nCount = 0; }
-            void                        SetCountUse(int nCount_) { m_nCount = nCount_; }
+            boost::posix_time::ptime    get_last_activity() const { return m_last_activity; }
+            void                        set_last_activity(const boost::posix_time::ptime value);
 
-            void                        SetIP(const std::string& sIP_);
-            void                        GetIP(std::list<std::string>& lIPs_, bool bReset);
+            int                         GetCountUse() const { return m_count; }
+            void                        ResetCountUse() { m_count = 0; }
+            void                        set_count_use(int nCount_) { m_count = nCount_; }
+
+            void                        set_ip(const std::string& ip);
+            void                        get_ip(std::list<std::string>& ips, bool reset);
 
             bool                        IsStatsUpdate(bool bReset_) {
-                bool b = m_bStatsUpdate;
+                bool b = m_stats_update;
                 if (bReset_)  {
-                    m_bStatsUpdate = false;
+                    m_stats_update = false;
                 }
                 return b;
             }
 
-            virtual void                GetExpireShift(boost::posix_time::time_duration& td_) { td_ = boost::posix_time::minutes(DEFAULT_EXPIRE_MINUTES); }
-            virtual bool                ExportData(std::string& sData_) { return true; }
-            virtual bool                ImportData(const std::string& sData_) { return true; }
+            virtual void                get_expire_shift(boost::posix_time::time_duration& value) { value = boost::posix_time::minutes(DEFAULT_EXPIRE_MINUTES); }
+            virtual bool                export_data(std::string& data) { return true; }
+            virtual bool                import_data(const std::string& data) { return true; }
 
             static const int DEFAULT_EXPIRE_MINUTES;
-            static std::string GenerateSessionID();
+            static std::string generate_session_id();
         };
 
-        typedef	boost::shared_ptr<Session>	        SessionPtr;
+        typedef	boost::shared_ptr<session>	        SessionPtr;
         typedef std::map<std::string, SessionPtr>	DictSession;
         typedef std::list<SessionPtr>	            ListSession;
 
-        class SessionControler {
-            class SessionDB : public DB::SQLite3 {
+        class session_controler {
+            class session_db : public DB::SQLite3 {
             public:
-                SessionDB(){}
-                virtual bool PrepareDatabase();
+                session_db() = default;
 
-                bool    UpdateSession(Session* sp_, int nVersion_);
-                bool    RemoveSession(Session* sp_);
-                bool    LoadSessions(SessionControler& cs_);
+                bool PrepareDatabase() override;
+
+                bool update_session(session* session, int version);
+                bool remove_session(session* session);
+                bool load_sessions(session_controler& session_controler, const std::function<SessionPtr(const std::string& session_id, boost::posix_time::ptime created, boost::posix_time::ptime expired)> creator);
             };
 
-            SessionDB       m_SessionDB;
-            DictSession     m_SessionMemory;
-            int             m_nVersionMin, m_nVersionCurrent;
+            session_db m_SessionDB;
+            DictSession m_SessionMemory;
+            int m_nVersionMin, m_nVersionCurrent;
 
-            virtual SessionPtr  CreateSession(const std::string& sSessionID_, boost::posix_time::ptime dtCreated_, boost::posix_time::ptime dtExpired_) {
-                return SessionPtr(new Session(sSessionID_, dtCreated_, dtExpired_));
-            }
         public:
-            SessionControler();
-            ~SessionControler();
+            session_controler();
+            virtual ~session_controler() = default;
 
-            bool    Open(const std::string& sDriver_, int nVersionMin_, int nVersionCurrent_);
+            bool open(const std::string& driver, int version_min, int version_current, const std::function<SessionPtr(const std::string& session_id, boost::posix_time::ptime created, boost::posix_time::ptime expired)> creator);
 
-            SessionPtr  FindSession(const std::string& sSession_);
-            SessionPtr  GetSession(const std::string& sSession_, bool& bCreate_);
-            bool        UpdateSession(Session* sp_);
-            void        RemoveSession(Session* sp_);
+            SessionPtr find_session(const std::string& session_id);
+            SessionPtr get_session(const std::string& session_id, bool& created, std::function<SessionPtr(const std::string& session_id, boost::posix_time::ptime created, boost::posix_time::ptime expired)> creator );
 
-            int         GetVersionMin() { return m_nVersionMin; }
-            bool        GetActiveSessionsStats(ListSession& rLS_);
-            void        CheckAliveSessions();
+            bool update_session(session* sp_);
+            void remove_session(session* sp_);
+
+            int GetVersionMin() { return m_nVersionMin; }
+            bool GetActiveSessionsStats(ListSession& rLS_);
+            void CheckAliveSessions();
         };
     }
 }

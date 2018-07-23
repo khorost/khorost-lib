@@ -205,7 +205,7 @@ namespace khorost {
             const char*    GetQueryURI() const { return m_abcQueryURI.GetChunk(); }
             const char*    GetHeaderParameter(const std::string& sParam_, const char* sDefault_ = nullptr) const;
             const char*    GetParameter(const std::string& sKey_, bool* pbExist_ = nullptr) const;
-            const char*    GetCookie(const std::string& sKey_, bool* pbExist_ = nullptr) const;
+            const char*    get_cookie(const std::string& sKey_, bool* pbExist_ = nullptr) const;
             const char*    GetCookieParameter(const std::string& sKey_, const char* sDefault_ = nullptr) const;
             const boost::uint8_t*  GetBody() const { return reinterpret_cast<boost::uint8_t*>(m_abBody.GetHead()); }
             size_t          GetBodyLength() const { return m_abBody.GetFillSize(); }
@@ -222,17 +222,18 @@ namespace khorost {
             size_t          GetHeaderIndex(const std::string& sKey_) const;
             bool            IsParameterExist(const std::string& sKey_) const;
 
-            void    SetCookie(const std::string& sCookie_, const std::string& sValue_, boost::posix_time::ptime dtExpire_, const std::string& sDomain_, bool http_only);
-            void    SetResponseStatus(int nCode_, const std::string& sCodeReason_) {
+            void    set_cookie(const std::string& cookie, const std::string& value, boost::posix_time::ptime expire, const std::string&
+                               domain, bool http_only);
+            void    set_response_status(int nCode_, const std::string& sCodeReason_) {
                 m_Replay.m_nCode = nCode_;
                 m_Replay.m_sCodeReason = sCodeReason_;
             }
             void    SetRedirect(int nCode_, const std::string& sRedirectURL_) {
                 m_Replay.m_sRedirectURL = sRedirectURL_;
-                SetResponseStatus(nCode_, "Redirect");
+                set_response_status(nCode_, "Redirect");
             }
 
-            void    SetContentType(const std::string& sContentType_, const std::string& sContentTypeCP_ = "UTF-8") {
+            void    set_content_type(const std::string& sContentType_, const std::string& sContentTypeCP_ = "UTF-8") {
                 m_Replay.m_sContentType = sContentType_;
                 m_Replay.m_sContentTypeCP = sContentTypeCP_;
             }
@@ -243,9 +244,10 @@ namespace khorost {
 
             void    SetLastModify(boost::posix_time::ptime tLM_) { m_Replay.m_tLastModify = tLM_; }
 
-            void    Response(Network::Connection& rConnect_, const char* psResponse_, size_t nLength);
-            void    Response(Network::Connection& rConnect_, const std::string& sResponse_) {
-                Response(rConnect_, sResponse_.c_str(), sResponse_.size());
+            void response(Connection& connect, const char* response, size_t length);
+
+            void response(Connection& connect, const std::string& body) {
+                response(connect, body.c_str(), body.size());
             }
 
             const char*     GetClientProxyIP();
@@ -258,7 +260,7 @@ namespace khorost {
             HTTPFileTransfer() {}
             virtual ~HTTPFileTransfer() {}
 
-            bool    SendFile(const std::string& sQueryURI_, Network::Connection& rConnect_, HTTPTextProtocolHeader& rHTTP_, const std::string& sDocRoot_, const std::string& sFileName_ = "");
+            bool    SendFile(const std::string& sQueryURI_, Connection& connect, HTTPTextProtocolHeader& http, const std::string& sDocRoot_, const std::string& sFileName_ = "");
         };
 
         template<typename T>

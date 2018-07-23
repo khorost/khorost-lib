@@ -358,7 +358,7 @@ bool HTTPTextProtocolHeader::ParseString(char* pBuffer_, size_t nBufferSize_, si
 }
 
 const char* HTTPTextProtocolHeader::GetCookieParameter(const std::string& sKey_, const char* sDefault_) const {
-    const char* psValue = GetCookie(sKey_);
+    const char* psValue = get_cookie(sKey_);
 
     if (psValue == nullptr) {
         psValue = GetParameter(sKey_, sDefault_);
@@ -366,7 +366,7 @@ const char* HTTPTextProtocolHeader::GetCookieParameter(const std::string& sKey_,
     return psValue;
 }
 
-const char* HTTPTextProtocolHeader::GetCookie(const std::string& sKey_, bool* pbExist_) const {
+const char* HTTPTextProtocolHeader::get_cookie(const std::string& sKey_, bool* pbExist_) const {
     if (pbExist_!= nullptr) {
         *pbExist_ = false;
     }
@@ -446,33 +446,28 @@ const char* HTTPTextProtocolHeader::GetHeaderParameter(const std::string& sParam
     return sDefault_;
 }
 
-void HTTPTextProtocolHeader::Response(Network::Connection& rConnect_, const char* psResponse_, size_t nLength) {
+void HTTPTextProtocolHeader::response(Network::Connection& connect, const char* response, size_t length) {
     using namespace boost::posix_time;
 
     char  st[255];
 
-    if (nLength==-1 && psResponse_!= nullptr) {
-//        ASSERT(psResponse_!=NULL);
-        nLength = strlen(psResponse_);
-    }
-
-    rConnect_.SendString(m_abcQueryVersion.GetChunk());
-    rConnect_.SendString(" ", sizeof(char));
-    rConnect_.SendNumber(m_Replay.m_nCode);
-    rConnect_.SendString(" ", sizeof(char));
-    rConnect_.SendString(m_Replay.m_sCodeReason);
-    rConnect_.SendString(HTTP_ATTRIBUTE_ENDL, sizeof(HTTP_ATTRIBUTE_ENDL)-1);
-    rConnect_.SendString("Server: phreeber" HTTP_ATTRIBUTE_ENDL);
+    connect.SendString(m_abcQueryVersion.GetChunk());
+    connect.SendString(" ", sizeof(char));
+    connect.SendNumber(m_Replay.m_nCode);
+    connect.SendString(" ", sizeof(char));
+    connect.SendString(m_Replay.m_sCodeReason);
+    connect.SendString(HTTP_ATTRIBUTE_ENDL, sizeof(HTTP_ATTRIBUTE_ENDL)-1);
+    connect.SendString("Server: phreeber" HTTP_ATTRIBUTE_ENDL);
     time_t n = time(nullptr);
     strftime(st, sizeof(st), "%a, %d %b %Y %H:%M:%S GMT", gmtime(&n));
-    rConnect_.SendString("Date: ");
-    rConnect_.SendString(st);
-    rConnect_.SendString(HTTP_ATTRIBUTE_ENDL, sizeof(HTTP_ATTRIBUTE_ENDL) - 1);
+    connect.SendString("Date: ");
+    connect.SendString(st);
+    connect.SendString(HTTP_ATTRIBUTE_ENDL, sizeof(HTTP_ATTRIBUTE_ENDL) - 1);
 
     if (!m_Replay.m_sRedirectURL.empty()) {
-        rConnect_.SendString("Location: ");
-        rConnect_.SendString(m_Replay.m_sRedirectURL);
-        rConnect_.SendString(HTTP_ATTRIBUTE_ENDL, sizeof(HTTP_ATTRIBUTE_ENDL) - 1);
+        connect.SendString("Location: ");
+        connect.SendString(m_Replay.m_sRedirectURL);
+        connect.SendString(HTTP_ATTRIBUTE_ENDL, sizeof(HTTP_ATTRIBUTE_ENDL) - 1);
     }
 
     const auto pAC = GetHeaderParameter(HTTP_ATTRIBUTE_CONNECTION);
@@ -481,58 +476,56 @@ void HTTPTextProtocolHeader::Response(Network::Connection& rConnect_, const char
     } else {
         m_Replay.m_bAutoClose = false;
     }
-    rConnect_.SendString(
+    connect.SendString(
         std::string("Connection: ") + std::string(pAC != nullptr ? pAC : "close") + std::string(HTTP_ATTRIBUTE_ENDL));
 
     // CORS
     const auto origin = GetHeaderParameter(HTTP_ATTRIBUTE__ORIGIN);
     if (origin != nullptr) {
-        rConnect_.SendString(HTTP_ATTRIBUTE__ACCESS_CONTROL_ALLOW_ORIGIN ": " + std::string(origin) + std::string(HTTP_ATTRIBUTE_ENDL));
-        rConnect_.SendString(HTTP_ATTRIBUTE__ACCESS_CONTROL_ALLOW_CREDENTIALS ": true" HTTP_ATTRIBUTE_ENDL);
+        connect.SendString(HTTP_ATTRIBUTE__ACCESS_CONTROL_ALLOW_ORIGIN ": " + std::string(origin) + std::string(HTTP_ATTRIBUTE_ENDL));
+        connect.SendString(HTTP_ATTRIBUTE__ACCESS_CONTROL_ALLOW_CREDENTIALS ": true" HTTP_ATTRIBUTE_ENDL);
     }
 
     for (const auto& c : m_Replay.m_Cookies) {
         time_t gmt = Data::EpochDiff(c.m_dtExpire).total_seconds();
         strftime(st, sizeof(st), "%a, %d-%b-%Y %H:%M:%S GMT", gmtime(&gmt));
 
-        rConnect_.SendString(
+        connect.SendString(
             std::string("Set-Cookie: ") + c.m_sCookie + std::string("=") + c.m_sValue + std::string("; Expires=") +
             std::string(st) + std::string("; Domain=.") + c.m_sDomain + std::string("; Path=/") +
             (c.m_http_only ? std::string("; HttpOnly ") : "") + HTTP_ATTRIBUTE_ENDL);
     }
 
-    rConnect_.SendString(std::string(HTTP_ATTRIBUTE_CONTENT_TYPE HTTP_ATTRIBUTE_DIV) + m_Replay.m_sContentType);
+    connect.SendString(std::string(HTTP_ATTRIBUTE_CONTENT_TYPE HTTP_ATTRIBUTE_DIV) + m_Replay.m_sContentType);
     if (!m_Replay.m_sContentTypeCP.empty()) {
-        rConnect_.SendString(std::string("; charset=") + m_Replay.m_sContentTypeCP);
+        connect.SendString(std::string("; charset=") + m_Replay.m_sContentTypeCP);
     }
-    rConnect_.SendString(HTTP_ATTRIBUTE_ENDL, sizeof(HTTP_ATTRIBUTE_ENDL)-1);
+    connect.SendString(HTTP_ATTRIBUTE_ENDL, sizeof(HTTP_ATTRIBUTE_ENDL)-1);
 
     if (!m_Replay.m_sContentDisposition.empty()) {
-        rConnect_.SendString(std::string(HTTP_ATTRIBUTE_CONTENT_DISPOSITION HTTP_ATTRIBUTE_DIV) + m_Replay.m_sContentDisposition);
-        rConnect_.SendString(HTTP_ATTRIBUTE_ENDL, sizeof(HTTP_ATTRIBUTE_ENDL)-1);
+        connect.SendString(std::string(HTTP_ATTRIBUTE_CONTENT_DISPOSITION HTTP_ATTRIBUTE_DIV) + m_Replay.m_sContentDisposition);
+        connect.SendString(HTTP_ATTRIBUTE_ENDL, sizeof(HTTP_ATTRIBUTE_ENDL)-1);
     }
 
-    if (nLength!=-1) {
-        rConnect_.SendString(HTTP_ATTRIBUTE_CONTENT_LENGTH ": ");
-        rConnect_.SendNumber(static_cast<unsigned int>(nLength));
-        rConnect_.SendString(HTTP_ATTRIBUTE_ENDL, sizeof(HTTP_ATTRIBUTE_ENDL)-1);
-    }
+    connect.SendString(HTTP_ATTRIBUTE_CONTENT_LENGTH ": ");
+    connect.SendNumber(static_cast<unsigned int>(length));
+    connect.SendString(HTTP_ATTRIBUTE_ENDL, sizeof(HTTP_ATTRIBUTE_ENDL) - 1);
 
     if (!m_Replay.m_tLastModify.is_not_a_date_time()) {
-        rConnect_.SendString(HTTP_ATTRIBUTE_LAST_MODIFIED HTTP_ATTRIBUTE_DIV);
+        connect.SendString(HTTP_ATTRIBUTE_LAST_MODIFIED HTTP_ATTRIBUTE_DIV);
         time_t gmt = Data::EpochDiff(m_Replay.m_tLastModify).total_seconds();
         strftime(st, sizeof(st), "%a, %d-%b-%Y %H:%M:%S GMT", gmtime(&gmt));
-        rConnect_.SendString(st);
-        rConnect_.SendString(HTTP_ATTRIBUTE_ENDL, sizeof(HTTP_ATTRIBUTE_ENDL)-1);
+        connect.SendString(st);
+        connect.SendString(HTTP_ATTRIBUTE_ENDL, sizeof(HTTP_ATTRIBUTE_ENDL)-1);
     }
-    rConnect_.SendString(HTTP_ATTRIBUTE_ENDL, sizeof(HTTP_ATTRIBUTE_ENDL)-1);
-    if (psResponse_!= nullptr) {
-        rConnect_.SendString(psResponse_, nLength);
+    connect.SendString(HTTP_ATTRIBUTE_ENDL, sizeof(HTTP_ATTRIBUTE_ENDL)-1);
+    if (response!= nullptr) {
+        connect.SendString(response, length);
     }
 }
 
-void HTTPTextProtocolHeader::SetCookie(const std::string& sCookie_, const std::string& sValue_, boost::posix_time::ptime dtExpire_, const std::string& sDomain_, bool http_only) {
-    m_Replay.m_Cookies.emplace_back(sCookie_, sValue_, dtExpire_, sDomain_, http_only);
+void HTTPTextProtocolHeader::set_cookie(const std::string& cookie, const std::string& value, boost::posix_time::ptime expire, const std::string& domain, bool http_only) {
+    m_Replay.m_Cookies.emplace_back(cookie, value, expire, domain, http_only);
 }
 
 #ifdef WIN32
@@ -543,7 +536,7 @@ static bool IsSlash (char ch_) { return ch_=='/'; }
 #endif
 
 
-bool HTTPFileTransfer::SendFile(const std::string& sQueryURI_, Network::Connection& rConnect_, HTTPTextProtocolHeader& rHTTP_, const std::string& sDocRoot_, const std::string& sFileName_) {
+bool HTTPFileTransfer::SendFile(const std::string& sQueryURI_, Network::Connection& connect, HTTPTextProtocolHeader& http, const std::string& sDocRoot_, const std::string& sFileName_) {
     using namespace boost::posix_time;
 
     // TODO сделать корректировку по абсолютно-относительным переходам
@@ -578,8 +571,8 @@ bool HTTPFileTransfer::SendFile(const std::string& sQueryURI_, Network::Connecti
     if (sFileName.length() >= MAX_PATH) {
         LOGF(WARNING, "Path is too long");
         
-        rHTTP_.SetResponseStatus(404, "Not found");
-        rHTTP_.Response(rConnect_, "File not found", -1);
+        http.set_response_status(404, "Not found");
+        http.response(connect, "File not found");
         return false;
     }
 
@@ -590,16 +583,16 @@ bool HTTPFileTransfer::SendFile(const std::string& sQueryURI_, Network::Connecti
     if (!PathCanonicalize((LPSTR)bufCanonicFileName, sFileName.c_str())) {
         LOGF(WARNING, "PathCanonicalize failed");
 
-        rHTTP_.SetResponseStatus(404, "Not found");
-        rHTTP_.Response(rConnect_, "File not found", -1);
+        http.set_response_status(404, "Not found");
+        http.response(connect, "File not found");
         return false;
     }
 #else
     if (!realpath(sFileName.c_str(), bufCanonicFileName)) {
         LOGF(WARNING, "realpath failed");
 
-        rHTTP_.SetResponseStatus(404, "Not found");
-        rHTTP_.Response(rConnect_, "File not found", -1);
+        http.set_response_status(404, "Not found");
+        http.response(connect, "File not found");
         return false;
     }
 #endif
@@ -609,8 +602,8 @@ bool HTTPFileTransfer::SendFile(const std::string& sQueryURI_, Network::Connecti
     if (sCanonicFileName.substr(0, sDocRoot_.length()) != sDocRoot_) {
         LOGF(WARNING, "Access outside of docroot attempted");
 
-        rHTTP_.SetResponseStatus(404, "Not found");
-        rHTTP_.Response(rConnect_, "File not found", -1);
+        http.set_response_status(404, "Not found");
+        http.response(connect, "File not found");
         return false;
     }
 
@@ -632,7 +625,7 @@ bool HTTPFileTransfer::SendFile(const std::string& sQueryURI_, Network::Connecti
             , { nullptr, nullptr, nullptr }
         };
 
-        const char* pIMS = rHTTP_.GetHeaderParameter("If-Modified-Since");
+        const char* pIMS = http.GetHeaderParameter("If-Modified-Since");
         if (pIMS != nullptr) {
             tm t;
             strptime(pIMS, "%a, %d-%b-%Y %H:%M:%S GMT", &t);
@@ -644,11 +637,10 @@ bool HTTPFileTransfer::SendFile(const std::string& sQueryURI_, Network::Connecti
             if (tt >= ff.GetTimeUpdate()) {
                 LOGF(DEBUG, "Dont send file '%s' length = %zu. Response 304 (If-Modified-Since: '%s')", sQueryURI_.c_str(), ff.GetLength(), pIMS);
 
-                rHTTP_.SetResponseStatus(304, "Not Modified");
-                rHTTP_.Response(rConnect_, nullptr, -1);
+                http.set_response_status(304, "Not Modified");
+                http.response(connect, nullptr, 0);
                 return true;
             }
-            tt = tt;
         }
 
         const char*   pExt = sCanonicFileName.c_str();
@@ -669,21 +661,23 @@ bool HTTPFileTransfer::SendFile(const std::string& sQueryURI_, Network::Connecti
             pExt += nExt;
             for (int k = 0; s_SECT[k].m_Ext != nullptr; ++k) {
                 if (strcmp(s_SECT[k].m_Ext, pExt) == 0) {
-                    rHTTP_.SetContentType(s_SECT[k].m_CT, s_SECT[k].m_CP);
+                    http.set_content_type(s_SECT[k].m_CT, s_SECT[k].m_CP);
                     break;
                 }
             }
         }
-        rHTTP_.SetLastModify(from_time_t(ff.GetTimeUpdate()));
-        rHTTP_.Response(rConnect_, nullptr, ff.GetLength());
-        rConnect_.SendData(reinterpret_cast<const boost::uint8_t*>(ff.GetMemory()), ff.GetLength());
+
+        http.SetLastModify(from_time_t(ff.GetTimeUpdate()));
+        http.response(connect, nullptr, ff.GetLength());
+
+        connect.SendData(reinterpret_cast<const boost::uint8_t*>(ff.GetMemory()), ff.GetLength());
 
         ff.Close();
     } else {
         LOGF(WARNING, "File not found '%s'", sCanonicFileName.c_str());
 
-        rHTTP_.SetResponseStatus(404, "Not found");
-        rHTTP_.Response(rConnect_, "File not found", -1);
+        http.set_response_status(404, "Not found");
+        http.response(connect, "File not found");
         return false;
     }
 

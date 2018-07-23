@@ -22,13 +22,13 @@
 using namespace khorost::Network;
 using namespace khorost::DB;
 
-static void session_ip_update(S2HSession* httpSession_, pqxx::work& txn_) {
+static void session_ip_update(s2h_session* httpSession_, pqxx::work& txn_) {
     std::list<std::string>  lIPs;
-    httpSession_->GetIP(lIPs, true);
+    httpSession_->get_ip(lIPs, true);
     for (auto it : lIPs) {
         txn_.exec(
             "INSERT INTO admin.khl_sessions_ip (id, ip) "
-            " VALUES('" + httpSession_->GetSessionID() + "', '" + it + "' )"
+            " VALUES('" + httpSession_->get_session_id() + "', '" + it + "' )"
             "  ON CONFLICT (id, ip) DO NOTHING "
             );
     }
@@ -95,15 +95,15 @@ bool S2HBStorage::SessionUpdate(khorost::Network::ListSession& rLS_) {
         );
 
         for (auto sp : rLS_) {
-            S2HSession* pSession = reinterpret_cast<Network::S2HSession*>(sp.get());
-            std::string sLastActivity = to_iso_string(pSession->GetLastActivity());
+            s2h_session* pSession = reinterpret_cast<Network::s2h_session*>(sp.get());
+            std::string sLastActivity = to_iso_string(pSession->get_last_activity());
             std::string sExpired = to_iso_string(pSession->get_expired());
 
             if (pSession->IsAuthenticate()) {
-                txn.prepared("SessionUpdate_0")(pSession->GetUserID())(sLastActivity)(sExpired)(pSession->GetSessionID()).exec();
+                txn.prepared("SessionUpdate_0")(pSession->GetUserID())(sLastActivity)(sExpired)(pSession->get_session_id()).exec();
                 txn.prepared("SessionUpdate_1")(sLastActivity)(pSession->GetCountUse())(pSession->GetUserID()).exec();
             } else {
-                txn.prepared("SessionUpdate_2")(sLastActivity)(sExpired)(pSession->GetSessionID()).exec();
+                txn.prepared("SessionUpdate_2")(sLastActivity)(sExpired)(pSession->get_session_id()).exec();
             }
             session_ip_update(pSession, txn);
             pSession->ResetCountUse();
@@ -127,12 +127,12 @@ bool S2HBStorage::SessionUpdate(khorost::Network::ListSession& rLS_) {
     return true;
 }
 
-bool S2HBStorage::SessionUpdate(S2HSession* pSession_) {
+bool S2HBStorage::SessionUpdate(s2h_session* pSession_) {
     DBConnection            conn(m_rDB);
     pqxx::work              txn(conn.GetHandle());
 
-    std::string sLastActivity = to_iso_string(pSession_->GetLastActivity());
-    std::string sCreated = to_iso_string(pSession_->GetCreated());
+    std::string sLastActivity = to_iso_string(pSession_->get_last_activity());
+    std::string sCreated = to_iso_string(pSession_->get_created());
     std::string sExpired = to_iso_string(pSession_->get_expired());
 
     if (pSession_->GetUserID() != 0) {
@@ -158,12 +158,12 @@ bool S2HBStorage::SessionUpdate(S2HSession* pSession_) {
         txn.exec(
             "UPDATE admin.khl_sessions "
             " SET user_id = " + sUserID + " , dtLast = TIMESTAMP '" + sLastActivity + "', dtExpire = TIMESTAMP '" + sExpired + "' "
-            " WHERE id = '" + pSession_->GetSessionID() + "'");
+            " WHERE id = '" + pSession_->get_session_id() + "'");
     } else {
         txn.exec(
             "UPDATE admin.khl_sessions "
             " SET dtLast = TIMESTAMP '" + sLastActivity + "', dtExpire = TIMESTAMP '" + sExpired + "'"
-            " WHERE id = '" + pSession_->GetSessionID() + "'");
+            " WHERE id = '" + pSession_->get_session_id() + "'");
     }
 
     session_ip_update(pSession_, txn);
@@ -173,13 +173,13 @@ bool S2HBStorage::SessionUpdate(S2HSession* pSession_) {
     return true;
 }
 
-bool S2HBStorage::SessionLogger(const S2HSession* pSession_, const Json::Value& jsStat_) {
+bool S2HBStorage::SessionLogger(const s2h_session* pSession_, const Json::Value& jsStat_) {
     DBConnection            conn(m_rDB);
     pqxx::work              txn(conn.GetHandle());
 
     txn.exec(
         "INSERT INTO admin.khl_sessions (id, dtFirst, dtLast, dtExpire, stats) "
-        " VALUES ('" + pSession_->GetSessionID() + "', TIMESTAMP '" + to_iso_string(pSession_->GetCreated()) + "' , TIMESTAMP '" + to_iso_string(pSession_->GetLastActivity()) + "' , TIMESTAMP '" + to_iso_string(pSession_->get_expired()) + "' , " + txn.quote(Json::FastWriter().write(jsStat_)) + ")");
+        " VALUES ('" + pSession_->get_session_id() + "', TIMESTAMP '" + to_iso_string(pSession_->get_created()) + "' , TIMESTAMP '" + to_iso_string(pSession_->get_last_activity()) + "' , TIMESTAMP '" + to_iso_string(pSession_->get_expired()) + "' , " + txn.quote(Json::FastWriter().write(jsStat_)) + ")");
 
     txn.commit();
 
@@ -198,7 +198,7 @@ bool S2HBStorage::IsUserExist(const std::string& sLogin_) {
     return r.size() > 0;
 }
 
-bool S2HBStorage::GetUserRoles(int& nUserID_, S2HSession* ps_) {
+bool S2HBStorage::GetUserRoles(int& nUserID_, s2h_session* ps_) {
     DBConnection            conn(m_rDB);
     pqxx::read_transaction  txn(conn.GetHandle());
 

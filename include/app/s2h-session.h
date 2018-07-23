@@ -1,5 +1,4 @@
-#ifndef __S2H_SESSION__
-#define __S2H_SESSION__
+#pragma once
 
 #include <string>
 #include <set>
@@ -15,27 +14,24 @@
 
 namespace khorost {
     namespace Network {
-        class S2HSession : public Session {
+        class s2h_session : public session {
             bool		        m_bAuthenticate;
             int                 m_idUser;
             std::string         m_sNickname;
             std::string         m_sPosition;
             std::set<std::string>   m_dRoles;
         public:
-            S2HSession(const std::string& sSessionID_, boost::posix_time::ptime dtCreated, boost::posix_time::ptime dtExpired);
-            virtual ~S2HSession() = default;
-
-            virtual void        GetExpireShift(boost::posix_time::time_duration& td_) {
-                if (m_bAuthenticate) {
-                    td_ = boost::posix_time::hours(24 * 14);
-                } else {
-                    Session::GetExpireShift(td_);
-                }
+            s2h_session(const std::string& session_id, const boost::posix_time::ptime created, const boost::posix_time::ptime expired) :
+                session(session_id, created, expired) {
             }
-            virtual bool        ExportData(std::string& sData_);
-            virtual bool        ImportData(const std::string& sData_);
 
-            void    reset();
+            virtual ~s2h_session() = default;
+
+            virtual void        get_expire_shift(boost::posix_time::time_duration& value) override;
+            virtual bool        export_data(std::string& data) override;
+            virtual bool        import_data(const std::string& data) override;
+
+            virtual void    reset() override;
 
             // ****************************************************************
             bool IsAuthenticate() const { return m_bAuthenticate; }
@@ -56,16 +52,16 @@ namespace khorost {
             void        fill_roles(Json::Value& value);
         };
 
-        class S2HSessionController : public SessionControler {
-            virtual SessionPtr  CreateSession(const std::string& sSessionID_, boost::posix_time::ptime dtCreated_, boost::posix_time::ptime dtExpired_) {
+        /*
+        class S2HSessionController : public session_controler {
+            virtual SessionPtr  create_session(const std::string& sSessionID_, boost::posix_time::ptime dtCreated_, boost::posix_time::ptime dtExpired_) override {
                 return SessionPtr(new S2HSession(sSessionID_, dtCreated_, dtExpired_));
             }
         public:
             bool    Open(const std::string& sDriver_) {
-                return SessionControler::Open(sDriver_, SESSION_VERSION_MIN, SESSION_VERSION_CURRENT);
+                return session_controler::open(sDriver_, SESSION_VERSION_MIN, SESSION_VERSION_CURRENT);
             }
         };
+        */
     }
 }
-
-#endif  // __S2H_SESSION__

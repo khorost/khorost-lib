@@ -93,7 +93,7 @@ namespace khorost {
         std::string             m_sStorageRoot;     // альтернативное место сервера
 
         DB::S2HBStorage                 m_dbBase;
-        Network::S2HSessionController   m_Sessions;
+        Network::session_controler   m_Sessions;
 
         void    TimerSessionUpdate();
         static void     stubTimerRun(Server2HB* pThis_);
@@ -101,20 +101,23 @@ namespace khorost {
         bool                                m_bShutdownTimer;
         boost::shared_ptr<boost::thread>    m_TimerThread;
         // ****************************************************************
-        typedef bool (Server2HB::*funcActionS2H)(const std::string& uri_params, Network::Connection& connection, Network::S2HSession* session, Network::HTTPTextProtocolHeader& http);
+        typedef bool (Server2HB::*funcActionS2H)(const std::string& uri_params, Network::Connection& connection, Network::s2h_session* session, Network::HTTPTextProtocolHeader& http);
         typedef std::map<std::string, funcActionS2H>		DictionaryActionS2H;
 
         DictionaryActionS2H    m_dictActionS2H;
-    protected:
-        virtual bool process_http_action(const std::string& action, const std::string& uri_params, Network::S2HSession* session, HTTPConnection& connection, Network::HTTPTextProtocolHeader& http);
-        bool    process_http(HTTPConnection& rConnect_);
 
-        virtual bool    process_http_file_server(const std::string& query_uri, Network::S2HSession* session, HTTPConnection& connection, Network::HTTPTextProtocolHeader& http);
+        typedef std::function<Network::SessionPtr(const std::string& , boost::posix_time::ptime , boost::posix_time::ptime )> func_creator;
+        virtual func_creator get_session_creator();
+    protected:
+        virtual bool process_http_action(const std::string& action, const std::string& uri_params, Network::s2h_session* session, HTTPConnection& connection, Network::HTTPTextProtocolHeader& http);
+        bool    process_http(HTTPConnection& connection);
+
+        virtual bool    process_http_file_server(const std::string& query_uri, Network::s2h_session* session, HTTPConnection& connection, Network::HTTPTextProtocolHeader& http);
         
         virtual const char* GetContextDefaultName() const {
             return "s2h"; 
         }
-        virtual const char* GetSessionCode() const {
+        virtual const char* get_session_code() const {
             return "s2hsession";
         }
         virtual const char* GetURLPrefixAction() const {
@@ -130,9 +133,9 @@ namespace khorost {
             return "/storage/";
         }
 
-        Network::SessionPtr ProcessingSession(HTTPConnection& rConnect_, Network::HTTPTextProtocolHeader& rHTTP_);
+        Network::SessionPtr processing_session(HTTPConnection& connection, Network::HTTPTextProtocolHeader& http);
 
-        bool    action_auth(const std::string& params_uri, Network::Connection& connection, Network::S2HSession* session, Network::HTTPTextProtocolHeader& http);
+        bool    action_auth(const std::string& uri_params, Network::Connection& connection, Network::s2h_session* session, Network::HTTPTextProtocolHeader& http);
 
         std::string     m_sConfigFileName;
 #if defined(_WIN32) || defined(_WIN64)
@@ -177,7 +180,7 @@ namespace khorost {
 
         void parse_action(const std::string& query, std::string& action, std::string& params);
         static std::string json_string(const Json::Value& value, bool styled = false);
-        static void json_fill_auth(Network::S2HSession* session, bool full_info, Json::Value& value);
+        static void json_fill_auth(Network::s2h_session* session, bool full_info, Json::Value& value);
 
         void    SetConnect(std::string sHost_, int nPort_, std::string sDatabase_, std::string sLogin_, std::string sPassword_) {
             m_dbConnect.SetConnect(sHost_, nPort_, sDatabase_, sLogin_, sPassword_);
@@ -188,9 +191,7 @@ namespace khorost {
             m_strDocRoot = sDocRoot_;
             m_sStorageRoot = sStorageRoot_;
         }
-        void    SetSessionDriver(const std::string& sDriver_) {
-            m_Sessions.Open(sDriver_);
-        }
+        void    SetSessionDriver(const std::string& driver);
 
     private:
 

@@ -9,13 +9,15 @@
 
 using namespace khorost::Network;
 
-S2HSession::S2HSession(const std::string& sSessionID_, boost::posix_time::ptime dtCreated,
-                       boost::posix_time::ptime dtExpired) :
-    Session(sSessionID_, dtCreated, dtExpired) {
-    reset();
+void s2h_session::get_expire_shift(boost::posix_time::time_duration& value) {
+    if (m_bAuthenticate) {
+        value = boost::posix_time::hours(24 * 14);
+    } else {
+        session::get_expire_shift(value);
+    }
 }
 
-bool S2HSession::ExportData(std::string& data) {
+bool s2h_session::export_data(std::string& data) {
     Json::Value root, roles;
     Json::FastWriter writer;
 
@@ -29,16 +31,18 @@ bool S2HSession::ExportData(std::string& data) {
     root["Roles"] = roles;
     data = writer.write(root);
 
-    return Session::ExportData(data);
+    return session::export_data(data);
 }
 
-void S2HSession::fill_roles(Json::Value& value) {
+void s2h_session::fill_roles(Json::Value& value) {
     for (const auto& r : m_dRoles) {
         value.append(r);
     }
 }
 
-void S2HSession::reset() {
+void s2h_session::reset() {
+    session::reset();
+
     m_bAuthenticate = false;
     m_idUser = 0;
     m_sNickname = "";
@@ -46,7 +50,7 @@ void S2HSession::reset() {
     m_dRoles.clear();
 }
 
-bool S2HSession::ImportData(const std::string& data) {
+bool s2h_session::import_data(const std::string& data) {
     Json::Value root;
     Json::Reader reader;
 
@@ -67,5 +71,5 @@ bool S2HSession::ImportData(const std::string& data) {
         m_dRoles.insert(r.asString());
     }
 
-    return Session::ImportData(data);
+    return session::import_data(data);
 }

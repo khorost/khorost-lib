@@ -17,8 +17,8 @@ namespace khorost {
             S2HBStorage(Postgres& rDB_) : khorost::DB::LinkedPostgres(rDB_) {
             }
 
-            bool    SessionLogger(const Network::S2HSession* pSession_, const Json::Value& jsStat_);
-            bool    SessionUpdate(Network::S2HSession* pSession_);
+            bool    SessionLogger(const Network::s2h_session* pSession_, const Json::Value& jsStat_);
+            bool    SessionUpdate(Network::s2h_session* pSession_);
             bool    SessionUpdate(khorost::Network::ListSession& rLS_);
             void    SessionIPUpdate();
 
@@ -28,7 +28,7 @@ namespace khorost {
             bool    IsUserExist(const std::string& sLogin_);
             bool    get_user_info(const std::string& sLogin_, int& nUserID_, std::string& sNickname_, std::string& sPWHash_, std::string& sSalt_) const;
             bool    GetUserInfo(int nUserID_, std::string& sLogin_, std::string& sNickname_, std::string& sPWHash_, std::string& sSalt_);
-            bool    GetUserRoles(int& nUserID_, Network::S2HSession* ps_);
+            bool    GetUserRoles(int& nUserID_, Network::s2h_session* ps_);
         };
     }
 }
