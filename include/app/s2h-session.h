@@ -23,6 +23,7 @@ namespace khorost {
         public:
             s2h_session(const std::string& session_id, const boost::posix_time::ptime created, const boost::posix_time::ptime expired) :
                 session(session_id, created, expired) {
+                reset();
             }
 
             virtual ~s2h_session() = default;
