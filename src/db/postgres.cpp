@@ -159,3 +159,7 @@ std::string LinkedPostgres::to_string(const pqxx::transaction_base& txn, const J
 std::string LinkedPostgres::to_string(const pqxx::transaction_base& txn, const bool value) {
     return value ? "true" : "false";
 }
+
+std::string LinkedPostgres::to_string(const pqxx::transaction_base& txn, const unsigned int value) {
+    return std::to_string(value);
+}
