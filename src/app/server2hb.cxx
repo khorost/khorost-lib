@@ -13,7 +13,7 @@ namespace po = boost::program_options;
 #include <boost/filesystem.hpp>
 namespace fs = boost::filesystem;
 
-khorost::Server2HB* khorost::g_pS2HB = NULL;
+khorost::server2_hb* khorost::g_pS2HB = NULL;
 
 using namespace khorost;
 
@@ -138,7 +138,7 @@ void WINAPI ServiceMain(DWORD dwArgc, LPTSTR* plszArgv) {
     }
 }
 
-void Server2HB::ReportServiceStatus(DWORD dwCurrentState_, DWORD dwWin32ExitCode_, DWORD dwWaitHint_) {
+void server2_hb::ReportServiceStatus(DWORD dwCurrentState_, DWORD dwWin32ExitCode_, DWORD dwWaitHint_) {
     static DWORD dwCheckPoint = 1;
 
     if (dwCurrentState_ == SERVICE_START_PENDING) {
@@ -159,7 +159,7 @@ void Server2HB::ReportServiceStatus(DWORD dwCurrentState_, DWORD dwWin32ExitCode
     SetServiceStatus(m_ssHandle, &m_ss);
 }
 
-bool Server2HB::ServiceInstall() {
+bool server2_hb::ServiceInstall() {
     LOG(DEBUG) << "ServiceInstalling...";
 
     SC_HANDLE hSCManager;
@@ -213,7 +213,7 @@ bool Server2HB::ServiceInstall() {
     return true;
 };
 
-bool Server2HB::ServiceUninstall() {
+bool server2_hb::ServiceUninstall() {
     LOG(DEBUG) << "ServiceUninstall...";
 
     SC_HANDLE hSCManager;
@@ -244,7 +244,7 @@ bool Server2HB::ServiceUninstall() {
     return true;
 };
 
-bool Server2HB::ServiceStart() {
+bool server2_hb::ServiceStart() {
     LOG(DEBUG) << "ServiceStarting...";
 
     SC_HANDLE hSCManager;
@@ -274,7 +274,7 @@ bool Server2HB::ServiceStart() {
     return true;
 };
 
-bool Server2HB::ServiceStop() {
+bool server2_hb::ServiceStop() {
     LOG(DEBUG) << "Service Stopping...";
 
     SC_HANDLE hSCManager;
@@ -306,7 +306,7 @@ bool Server2HB::ServiceStop() {
 
 #define SVC_ERROR                        ((DWORD)0xC0020001L)
 
-void Server2HB::ServiceReportEvent(LPTSTR szFunction) {
+void server2_hb::ServiceReportEvent(LPTSTR szFunction) {
     HANDLE hEventSource;
     LPCTSTR lpszStrings[2];
     TCHAR Buffer[80];
@@ -336,25 +336,25 @@ void Server2HB::ServiceReportEvent(LPTSTR szFunction) {
 #endif  // UNIX
 
 
-Server2HB::Server2HB() :
-    m_Connections(reinterpret_cast<ConnectionContext*>(this))
+server2_hb::server2_hb() :
+    m_Connections(reinterpret_cast<connection_context*>(this))
     , m_dbBase(m_dbConnect)
     , m_nHTTPListenPort(0)
     , m_Dispatcher(this)
     , m_bShutdownTimer(false) {
 }
 
-bool Server2HB::Shutdown() {
+bool server2_hb::Shutdown() {
     m_bShutdownTimer = true;
     return m_Connections.Shutdown();
 }
 
-bool Server2HB::PrepareToStart() {
+bool server2_hb::PrepareToStart() {
     LOG(DEBUG) << "PrepareToStart";
 
-    Network::Init();
+    network::init();
 
-    m_dictActionS2H.insert(std::pair<std::string, funcActionS2H>(S2H_PARAM_ACTION_AUTH, &Server2HB::action_auth));
+    m_dictActionS2H.insert(std::pair<std::string, funcActionS2H>(S2H_PARAM_ACTION_AUTH, &server2_hb::action_auth));
 
     SetListenPort(m_Configure.GetValue("http:port", S2H_DEFAULT_TCP_PORT));
     SetHTTPDocRoot(m_Configure.GetValue("http:docroot", "./"), m_Configure.GetValue("http:storageroot", "./"));
@@ -373,7 +373,7 @@ bool Server2HB::PrepareToStart() {
     return true;
 }
 
-bool Server2HB::AutoExecute() {
+bool server2_hb::AutoExecute() {
     LOG(DEBUG) << "AutoExecute";
 
     Config::Iterator    cfgCreateUser = m_Configure["autoexec"]["Create"]["User"];
@@ -390,7 +390,7 @@ bool Server2HB::AutoExecute() {
     return true;
 }
 
-bool Server2HB::CheckParams(int argc_, char* argv_[], int& nResult_, g3::LogWorker* logger_) {
+bool server2_hb::CheckParams(int argc_, char* argv_[], int& nResult_, g3::LogWorker* logger_) {
     g_pS2HB = this;
 
     po::options_description desc("Allowable options");
@@ -506,33 +506,33 @@ bool Server2HB::CheckParams(int argc_, char* argv_[], int& nResult_, g3::LogWork
     return true;
 }
 
-bool Server2HB::Startup() {
+bool server2_hb::Startup() {
     m_TimerThread.reset(new boost::thread(boost::bind(&stubTimerRun, this)));
     return m_Connections.StartListen(m_nHTTPListenPort, 5);
 }
 
-bool Server2HB::Run() {
+bool server2_hb::Run() {
     m_TimerThread->join();
     return m_Connections.WaitListen();
 }
 
-bool Server2HB::Finish() {
+bool server2_hb::Finish() {
     m_dbGeoIP.CloseDatabase();
-    khorost::Network::Destroy();
+    khorost::network::destroy();
     return true;
 }
 
-void Server2HB::HTTPConnection::GetClientIP(char* pBuffer_, size_t nBufferSize_) {
+void server2_hb::http_connection::GetClientIP(char* pBuffer_, size_t nBufferSize_) {
     const char* pPIP = m_HTTP.GetClientProxyIP();
     if (pPIP != nullptr) {
         strncpy(pBuffer_, pPIP, nBufferSize_);
     } else {
-        Connection::GetClientIP(pBuffer_, nBufferSize_);
+        connection::GetClientIP(pBuffer_, nBufferSize_);
     }
 }
 
-bool Server2HB::process_http_action(const std::string& action, const std::string& uri_params, Network::s2h_session* session,
-    HTTPConnection& connection, Network::HTTPTextProtocolHeader& http) {
+bool server2_hb::process_http_action(const std::string& action, const std::string& uri_params, network::s2h_session* session,
+    http_connection& connection, network::http_text_protocol_header& http) {
     const auto it = m_dictActionS2H.find(action);
     if (it != m_dictActionS2H.end()) {
         const auto func_action = it->second;
@@ -541,7 +541,7 @@ bool Server2HB::process_http_action(const std::string& action, const std::string
     return false;
 }
 
-void Server2HB::parse_action(const std::string& query, std::string& action, std::string& params) {
+void server2_hb::parse_action(const std::string& query, std::string& action, std::string& params) {
     const auto pos = query.find_first_of('/');
     if (pos != std::string::npos) {
         action = query.substr(0, pos);
@@ -552,9 +552,9 @@ void Server2HB::parse_action(const std::string& query, std::string& action, std:
     }
 }
 
-bool Server2HB::process_http(HTTPConnection& connection) {
+bool server2_hb::process_http(http_connection& connection) {
     auto& http = connection.GetHTTP();
-    const auto s2_h_session = reinterpret_cast<Network::s2h_session*>(processing_session(connection, http).get());
+    const auto s2_h_session = reinterpret_cast<network::s2h_session*>(processing_session(connection, http).get());
     const auto query_uri = http.GetQueryURI();
     const auto url_prefix_action = GetURLPrefixAction();
     const auto size_upa = strlen(url_prefix_action);
@@ -578,8 +578,8 @@ bool Server2HB::process_http(HTTPConnection& connection) {
     return process_http_file_server(query_uri, s2_h_session, connection, http);
 }
 
-bool Server2HB::process_http_file_server(const std::string& query_uri, Network::s2h_session* session, HTTPConnection& connection, Network::HTTPTextProtocolHeader& http) {
-    Network::HTTPFileTransfer    hft;
+bool server2_hb::process_http_file_server(const std::string& query_uri, network::s2h_session* session, http_connection& connection, network::http_text_protocol_header& http) {
+    network::HTTPFileTransfer    hft;
 
     const std::string prefix = GetURLPrefixStorage();
 
@@ -590,8 +590,8 @@ bool Server2HB::process_http_file_server(const std::string& query_uri, Network::
     }
 }
 
-void Server2HB::TimerSessionUpdate() {
-    Network::ListSession ls;
+void server2_hb::TimerSessionUpdate() {
+    network::list_session ls;
 
     m_Sessions.CheckAliveSessions();
 
@@ -600,7 +600,7 @@ void Server2HB::TimerSessionUpdate() {
     }
 }
 
-void Server2HB::stubTimerRun(Server2HB* pThis_) {
+void server2_hb::stubTimerRun(server2_hb* pThis_) {
     using namespace boost;
     using namespace posix_time;
 
@@ -628,26 +628,26 @@ void Server2HB::stubTimerRun(Server2HB* pThis_) {
     pThis_->TimerSessionUpdate();
 }
 
-Server2HB::func_creator Server2HB::get_session_creator() {
+server2_hb::func_creator server2_hb::get_session_creator() {
     return [](const std::string& session_id, boost::posix_time::ptime created,
         boost::posix_time::ptime expired) {
-        return boost::make_shared<Network::s2h_session>(
+        return boost::make_shared<network::s2h_session>(
             session_id, created, expired);
     };
 }
 
-void   Server2HB::SetSessionDriver(const std::string& driver) {
+void   server2_hb::SetSessionDriver(const std::string& driver) {
     m_Sessions.open(driver, SESSION_VERSION_MIN, SESSION_VERSION_CURRENT, get_session_creator());
 }
 
-Network::SessionPtr Server2HB::processing_session(HTTPConnection& connection, Network::HTTPTextProtocolHeader& http) {
+network::session_ptr server2_hb::processing_session(http_connection& connection, network::http_text_protocol_header& http) {
     using namespace boost::posix_time;
 
     auto created = false;
     const auto session_id = http.get_cookie(get_session_code());
-    Network::SessionPtr sp = m_Sessions.get_session(session_id != nullptr ? session_id : "", created,
+    network::session_ptr sp = m_Sessions.get_session(session_id != nullptr ? session_id : "", created,
                                                     get_session_creator());
-    Network::s2h_session* s2hSession = reinterpret_cast<Network::s2h_session*>(sp.get());
+    network::s2h_session* s2hSession = reinterpret_cast<network::s2h_session*>(sp.get());
 
     char sIP[255];
     connection.GetClientIP(sIP, sizeof(sIP));
@@ -688,7 +688,7 @@ Network::SessionPtr Server2HB::processing_session(HTTPConnection& connection, Ne
     return sp;
 }
 
-bool Server2HB::action_auth(const std::string& uri_params, Network::Connection& connection, Network::s2h_session* session, Network::HTTPTextProtocolHeader& http) {
+bool server2_hb::action_auth(const std::string& uri_params, network::connection& connection, network::s2h_session* session, network::http_text_protocol_header& http) {
     using namespace boost::posix_time;
 
     Json::Value root;
@@ -767,14 +767,14 @@ bool Server2HB::action_auth(const std::string& uri_params, Network::Connection& 
     return true;
 }
 
-std::string Server2HB::json_string(const Json::Value& value, const bool styled) {
+std::string server2_hb::json_string(const Json::Value& value, const bool styled) {
     if (styled) {
         return Json::StyledWriter().write(value);
     }
     return Json::FastWriter().write(value);
 }
 
-void Server2HB::json_fill_auth(Network::s2h_session* session, bool full_info, Json::Value& value) {
+void server2_hb::json_fill_auth(network::s2h_session* session, bool full_info, Json::Value& value) {
     value[S2H_JSON_AUTH] = session->IsAuthenticate();
     if (full_info && session->IsAuthenticate()) {
         value[S2H_JSON_NICKNAME] = session->GetNickname();
@@ -782,5 +782,35 @@ void Server2HB::json_fill_auth(Network::s2h_session* session, bool full_info, Js
         session->fill_roles(jvRoles);
         value[S2H_JSON_ROLES] = jvRoles;
     }
+}
+
+network::token_ptr server2_hb::find_refresh_token(const std::string& refresh_token) {
+    const auto it = m_refresh_tokens.find(refresh_token);
+    if (it!=m_refresh_tokens.end()) {
+        return it->second;
+    }
+
+    auto token = m_dbBase.load_token(true, refresh_token);
+    if (token!=nullptr) {
+        m_access_tokens.insert(std::make_pair(token->get_access_token(), token));
+        m_refresh_tokens.insert(std::make_pair(token->get_refresh_token(), token));
+    }
+
+    return token;
+}
+
+network::token_ptr server2_hb::find_access_token(const std::string& access_token) {
+    const auto it = m_access_tokens.find(access_token);
+    if (it != m_access_tokens.end()) {
+        return it->second;
+    }
+
+    auto token = m_dbBase.load_token(false, access_token);
+    if (token != nullptr) {
+        m_access_tokens.insert(std::make_pair(token->get_access_token(), token));
+        m_refresh_tokens.insert(std::make_pair(token->get_refresh_token(), token));
+    }
+
+    return token;
 }
 

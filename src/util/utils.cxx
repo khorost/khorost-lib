@@ -1,7 +1,7 @@
 #include "util/utils.h"
 #include <regex>
 
-std::string khorost::Data::EscapeString(const std::string& s_) {
+std::string khorost::data::EscapeString(const std::string& s_) {
     std::string r;
 
     for (std::string::const_iterator cit=s_.begin();cit!=s_.end();++cit) {
@@ -19,11 +19,11 @@ std::string khorost::Data::EscapeString(const std::string& s_) {
 
 static boost::posix_time::ptime               s_time_t_epoch(boost::gregorian::date(1970, 1, 1));
 
-boost::posix_time::time_duration khorost::Data::EpochDiff(boost::posix_time::ptime pt_) {
+boost::posix_time::time_duration khorost::data::EpochDiff(boost::posix_time::ptime pt_) {
     return pt_ - s_time_t_epoch;
 }
 
-boost::posix_time::ptime khorost::Data::EpochMicroseconds2ptime(uint64_t ms_) {
+boost::posix_time::ptime khorost::data::EpochMicroseconds2ptime(uint64_t ms_) {
     return s_time_t_epoch + boost::posix_time::microseconds(ms_);
 }
 
@@ -39,7 +39,7 @@ std::string trim(const std::string& str, const std::string& newline = "\r\n") {
     return str.substr(strBegin, strRange);
 }
 
-std::string khorost::Data::clear_html_tags(const std::string source) {
+std::string khorost::data::clear_html_tags(const std::string source) {
     std::regex stripFormatting("<[^>]*(>|$)"); //match any character between '<' and '>', even when end tag is missing
 
     std::string s1 = std::regex_replace(source, stripFormatting, "");

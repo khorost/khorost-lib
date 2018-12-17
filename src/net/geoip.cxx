@@ -5,9 +5,9 @@
 #pragma comment(lib, "GeoIP")
 #endif // WIN32
 
-using namespace khorost::Network;
+using namespace khorost::network;
 
-bool GeoIPDatabase::OpenDatabase(const std::string& sGeoiIPDatFile) {
+bool geo_ip_database::OpenDatabase(const std::string& sGeoiIPDatFile) {
     if (m_gi == nullptr) {
         LOG(INFO) << "Open geoip database '" << sGeoiIPDatFile << "'";
         m_gi = GeoIP_open(sGeoiIPDatFile.c_str(), GEOIP_STANDARD | GEOIP_SILENCE);
@@ -25,14 +25,14 @@ bool GeoIPDatabase::OpenDatabase(const std::string& sGeoiIPDatFile) {
     return true;
 }
 
-void GeoIPDatabase::CloseDatabase() {
+void geo_ip_database::CloseDatabase() {
     if (m_gi != nullptr) {
         GeoIP_delete(m_gi);
         m_gi = nullptr;
     }
 }
 
-std::string GeoIPDatabase::GetCountryCodeByIP(const std::string& sIP) {
+std::string geo_ip_database::GetCountryCodeByIP(const std::string& sIP) {
     std::string sCountryCode = "--";
 
     if (m_gi != nullptr) {

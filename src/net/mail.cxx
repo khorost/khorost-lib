@@ -4,7 +4,7 @@
 #include "net/mail.h"
 #include "util/logger.h"
 
-using namespace khorost::Network;
+using namespace khorost::network;
 
 static std::queue<std::string> init_message(const std::string& to_, const std::string& from_,
                                             const std::string& subject_, const std::string& message_) {

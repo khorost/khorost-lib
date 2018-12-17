@@ -7,7 +7,7 @@
 
 #include "app/s2h-session.h"
 
-using namespace khorost::Network;
+using namespace khorost::network;
 
 void s2h_session::get_expire_shift(boost::posix_time::time_duration& value) {
     if (m_bAuthenticate) {

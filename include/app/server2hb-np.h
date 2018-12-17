@@ -4,7 +4,7 @@
 #include "net/compactbinary.h"
 
 namespace khorost {
-    namespace Network {
+    namespace network {
         class s2bPacket : public cbPacket {
         public:
             static  const sign_cbp    S2B_NP_SIGNATURE = 0x07;

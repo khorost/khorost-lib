@@ -5,6 +5,7 @@
 #include <string>
 
 #if defined(_WIN32) || defined(_WIN64)
+# include <windows.h>
 # include <WinSock2.h>
 #else
 /* For sockaddr_in */
@@ -71,18 +72,18 @@
 #define HTTP_CODEPAGE_NULL                      ""
 
 namespace khorost {
-    namespace Network {
+    namespace network {
         class http_packet {
         public:
             static  const   char*   HTTP_QUERY_REQUEST_METHOD_GET;
             static  const   char*   HTTP_QUERY_REQUEST_METHOD_POST;
         };
 
-        class HTTPTextProtocolHeader {
+        class http_text_protocol_header {
             // Быстрый доступ к атрибутам HTTP
-            Data::AutoBufferChunkChar   m_abcQueryMethod;
-            Data::AutoBufferChunkChar   m_abcQueryURI;
-            Data::AutoBufferChunkChar   m_abcQueryVersion;
+            data::AutoBufferChunkChar   m_abcQueryMethod;
+            data::AutoBufferChunkChar   m_abcQueryURI;
+            data::AutoBufferChunkChar   m_abcQueryVersion;
 
             int     m_nContentLength{};
             size_t  m_nHost{};
@@ -94,9 +95,9 @@ namespace khorost {
             ListPairs   m_ParamsValue;  // словарь для параметров
             ListPairs   m_Cookies;      // словарь для кук
 
-            Data::AutoBufferChar                    m_abHeader;
-            Data::AutoBufferChar                    m_abParams;
-            Data::AutoBufferChar                    m_abBody;
+            data::AutoBufferChar                    m_abHeader;
+            data::AutoBufferChar                    m_abParams;
+            data::AutoBufferChar                    m_abBody;
             enum {
                 eNone
                 , eProcessingFirst
@@ -164,10 +165,10 @@ namespace khorost {
                 }
             }   m_Replay;
 
-            bool    GetChunk(const char*& rpBuffer_, size_t& rnBufferSize_, char cPrefix_, const char* pDiv_, Data::AutoBufferChar& abTarget_, Data::AutoBufferChunkChar& rabcQueryValue_, size_t& rnChunkSize_);
+            bool    GetChunk(const char*& rpBuffer_, size_t& rnBufferSize_, char cPrefix_, const char* pDiv_, data::AutoBufferChar& abTarget_, data::AutoBufferChunkChar& rabcQueryValue_, size_t& rnChunkSize_);
             bool    ParseString(char* pBuffer_, size_t nBufferSize_, size_t nShift, ListPairs& lpTarget_, char cDiv, bool bTrim);
         public:
-            HTTPTextProtocolHeader() :
+            http_text_protocol_header() :
                 m_abcQueryMethod(m_abHeader)
                 , m_abcQueryURI(m_abHeader)
                 , m_abcQueryVersion(m_abHeader)
@@ -197,7 +198,7 @@ namespace khorost {
                 m_Replay.Clear();
             }
 
-            size_t  ProcessData(Network::Connection& rConnect_, const boost::uint8_t* pBuffer_, size_t nBufferSize_);
+            size_t  ProcessData(network::connection& rConnect_, const boost::uint8_t* pBuffer_, size_t nBufferSize_);
             bool    IsReady() const { return m_eHeaderProcess == eSuccessful && m_eBodyProcess == eSuccessful; }
             bool    IsAutoClose() const { return m_Replay.m_bAutoClose; }
 
@@ -244,9 +245,9 @@ namespace khorost {
 
             void    SetLastModify(boost::posix_time::ptime tLM_) { m_Replay.m_tLastModify = tLM_; }
 
-            void response(Connection& connect, const char* response, size_t length);
+            void response(connection& connect, const char* response, size_t length);
 
-            void response(Connection& connect, const std::string& body) {
+            void response(connection& connect, const std::string& body) {
                 response(connect, body.c_str(), body.size());
             }
 
@@ -260,14 +261,14 @@ namespace khorost {
             HTTPFileTransfer() {}
             virtual ~HTTPFileTransfer() {}
 
-            bool    SendFile(const std::string& sQueryURI_, Connection& connect, HTTPTextProtocolHeader& http, const std::string& sDocRoot_, const std::string& sFileName_ = "");
+            bool    SendFile(const std::string& sQueryURI_, connection& connect, http_text_protocol_header& http, const std::string& sDocRoot_, const std::string& sFileName_ = "");
         };
 
         template<typename T>
         class HTTPCurlT {
             static size_t WriteAutobufferCallback(void* Contents_, size_t nSize_, size_t nMemb_, void *Ctx_) {
                 size_t nRealSize = (nSize_ * nMemb_) / sizeof(T);
-                Data::AutoBufferT<T>* pBuffer = reinterpret_cast<Data::AutoBufferT<T>*>(Ctx_);
+                data::AutoBufferT<T>* pBuffer = reinterpret_cast<data::AutoBufferT<T>*>(Ctx_);
 
                 pBuffer->CheckSize(pBuffer->GetFillSize() + nRealSize);
                 pBuffer->Append(reinterpret_cast<const T*>(Contents_), nRealSize);
@@ -288,7 +289,7 @@ namespace khorost {
                 }
             }
 
-            bool DoRequest(const std::string& sURL_, Data::AutoBufferT<T>& abBuffer_) {
+            bool DoRequest(const std::string& sURL_, data::AutoBufferT<T>& abBuffer_) {
                 bool    bResult = false;
 
                 CURLcode    curlCode, nRespCode;
@@ -309,13 +310,13 @@ namespace khorost {
         };
 
         class   HTTPCurlString : HTTPCurlT<char> {
-            Data::AutoBufferChar    m_abBuffer;
+            data::AutoBufferChar    m_abBuffer;
         public:
             bool    DoEasyRequest(const std::string& sURL_) {
                 return DoRequest(sURL_, m_abBuffer);
             }
 
-            const Data::AutoBufferChar&   GetBuffer() const { return m_abBuffer; }
+            const data::AutoBufferChar&   GetBuffer() const { return m_abBuffer; }
             const char* GetURIEncode(const char* pURIString_) {
 
                 if (pURIString_ == nullptr || *pURIString_ == '\0') {
@@ -324,7 +325,7 @@ namespace khorost {
                 } else {
                     int nLenghtOut = 0;
 
-                    Data::AutoBufferChar    abTemp;
+                    data::AutoBufferChar    abTemp;
                     abTemp.Append(pURIString_, strlen(pURIString_));
                     // if +'s aren't replaced with %20's then curl won't unescape to spaces propperly
                     abTemp.Replace("+", 1, "%20", 3, false);

@@ -13,7 +13,7 @@
 #define SESSION_VERSION_CURRENT     4
 
 namespace khorost {
-    namespace Network {
+    namespace network {
         class s2h_session : public session {
             bool		        m_bAuthenticate;
             int                 m_idUser;

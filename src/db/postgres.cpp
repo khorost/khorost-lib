@@ -13,17 +13,17 @@
 
 #include "util/logger.h"
 
-using namespace khorost::DB;
+using namespace khorost::db;
 
-void DBPool::Prepare(int nCount_, const std::string& sConnectParam_) {
+void db_pool::Prepare(int nCount_, const std::string& sConnectParam_) {
     std::lock_guard<std::mutex> locker(m_mutex);
 
     for (auto n = 0; n < nCount_; ++n) {
-        m_FreePool.emplace(boost::make_shared<DBConnectionPool>(sConnectParam_));
+        m_FreePool.emplace(boost::make_shared<db_connection_pool>(sConnectParam_));
     }
 }
 
-DBConnectionPoolPtr DBPool::GetConnectionPool() {
+db_connection_pool_ptr db_pool::GetConnectionPool() {
     std::unique_lock<std::mutex> locker(m_mutex);
 
     while (m_FreePool.empty()) {
@@ -40,7 +40,7 @@ DBConnectionPoolPtr DBPool::GetConnectionPool() {
     return conn;
 }
 
-void DBPool::ReleaseConnectionPool(DBConnectionPoolPtr pdbc_) {
+void db_pool::ReleaseConnectionPool(db_connection_pool_ptr pdbc_) {
     std::unique_lock<std::mutex> locker(m_mutex);
     m_FreePool.push(pdbc_);
     locker.unlock();
@@ -51,7 +51,7 @@ void DBPool::ReleaseConnectionPool(DBConnectionPoolPtr pdbc_) {
     }
 }
 
-std::string Postgres::GetConnectParam() const {
+std::string postgres::GetConnectParam() const {
     std::string sc;
     sc += " host = " + m_sHost;
     sc += " port = " + std::to_string(m_nPort);
@@ -62,7 +62,7 @@ std::string Postgres::GetConnectParam() const {
     return sc;
 }
 
-bool DBConnectionPool::CheckConnect() {
+bool db_connection_pool::CheckConnect() {
     static int times = 0;
     try {
         times++;
@@ -128,8 +128,8 @@ static void sExecuteCustomSQL(pqxx::transaction_base& txn_, const std::string& s
     }
 }
 
-void Postgres::ExecuteCustomSQL(bool bReadOnly_, const std::string& sSQL_, Json::Value& jvResult_) {
-    DBConnection conn(*this);
+void postgres::ExecuteCustomSQL(bool bReadOnly_, const std::string& sSQL_, Json::Value& jvResult_) {
+    db_connection conn(*this);
 
     if (bReadOnly_) {
         pqxx::read_transaction txn(conn.GetHandle());
@@ -141,7 +141,7 @@ void Postgres::ExecuteCustomSQL(bool bReadOnly_, const std::string& sSQL_, Json:
     }
 }
 
-std::string LinkedPostgres::to_string(const pqxx::transaction_base& txn,
+std::string linked_postgres::to_string(const pqxx::transaction_base& txn,
                                       const boost::posix_time::ptime& timestamp, const bool nullable_infinity) {
     if (timestamp.is_pos_infinity()) {
         return nullable_infinity ? "null" : "'infinity'::timestamp";
@@ -152,14 +152,77 @@ std::string LinkedPostgres::to_string(const pqxx::transaction_base& txn,
     }
 }
 
-std::string LinkedPostgres::to_string(const pqxx::transaction_base& txn, const Json::Value& info) {
+std::string linked_postgres::to_string(const pqxx::transaction_base& txn, const Json::Value& info) {
     return info.isNull() ? "null" : (txn.quote(Json::FastWriter().write(info)) + "::jsonb");
 }
 
-std::string LinkedPostgres::to_string(const pqxx::transaction_base& txn, const bool value) {
+std::string linked_postgres::to_string(const pqxx::transaction_base& txn, const bool value) {
     return value ? "true" : "false";
 }
 
-std::string LinkedPostgres::to_string(const pqxx::transaction_base& txn, const unsigned int value) {
+std::string linked_postgres::to_string(const pqxx::transaction_base& txn, const unsigned int value) {
     return std::to_string(value);
+}
+
+khorost::network::token_ptr khl_postgres::create_token(const int access_timeout, const int refresh_timeout,
+                                                       const Json::Value& payload) const {
+    db_connection conn(m_rDB);
+    pqxx::work txn(conn.GetHandle());
+
+    const auto r = txn.exec(
+        "INSERT INTO admin.khl_tokens "
+        " (access_token, access_time, refresh_token, refresh_time, payload) "
+        " VALUES( uuid_generate_v4(), NOW() + INTERVAL '" + std::to_string(access_timeout) +
+        " SECONDS', uuid_generate_v4(), NOW() + INTERVAL '" + std::to_string(refresh_timeout) + " SECONDS', " +
+        to_string(txn, payload) + ") "
+        " RETURNING replace(access_token::text,'-',''), access_time AT TIME ZONE 'UTC', replace(refresh_token::text,'-',''), refresh_time AT TIME ZONE 'UTC'"
+    );
+    txn.commit();
+
+    if (r.empty()) {
+        return nullptr;
+    }
+
+    const auto& row0 = r[0];
+    return boost::make_shared<network::token>(row0[0].as<std::string>(),
+                                              boost::posix_time::time_from_string(row0[1].as<std::string>()),
+                                              row0[2].as<std::string>(),
+                                              boost::posix_time::time_from_string(row0[3].as<std::string>()), payload);
+}
+
+khorost::network::token_ptr khl_postgres::load_token(bool is_refresh_token, const std::string& token_id) const {
+    db_connection conn(m_rDB);
+    pqxx::read_transaction txn(conn.GetHandle());
+
+    const auto code_token = std::string(is_refresh_token ? "refresh_token" : "access_token");
+
+    auto r = txn.exec(
+        "SELECT "
+        "  kt.access_token, " // [0]
+        "  kt.access_time AT TIME ZONE 'UTC' , " // [1]
+        "  kt.refresh_token , " // [2]
+        "  kt.refresh_time AT TIME ZONE 'UTC', " // [3]
+        "  kt.payload " // [4]
+        " FROM "
+        "   admin.khl_tokens AS kt "
+        " WHERE kt." + code_token + " = '" + token_id + "' "
+    );
+
+    if (r.empty()) {
+        return nullptr;
+    }
+
+    Json::Reader reader;
+    Json::Value payload;
+
+    const auto& row0 = r[0];
+
+    if (!row0[4].is_null()) {
+        reader.parse(row0[4].as<std::string>(), payload);
+    }
+
+    return boost::make_shared<network::token>(row0[0].as<std::string>(),
+                                              boost::posix_time::time_from_string(row0[1].as<std::string>()),
+                                              row0[2].as<std::string>(),
+                                              boost::posix_time::time_from_string(row0[3].as<std::string>()), payload);
 }

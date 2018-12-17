@@ -31,7 +31,7 @@
 #pragma comment(lib,"libcurl.lib")
 
 using namespace khorost;
-using namespace khorost::Network;
+using namespace khorost::network;
 
 const char*   http_packet::HTTP_QUERY_REQUEST_METHOD_GET     = "GET";
 const char*   http_packet::HTTP_QUERY_REQUEST_METHOD_POST    = "POST";
@@ -100,7 +100,7 @@ bool FindSubValue(const char* pSource_, size_t nSourceSize_, const char* pMatch_
     return false;
 }
 
-bool HTTPTextProtocolHeader::GetChunk(const char*& rpBuffer_, size_t& rnBufferSize_, char cPrefix_, const char* pDiv_, Data::AutoBufferChar& abTarget_, Data::AutoBufferChunkChar& rabcQueryValue_, size_t& rnChunkSize_) {
+bool http_text_protocol_header::GetChunk(const char*& rpBuffer_, size_t& rnBufferSize_, char cPrefix_, const char* pDiv_, data::AutoBufferChar& abTarget_, data::AutoBufferChunkChar& rabcQueryValue_, size_t& rnChunkSize_) {
     size_t s;
     // зачишаем префикс от white символов
     for (s=0; s<rnBufferSize_ && rpBuffer_[s]==cPrefix_; ++s) {
@@ -127,7 +127,7 @@ bool HTTPTextProtocolHeader::GetChunk(const char*& rpBuffer_, size_t& rnBufferSi
     return false;
 }
 
-size_t  HTTPTextProtocolHeader::ProcessData(Network::Connection& rConnect_, const boost::uint8_t *pBuffer_, size_t nBufferSize_) {
+size_t  http_text_protocol_header::ProcessData(network::connection& rConnect_, const boost::uint8_t *pBuffer_, size_t nBufferSize_) {
     size_t nProcessByte = 0, nChunkSize, nChunkSizeV;
     switch (m_eHeaderProcess) {
     case eProcessingFirst:
@@ -154,7 +154,7 @@ size_t  HTTPTextProtocolHeader::ProcessData(Network::Connection& rConnect_, cons
         }
         //  ?key=val& ***************************************************
         if (m_abParams.GetFillSize()==0 && pBuffer_[0]=='?') {
-            Data::AutoBufferChunkChar   abcParam(m_abParams);
+            data::AutoBufferChunkChar   abcParam(m_abParams);
             pBuffer_ += sizeof(char);
             nBufferSize_ -= sizeof(char);
             if (!GetChunk(reinterpret_cast<const char*&>(pBuffer_), nBufferSize_, '?', " ", m_abParams, abcParam, nChunkSize)) {
@@ -190,8 +190,8 @@ size_t  HTTPTextProtocolHeader::ProcessData(Network::Connection& rConnect_, cons
                 break;
             }
             
-            Data::AutoBufferChunkChar   abcHeaderKey(m_abHeader);
-            Data::AutoBufferChunkChar   abcHeaderValue(m_abHeader);
+            data::AutoBufferChunkChar   abcHeaderKey(m_abHeader);
+            data::AutoBufferChunkChar   abcHeaderValue(m_abHeader);
 
             if (GetChunk(reinterpret_cast<const char*&>(pBuffer_), nBufferSize_, ' ', ":", m_abHeader, abcHeaderKey, nChunkSize) 
                 && GetChunk(reinterpret_cast<const char*&>(pBuffer_), nBufferSize_, ' ', "\r\n", m_abHeader, abcHeaderValue, nChunkSizeV)) {
@@ -259,7 +259,7 @@ size_t  HTTPTextProtocolHeader::ProcessData(Network::Connection& rConnect_, cons
     return nProcessByte;
 }
 
-bool HTTPTextProtocolHeader::GetMultiPart(size_t& rszIterator_, std::string& rsName_, std::string& rsContentType_, const char*& rpBuffer_, size_t& rszBuffer) {
+bool http_text_protocol_header::GetMultiPart(size_t& rszIterator_, std::string& rsName_, std::string& rsContentType_, const char*& rpBuffer_, size_t& rszBuffer) {
     const char *pszContentType = GetHeaderParameter(HTTP_ATTRIBUTE_CONTENT_TYPE);
     if (pszContentType == nullptr) {
         return false;
@@ -328,7 +328,7 @@ bool HTTPTextProtocolHeader::GetMultiPart(size_t& rszIterator_, std::string& rsN
     return false;
 }
 
-bool HTTPTextProtocolHeader::ParseString(char* pBuffer_, size_t nBufferSize_, size_t nShift, ListPairs& lpTarget_, char cDiv, bool bTrim) {
+bool http_text_protocol_header::ParseString(char* pBuffer_, size_t nBufferSize_, size_t nShift, ListPairs& lpTarget_, char cDiv, bool bTrim) {
     size_t k, v, t;
     for (k=0, v=-1, t=0;t<nBufferSize_;) {
         if (t>=nBufferSize_ || pBuffer_[t]=='\0') {
@@ -357,7 +357,7 @@ bool HTTPTextProtocolHeader::ParseString(char* pBuffer_, size_t nBufferSize_, si
     return true;
 }
 
-const char* HTTPTextProtocolHeader::GetCookieParameter(const std::string& sKey_, const char* sDefault_) const {
+const char* http_text_protocol_header::GetCookieParameter(const std::string& sKey_, const char* sDefault_) const {
     const char* psValue = get_cookie(sKey_);
 
     if (psValue == nullptr) {
@@ -366,7 +366,7 @@ const char* HTTPTextProtocolHeader::GetCookieParameter(const std::string& sKey_,
     return psValue;
 }
 
-const char* HTTPTextProtocolHeader::get_cookie(const std::string& sKey_, bool* pbExist_) const {
+const char* http_text_protocol_header::get_cookie(const std::string& sKey_, bool* pbExist_) const {
     if (pbExist_!= nullptr) {
         *pbExist_ = false;
     }
@@ -383,7 +383,7 @@ const char* HTTPTextProtocolHeader::get_cookie(const std::string& sKey_, bool* p
     return nullptr;
 }
 
-bool HTTPTextProtocolHeader::IsParameterExist(const std::string& sKey_) const {
+bool http_text_protocol_header::IsParameterExist(const std::string& sKey_) const {
     for (const auto& cit : m_ParamsValue) {
         if (strcmp(sKey_.c_str(), m_abParams.GetPosition(cit.first)) == 0) {
             return true;
@@ -392,7 +392,7 @@ bool HTTPTextProtocolHeader::IsParameterExist(const std::string& sKey_) const {
     return false;
 }
 
-size_t HTTPTextProtocolHeader::GetParameterIndex(const std::string& sKey_) const {
+size_t http_text_protocol_header::GetParameterIndex(const std::string& sKey_) const {
     for (const auto& cit : m_ParamsValue) {
         if (strcmp(sKey_.c_str(), m_abParams.GetPosition(cit.first)) == 0) {
             return cit.second;
@@ -401,7 +401,7 @@ size_t HTTPTextProtocolHeader::GetParameterIndex(const std::string& sKey_) const
     return -1;
 }
 
-size_t HTTPTextProtocolHeader::GetHeaderIndex(const std::string& sKey_) const {
+size_t http_text_protocol_header::GetHeaderIndex(const std::string& sKey_) const {
     for (const auto& cit : m_HeaderValue) {
         if (strcmp(sKey_.c_str(), m_abHeader.GetPosition(cit.first)) == 0) {
             return cit.second;
@@ -410,7 +410,7 @@ size_t HTTPTextProtocolHeader::GetHeaderIndex(const std::string& sKey_) const {
     return -1;
 }
 
-void HTTPTextProtocolHeader::FillParameter2Array(const std::string& sKey_, std::vector<int>& rArray_) {
+void http_text_protocol_header::FillParameter2Array(const std::string& sKey_, std::vector<int>& rArray_) {
     std::string sKey2 = sKey_ + "[]";
     for (const auto& p : m_ParamsValue) {
         if (strcmp(sKey_.c_str(), m_abParams.GetPosition(p.first)) == 0 || strcmp(sKey2.c_str(), m_abParams.GetPosition(p.first)) == 0) {
@@ -419,7 +419,7 @@ void HTTPTextProtocolHeader::FillParameter2Array(const std::string& sKey_, std::
     }
 }
 
-const char* HTTPTextProtocolHeader::GetParameter(const std::string& sKey_, bool* pbExist_) const {
+const char* http_text_protocol_header::GetParameter(const std::string& sKey_, bool* pbExist_) const {
     if (pbExist_!= nullptr) {
         *pbExist_ = false;
     }
@@ -436,7 +436,7 @@ const char* HTTPTextProtocolHeader::GetParameter(const std::string& sKey_, bool*
     return nullptr;
 }
 
-const char* HTTPTextProtocolHeader::GetHeaderParameter(const std::string& sParam_, const char* sDefault_) const {
+const char* http_text_protocol_header::GetHeaderParameter(const std::string& sParam_, const char* sDefault_) const {
     for (const auto& cit : m_HeaderValue) {
         if (strcmp(sParam_.c_str(), m_abHeader.GetPosition(cit.first)) == 0) {
             return m_abHeader.GetPosition(cit.second);
@@ -446,7 +446,7 @@ const char* HTTPTextProtocolHeader::GetHeaderParameter(const std::string& sParam
     return sDefault_;
 }
 
-void HTTPTextProtocolHeader::response(Network::Connection& connect, const char* response, size_t length) {
+void http_text_protocol_header::response(network::connection& connect, const char* response, size_t length) {
     using namespace boost::posix_time;
 
     char  st[255];
@@ -487,7 +487,7 @@ void HTTPTextProtocolHeader::response(Network::Connection& connect, const char* 
     }
 
     for (const auto& c : m_Replay.m_Cookies) {
-        time_t gmt = Data::EpochDiff(c.m_dtExpire).total_seconds();
+        time_t gmt = data::EpochDiff(c.m_dtExpire).total_seconds();
         strftime(st, sizeof(st), "%a, %d-%b-%Y %H:%M:%S GMT", gmtime(&gmt));
 
         connect.SendString(
@@ -513,7 +513,7 @@ void HTTPTextProtocolHeader::response(Network::Connection& connect, const char* 
 
     if (!m_Replay.m_tLastModify.is_not_a_date_time()) {
         connect.SendString(HTTP_ATTRIBUTE_LAST_MODIFIED HTTP_ATTRIBUTE_DIV);
-        time_t gmt = Data::EpochDiff(m_Replay.m_tLastModify).total_seconds();
+        time_t gmt = data::EpochDiff(m_Replay.m_tLastModify).total_seconds();
         strftime(st, sizeof(st), "%a, %d-%b-%Y %H:%M:%S GMT", gmtime(&gmt));
         connect.SendString(st);
         connect.SendString(HTTP_ATTRIBUTE_ENDL, sizeof(HTTP_ATTRIBUTE_ENDL)-1);
@@ -524,7 +524,7 @@ void HTTPTextProtocolHeader::response(Network::Connection& connect, const char* 
     }
 }
 
-void HTTPTextProtocolHeader::set_cookie(const std::string& cookie, const std::string& value, boost::posix_time::ptime expire, const std::string& domain, bool http_only) {
+void http_text_protocol_header::set_cookie(const std::string& cookie, const std::string& value, boost::posix_time::ptime expire, const std::string& domain, bool http_only) {
     m_Replay.m_Cookies.emplace_back(cookie, value, expire, domain, http_only);
 }
 
@@ -536,7 +536,7 @@ static bool IsSlash (char ch_) { return ch_=='/'; }
 #endif
 
 
-bool HTTPFileTransfer::SendFile(const std::string& sQueryURI_, Network::Connection& connect, HTTPTextProtocolHeader& http, const std::string& sDocRoot_, const std::string& sFileName_) {
+bool HTTPFileTransfer::SendFile(const std::string& sQueryURI_, network::connection& connect, http_text_protocol_header& http, const std::string& sDocRoot_, const std::string& sFileName_) {
     using namespace boost::posix_time;
 
     // TODO сделать корректировку по абсолютно-относительным переходам
@@ -684,31 +684,31 @@ bool HTTPFileTransfer::SendFile(const std::string& sQueryURI_, Network::Connecti
     return true;
 }
 
-bool HTTPTextProtocolHeader::GetParameter(const std::string& sKey_, bool bDefault_) const {
+bool http_text_protocol_header::GetParameter(const std::string& sKey_, bool bDefault_) const {
     bool bExist;
     const char* pValue = GetParameter(sKey_, &bExist);
     return bExist ? strcmp(pValue, "true") == 0 : bDefault_;
 }
 
-int HTTPTextProtocolHeader::GetParameter(const std::string& sKey_, int nDefault_) const {
+int http_text_protocol_header::GetParameter(const std::string& sKey_, int nDefault_) const {
     bool bExist;
     const char* pValue = GetParameter(sKey_, &bExist);
     return bExist?atoi(pValue):nDefault_;
 }
 
-int64_t HTTPTextProtocolHeader::GetParameter64(const std::string& sKey_, int64_t nDefault_) const {
+int64_t http_text_protocol_header::GetParameter64(const std::string& sKey_, int64_t nDefault_) const {
     bool bExist;
     const char* pValue = GetParameter(sKey_, &bExist);
     return bExist ? atoll(pValue) : nDefault_;
 }
 
-const char* HTTPTextProtocolHeader::GetParameter(const std::string& sKey_, const char* sDefault_) const {
+const char* http_text_protocol_header::GetParameter(const std::string& sKey_, const char* sDefault_) const {
     bool bExist;
     const char* pValue = GetParameter(sKey_, &bExist);
     return bExist?pValue:sDefault_;
 }
 
-void HTTPTextProtocolHeader::CalculateHostPort() {
+void http_text_protocol_header::CalculateHostPort() {
     size_t idx = GetHeaderIndex(HTTP_ATTRIBUTE_HOST);
     if (idx==-1) {
         return;
@@ -728,21 +728,21 @@ void HTTPTextProtocolHeader::CalculateHostPort() {
     }
 }
 
-const char* HTTPTextProtocolHeader::GetHost() {
+const char* http_text_protocol_header::GetHost() {
     if (m_nHost==-1) {
         CalculateHostPort();
     }
     return m_nHost==-1?"":m_abHeader.GetPosition(m_nHost);
 }
 
-const char* HTTPTextProtocolHeader::GetPort() {
+const char* http_text_protocol_header::GetPort() {
     if (m_nHost==-1) {
         CalculateHostPort();
     }
     return (m_nPort==-1 || m_nPort==0)?"":m_abHeader.GetPosition(m_nPort);
 }
 
-const char* HTTPTextProtocolHeader::GetClientProxyIP() {
+const char* http_text_protocol_header::GetClientProxyIP() {
     size_t  idx = GetHeaderIndex(HTTP_ATTRIBUTE_X_FORWARDED_FOR);
     if (idx==-1) {
         idx = GetHeaderIndex(HTTP_ATTRIBUTE_X_REAL_IP);

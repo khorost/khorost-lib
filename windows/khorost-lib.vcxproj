@@ -164,6 +164,7 @@
     <ClCompile Include="..\src\net\http.cpp" />
     <ClCompile Include="..\src\net\mail.cxx" />
     <ClCompile Include="..\src\net\session.cpp" />
+    <ClCompile Include="..\src\net\token.cxx" />
     <ClCompile Include="..\src\system\fastfile.cpp" />
     <ClCompile Include="..\src\util\logger.cpp" />
     <ClCompile Include="..\src\util\utils.cxx" />
@@ -182,6 +183,7 @@
     <ClInclude Include="..\include\net\http.h" />
     <ClInclude Include="..\include\net\mail.h" />
     <ClInclude Include="..\include\net\session.h" />
+    <ClInclude Include="..\include\net\token.h" />
     <ClInclude Include="..\include\system\fastfile.h" />
     <ClInclude Include="..\include\util\autobuffer.h" />
     <ClInclude Include="..\include\util\logger.h" />

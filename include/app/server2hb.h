@@ -12,29 +12,30 @@
 #include "net/geoip.h"
 
 namespace khorost {
-    class Server2HB : public Network::ConnectionContext {
+    class server2_hb : public network::connection_context {
     protected:
-        class CBConnection : public Network::Connection {
+        class cb_connection : public network::connection {
         protected:
             virtual size_t	DataProcessing(const boost::uint8_t* pBuffer_, size_t nBufferSize_) {
-                Server2HB*		pServer = reinterpret_cast<Server2HB*>(GetController()->GetContext());
+                server2_hb*		pServer = reinterpret_cast<server2_hb*>(GetController()->GetContext());
                 return pServer->m_Dispatcher.DoProcessCB(*this, pBuffer_, nBufferSize_);
             }
         public:
-            CBConnection(Network::ConnectionController* pThis_, int ID_, evutil_socket_t fd_, struct sockaddr* sa_, int socklen_) :
-                Network::Connection(pThis_, ID_, fd_, sa_, socklen_)
+            cb_connection(network::connection_controller* pThis_, int ID_, evutil_socket_t fd_, struct sockaddr* sa_, int socklen_) :
+                network::connection(pThis_, ID_, fd_, sa_, socklen_)
                 {
             }
         };
-        class HTTPConnection : public Network::Connection {
+
+        class http_connection : public network::connection {
             bool		        m_bAuthenticate;
             std::string         m_SaltConnect;
             boost::uuids::uuid  m_idUser;
 
-            Network::HTTPTextProtocolHeader          m_HTTP;
+            network::http_text_protocol_header m_HTTP;
         protected:
             virtual size_t	DataProcessing(const boost::uint8_t* pBuffer_, size_t nBufferSize_) {
-                Server2HB*		pServer = reinterpret_cast<Server2HB*>(GetController()->GetContext());
+                server2_hb*		pServer = reinterpret_cast<server2_hb*>(GetController()->GetContext());
 
                 size_t nProcessBytes = m_HTTP.ProcessData(*this, pBuffer_, nBufferSize_);
                 if (nProcessBytes != 0) {
@@ -49,8 +50,8 @@ namespace khorost {
                 return nProcessBytes;
             }
         public:
-            HTTPConnection(Network::ConnectionController* pThis_, int ID_, evutil_socket_t fd_, struct sockaddr* sa_, int socklen_) :
-                Network::Connection(pThis_, ID_, fd_, sa_, socklen_)
+            http_connection(network::connection_controller* pThis_, int ID_, evutil_socket_t fd_, struct sockaddr* sa_, int socklen_) :
+                network::connection(pThis_, ID_, fd_, sa_, socklen_)
                 , m_bAuthenticate(false) {
 
             }
@@ -60,59 +61,63 @@ namespace khorost {
 
             const std::string& GetSalt(bool Reset_ = false);
 
-            Network::HTTPTextProtocolHeader&   GetHTTP() { return m_HTTP; }
+            network::http_text_protocol_header&   GetHTTP() { return m_HTTP; }
             virtual void    GetClientIP(char* pBuffer_, size_t nBufferSize_);
         };
 
-        DB::Postgres                    m_dbConnect;
+        db::postgres                    m_dbConnect;
         Config                          m_Configure;
-        Network::GeoIPDatabase          m_dbGeoIP;
+        network::geo_ip_database          m_dbGeoIP;
+
+        typedef std::map<std::string, network::token_ptr>    dict_tokens;
+        dict_tokens m_refresh_tokens;
+        dict_tokens m_access_tokens;
     private:
-        class CBController : public Network::ConnectionController {
+        class cb_controller : public network::connection_controller {
         public:
-            virtual Network::Connection* CreateConnection(ConnectionController* pThis_, int ID_, evutil_socket_t fd_, struct sockaddr* sa_, int socklen_) {
-                return new CBConnection(pThis_, ID_, fd_, sa_, socklen_);
+            virtual network::connection* CreateConnection(connection_controller* pThis_, int ID_, evutil_socket_t fd_, struct sockaddr* sa_, int socklen_) {
+                return new cb_connection(pThis_, ID_, fd_, sa_, socklen_);
             }
         };
-        class HTTPController : public Network::ConnectionController {
+        class http_controller : public network::connection_controller{
         public:
-            HTTPController(ConnectionContext* pContext_) :
-                Network::ConnectionController(pContext_) {
+            http_controller(connection_context* context) :
+                network::connection_controller(context) {
             }
 
-            virtual Network::Connection* CreateConnection(ConnectionController* pThis_, int ID_, evutil_socket_t fd_, struct sockaddr* sa_, int socklen_) {
-                return new HTTPConnection(pThis_, ID_, fd_, sa_, socklen_);
+            virtual network::connection* CreateConnection(connection_controller* pThis_, int ID_, evutil_socket_t fd_, struct sockaddr* sa_, int socklen_) {
+                return new http_connection(pThis_, ID_, fd_, sa_, socklen_);
             }
         };
 
-        Network::cbDispatchT<Server2HB, CBConnection, Network::s2bPacket::S2B_NP_SIGNATURE>    m_Dispatcher;
-        HTTPController      m_Connections;
+        network::cbDispatchT<server2_hb, cb_connection, network::s2bPacket::S2B_NP_SIGNATURE>    m_Dispatcher;
+        http_controller      m_Connections;
 
         int			            m_nHTTPListenPort;
         std::string             m_strDocRoot;       // место хранения вебсервера
         std::string             m_sStorageRoot;     // альтернативное место сервера
 
-        DB::S2HBStorage                 m_dbBase;
-        Network::session_controler   m_Sessions;
+        db::S2HBStorage         m_dbBase;
+        network::session_controler   m_Sessions;
 
         void    TimerSessionUpdate();
-        static void     stubTimerRun(Server2HB* pThis_);
+        static void     stubTimerRun(server2_hb* pThis_);
 
         bool                                m_bShutdownTimer;
         boost::shared_ptr<boost::thread>    m_TimerThread;
         // ****************************************************************
-        typedef bool (Server2HB::*funcActionS2H)(const std::string& uri_params, Network::Connection& connection, Network::s2h_session* session, Network::HTTPTextProtocolHeader& http);
+        typedef bool (server2_hb::*funcActionS2H)(const std::string& uri_params, network::connection& connection, network::s2h_session* session, network::http_text_protocol_header& http);
         typedef std::map<std::string, funcActionS2H>		DictionaryActionS2H;
 
         DictionaryActionS2H    m_dictActionS2H;
 
-        typedef std::function<Network::SessionPtr(const std::string& , boost::posix_time::ptime , boost::posix_time::ptime )> func_creator;
+        typedef std::function<network::session_ptr(const std::string& , boost::posix_time::ptime , boost::posix_time::ptime )> func_creator;
         virtual func_creator get_session_creator();
     protected:
-        virtual bool process_http_action(const std::string& action, const std::string& uri_params, Network::s2h_session* session, HTTPConnection& connection, Network::HTTPTextProtocolHeader& http);
-        bool    process_http(HTTPConnection& connection);
+        virtual bool process_http_action(const std::string& action, const std::string& uri_params, network::s2h_session* session, http_connection& connection, network::http_text_protocol_header& http);
+        bool    process_http(http_connection& connection);
 
-        virtual bool    process_http_file_server(const std::string& query_uri, Network::s2h_session* session, HTTPConnection& connection, Network::HTTPTextProtocolHeader& http);
+        virtual bool    process_http_file_server(const std::string& query_uri, network::s2h_session* session, http_connection& connection, network::http_text_protocol_header& http);
         
         virtual const char* GetContextDefaultName() const {
             return "s2h"; 
@@ -133,9 +138,12 @@ namespace khorost {
             return "/storage/";
         }
 
-        Network::SessionPtr processing_session(HTTPConnection& connection, Network::HTTPTextProtocolHeader& http);
+        network::session_ptr processing_session(http_connection& connection, network::http_text_protocol_header& http);
 
-        bool    action_auth(const std::string& uri_params, Network::Connection& connection, Network::s2h_session* session, Network::HTTPTextProtocolHeader& http);
+        bool    action_auth(const std::string& uri_params, network::connection& connection, network::s2h_session* session, network::http_text_protocol_header& http);
+
+        network::token_ptr find_refresh_token(const std::string& refresh_token);
+        network::token_ptr find_access_token(const std::string& access_token);
 
         std::string     m_sConfigFileName;
 #if defined(_WIN32) || defined(_WIN64)
@@ -167,8 +175,8 @@ namespace khorost {
         const char* GetServiceName() const { return m_sServiceName.c_str(); }
 #endif
     public:
-        Server2HB ();
-        virtual ~Server2HB () = default;
+        server2_hb ();
+        virtual ~server2_hb () = default;
 
         virtual bool    Shutdown();
         virtual bool    CheckParams(int argc_, char* argv_[], int& nResult_, g3::LogWorker* logger_ = NULL);
@@ -180,7 +188,7 @@ namespace khorost {
 
         void parse_action(const std::string& query, std::string& action, std::string& params);
         static std::string json_string(const Json::Value& value, bool styled = false);
-        static void json_fill_auth(Network::s2h_session* session, bool full_info, Json::Value& value);
+        static void json_fill_auth(network::s2h_session* session, bool full_info, Json::Value& value);
 
         void    SetConnect(std::string sHost_, int nPort_, std::string sDatabase_, std::string sLogin_, std::string sPassword_) {
             m_dbConnect.SetConnect(sHost_, nPort_, sDatabase_, sLogin_, sPassword_);
@@ -196,7 +204,7 @@ namespace khorost {
     private:
 
     };
-    extern Server2HB* g_pS2HB;
+    extern server2_hb* g_pS2HB;
 }
 
 #define S2H_PARAM_ACTION_AUTH               "auth"      // авторизация пользователя

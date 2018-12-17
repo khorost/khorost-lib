@@ -19,8 +19,8 @@
 
 #include <openssl/md5.h>
 
-using namespace khorost::Network;
-using namespace khorost::DB;
+using namespace khorost::network;
+using namespace khorost::db;
 
 static void session_ip_update(s2h_session* httpSession_, pqxx::work& txn_) {
     std::list<std::string>  lIPs;
@@ -34,8 +34,8 @@ static void session_ip_update(s2h_session* httpSession_, pqxx::work& txn_) {
     }
 }
 
-void S2HBStorage::SessionIPUpdate() {
-    DBConnection            conn(m_rDB);
+void khorost::db::S2HBStorage::SessionIPUpdate() {
+    db_connection            conn(m_rDB);
     pqxx::work              txn(conn.GetHandle());
 
     pqxx::result r = txn.exec(
@@ -75,8 +75,8 @@ void S2HBStorage::SessionIPUpdate() {
     }
 }
 
-bool S2HBStorage::SessionUpdate(khorost::Network::ListSession& rLS_) {
-    DBConnection            conn(m_rDB);
+bool S2HBStorage::SessionUpdate(khorost::network::list_session& rLS_) {
+    db_connection            conn(m_rDB);
     pqxx::connection&       rcn = conn.GetHandle();
     pqxx::work              txn(rcn);
 
@@ -95,7 +95,7 @@ bool S2HBStorage::SessionUpdate(khorost::Network::ListSession& rLS_) {
         );
 
         for (auto sp : rLS_) {
-            s2h_session* pSession = reinterpret_cast<Network::s2h_session*>(sp.get());
+            s2h_session* pSession = reinterpret_cast<network::s2h_session*>(sp.get());
             std::string sLastActivity = to_iso_string(pSession->get_last_activity());
             std::string sExpired = to_iso_string(pSession->get_expired());
 
@@ -128,7 +128,7 @@ bool S2HBStorage::SessionUpdate(khorost::Network::ListSession& rLS_) {
 }
 
 bool S2HBStorage::SessionUpdate(s2h_session* pSession_) {
-    DBConnection            conn(m_rDB);
+    db_connection            conn(m_rDB);
     pqxx::work              txn(conn.GetHandle());
 
     std::string sLastActivity = to_iso_string(pSession_->get_last_activity());
@@ -174,7 +174,7 @@ bool S2HBStorage::SessionUpdate(s2h_session* pSession_) {
 }
 
 bool S2HBStorage::SessionLogger(const s2h_session* pSession_, const Json::Value& jsStat_) {
-    DBConnection            conn(m_rDB);
+    db_connection            conn(m_rDB);
     pqxx::work              txn(conn.GetHandle());
 
     txn.exec(
@@ -187,7 +187,7 @@ bool S2HBStorage::SessionLogger(const s2h_session* pSession_, const Json::Value&
 }
 
 bool S2HBStorage::IsUserExist(const std::string& sLogin_) {
-    DBConnection            conn(m_rDB);
+    db_connection            conn(m_rDB);
     pqxx::nontransaction    txn(conn.GetHandle());
 
     pqxx::result r = txn.exec(
@@ -199,7 +199,7 @@ bool S2HBStorage::IsUserExist(const std::string& sLogin_) {
 }
 
 bool S2HBStorage::GetUserRoles(int& nUserID_, s2h_session* ps_) {
-    DBConnection            conn(m_rDB);
+    db_connection            conn(m_rDB);
     pqxx::read_transaction  txn(conn.GetHandle());
 
     ps_->ResetRoles();
@@ -223,7 +223,7 @@ bool S2HBStorage::GetUserRoles(int& nUserID_, s2h_session* ps_) {
 }
 
 bool S2HBStorage::GetUserInfo(int nUserID_, std::string& sLogin_, std::string& sNickname_, std::string& sPWHash_, std::string& sSalt_) {
-    DBConnection            conn(m_rDB);
+    db_connection            conn(m_rDB);
     pqxx::read_transaction  txn(conn.GetHandle());
 
     pqxx::result r = txn.exec(
@@ -245,7 +245,7 @@ bool S2HBStorage::GetUserInfo(int nUserID_, std::string& sLogin_, std::string& s
 }
 
 bool S2HBStorage::get_user_info(const std::string& login, int& user_id, std::string& nickname, std::string& password_hash, std::string& salt) const {
-    DBConnection            conn(m_rDB);
+    db_connection            conn(m_rDB);
     pqxx::read_transaction  txn(conn.GetHandle());
 
     auto r = txn.exec(
@@ -269,7 +269,7 @@ bool S2HBStorage::get_user_info(const std::string& login, int& user_id, std::str
 void RecalcPasswordHash(std::string& sPwHash_, const std::string& sLogin_, const std::string& sPassword_, const std::string& sSalt_);
 
 bool S2HBStorage::CreateUser(Json::Value& jsUser_) {
-    DBConnection            conn(m_rDB);
+    db_connection            conn(m_rDB);
     pqxx::connection&       rcn = conn.GetHandle();
     pqxx::work              txn(rcn);
 
@@ -312,7 +312,7 @@ bool S2HBStorage::CreateUser(Json::Value& jsUser_) {
 }
 
 bool S2HBStorage::UpdatePassword(int nUserID_, const std::string& sPasswordHash_) {
-    DBConnection            conn(m_rDB);
+    db_connection            conn(m_rDB);
     pqxx::work              txn(conn.GetHandle());
 
     txn.exec(

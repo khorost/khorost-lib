@@ -2,7 +2,7 @@
 #define _AUTOBUFFER__H_
 
 namespace khorost {
-    namespace Data {
+    namespace data {
         template <typename T, size_t nDefaultBufferGranulate = 0x400>
         class AutoBufferT{
             mutable T*			m_pBuffer;			// буфер с данными

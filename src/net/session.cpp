@@ -7,7 +7,7 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/date_time/posix_time/conversion.hpp>
 
-using namespace khorost::Network;
+using namespace khorost::network;
 
 const int session::DEFAULT_EXPIRE_MINUTES = 30;
 
@@ -16,7 +16,8 @@ std::string session::generate_session_id() {
     return boost::lexical_cast<std::string>(uid);
 }
 
-session::session(const std::string& session_id, const boost::posix_time::ptime created, const boost::posix_time::ptime expired) {
+session::session(const std::string& session_id, const boost::posix_time::ptime created,
+                 const boost::posix_time::ptime expired) {
     m_session_id = session_id;
     m_created = created;
     m_expired = expired;
@@ -66,7 +67,10 @@ session_controler::session_controler() {
     m_nVersionMin = m_nVersionCurrent = 1;
 }
 
-bool session_controler::open(const std::string& driver, int version_min, int version_current, const std::function<SessionPtr(const std::string& session_id, boost::posix_time::ptime created, boost::posix_time::ptime expired)> creator) {
+bool session_controler::open(const std::string& driver, int version_min, int version_current,
+                             const std::function<session_ptr(const std::string& session_id,
+                                                             boost::posix_time::ptime created,
+                                                             boost::posix_time::ptime expired)> creator) {
     m_nVersionMin = version_min;
     m_nVersionCurrent = version_current;
 
@@ -76,7 +80,7 @@ bool session_controler::open(const std::string& driver, int version_min, int ver
 }
 
 bool session_controler::session_db::PrepareDatabase() {
-    if (!SQLite3::PrepareDatabase()) {
+    if (!khl_sqlite3::PrepareDatabase()) {
         return false;
     }
 
@@ -107,9 +111,9 @@ bool session_controler::session_db::update_session(session* session, const int v
 
     stmt.BindParam(1, session->get_session_id());
     stmt.BindParam(2, version);
-    stmt.BindParam(3, static_cast<int>(Data::EpochDiff(session->get_created()).total_seconds()));
+    stmt.BindParam(3, static_cast<int>(data::EpochDiff(session->get_created()).total_seconds()));
     stmt.BindParam(4, static_cast<int>(time(nullptr)));
-    stmt.BindParam(5, static_cast<int>(Data::EpochDiff(session->get_expired()).total_seconds()));
+    stmt.BindParam(5, static_cast<int>(data::EpochDiff(session->get_expired()).total_seconds()));
 
     std::string data;
     session->export_data(data);
@@ -120,14 +124,17 @@ bool session_controler::session_db::update_session(session* session, const int v
 
 bool session_controler::session_db::remove_session(session* session) {
     Inserter stmt(GetDB());
-    
+
     stmt.Prepare("DELETE FROM sessions WHERE SID = ?");
     stmt.BindParam(1, session->get_session_id());
 
     return stmt.Exec();
 }
 
-bool session_controler::session_db::load_sessions(session_controler& session_controler, const std::function<SessionPtr(const std::string& session_id, boost::posix_time::ptime created, boost::posix_time::ptime expired)> creator) {
+bool session_controler::session_db::load_sessions(session_controler& session_controler,
+                                                  const std::function<session_ptr(
+                                                      const std::string& session_id, boost::posix_time::ptime created,
+                                                      boost::posix_time::ptime expired)> creator) {
     using namespace boost::posix_time;
     using namespace boost::gregorian;
 
@@ -158,7 +165,7 @@ bool session_controler::session_db::load_sessions(session_controler& session_con
                 r_stmt.GetValue(4, s);
                 sp->import_data(s);
 
-                session_controler.m_SessionMemory.insert(std::pair<std::string, SessionPtr>(sp->get_session_id(), sp));
+                session_controler.m_SessionMemory.insert(std::pair<std::string, session_ptr>(sp->get_session_id(), sp));
             }
         } while (r_stmt.MoveNext());
     }
@@ -171,9 +178,9 @@ void session_controler::CheckAliveSessions() {
 
     const auto now = second_clock::universal_time();
 
-    for (auto it = m_SessionMemory.begin(); it != m_SessionMemory.end();){
+    for (auto it = m_SessionMemory.begin(); it != m_SessionMemory.end();) {
         const auto sit = it++;
-        SessionPtr  sp = sit->second;
+        session_ptr sp = sit->second;
         if (sp->get_expired() < now) {
             m_SessionDB.remove_session(sp.get());
             m_SessionMemory.erase(sit);
@@ -181,8 +188,8 @@ void session_controler::CheckAliveSessions() {
     }
 }
 
-bool session_controler::GetActiveSessionsStats(ListSession& rLS_) {
-    for (auto s : m_SessionMemory){
+bool session_controler::GetActiveSessionsStats(list_session& rLS_) {
+    for (auto s : m_SessionMemory) {
         if (s.second->IsStatsUpdate(true) != 0) {
             rLS_.push_back(s.second);
         }
@@ -190,12 +197,15 @@ bool session_controler::GetActiveSessionsStats(ListSession& rLS_) {
     return rLS_.size() != 0;
 }
 
-SessionPtr session_controler::find_session(const std::string& session_id) {
+session_ptr session_controler::find_session(const std::string& session_id) {
     const auto it = m_SessionMemory.find(session_id);
     return it != m_SessionMemory.end() ? it->second : nullptr;
 }
 
-SessionPtr session_controler::get_session(const std::string& session_id, bool& created, const std::function<SessionPtr(const std::string& session_id, boost::posix_time::ptime created, boost::posix_time::ptime expired)> creator) {
+session_ptr session_controler::get_session(const std::string& session_id, bool& created,
+                                           const std::function<session_ptr(
+                                               const std::string& session_id, boost::posix_time::ptime created,
+                                               boost::posix_time::ptime expired)> creator) {
     using namespace boost::posix_time;
     using namespace boost::gregorian;
 
@@ -222,7 +232,7 @@ SessionPtr session_controler::get_session(const std::string& session_id, bool& c
         auto sp = creator(session::generate_session_id(), now, expire); // 2 недели = 1209600
         // 1 час = 3600
         sp->set_count_use(1);
-        m_SessionMemory.insert(std::pair<std::string, SessionPtr>(sp->get_session_id(), sp));
+        m_SessionMemory.insert(std::pair<std::string, session_ptr>(sp->get_session_id(), sp));
         m_SessionDB.update_session(sp.get(), m_nVersionCurrent);
         created = true;
         return sp;

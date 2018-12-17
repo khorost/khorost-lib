@@ -22,7 +22,7 @@
 #include "util/logger.h"
 
 namespace khorost {
-    namespace Network {
+    namespace network {
 
         class cbPacket {
         public:
@@ -74,7 +74,7 @@ namespace khorost {
         class cbChunkIn : public cbChunk {
         public:
             virtual void        SetValue(id_cbc id_, const std::string& value_){}
-            virtual void        SetValue(id_cbc id_, const Data::AutoBufferT<boost::uint8_t>& value_){}
+            virtual void        SetValue(id_cbc id_, const data::AutoBufferT<boost::uint8_t>& value_){}
             virtual void        SetValue8(id_cbc id_, const boost::uint8_t value_){}
             virtual void        SetValue16(id_cbc id_, const boost::uint16_t value_){}
             virtual void        SetValue32(id_cbc id_, const boost::uint32_t value_){}
@@ -88,7 +88,7 @@ namespace khorost {
 
         class cbChunkOut : public cbChunk {
         protected:
-            Data::AutoBufferT<boost::uint8_t>   m_abPacket;
+            data::AutoBufferT<boost::uint8_t>   m_abPacket;
         public:
             template<typename T, cbChunk::type_cbc tv_>
             void AppendChunkT(cbChunk::id_cbc id_, T value_) {
@@ -107,7 +107,7 @@ namespace khorost {
 #define AppendChunkInteger(i,v)  AppendChunkT<boost::uint32_t, cbChunk::CHUNK_TYPE_INTEGER>(i,v)
 
             void    AppendChunkString(cbChunk::id_cbc id_, const std::string& value_);
-            void    AppendChunkBuffer(cbChunk::id_cbc id_, const Data::AutoBufferT<boost::uint8_t>& value_);
+            void    AppendChunkBuffer(cbChunk::id_cbc id_, const data::AutoBufferT<boost::uint8_t>& value_);
 
             size_cbc    GetSize() const { return static_cast<size_cbc>(m_abPacket.GetFillSize()); }
             boost::uint8_t* GetBuffer() const { return m_abPacket.GetPosition(0); }
@@ -136,7 +136,7 @@ namespace khorost {
             nBufferSize_ -= nSizeValueChunk_;
         }
 
-        inline void ReadBuffer(const boost::uint8_t*& pBuffer_, size_t& nBufferSize_, cbChunk::size_cbc nSizeValueChunk_, Data::AutoBufferT<boost::uint8_t>& value_) {
+        inline void ReadBuffer(const boost::uint8_t*& pBuffer_, size_t& nBufferSize_, cbChunk::size_cbc nSizeValueChunk_, data::AutoBufferT<boost::uint8_t>& value_) {
             value_.Append(pBuffer_, nSizeValueChunk_);
             pBuffer_ += nSizeValueChunk_;
             nBufferSize_ -= nSizeValueChunk_;
@@ -200,17 +200,15 @@ namespace khorost {
         };
 
         template<cbPacket::sign_cbp signConst>
-        void SendChunkInPacket(Network::Connection& rConnect_, Network::cbPacket::type_cbp tp_, const Network::cbChunkOut& ch_) {
-            using namespace Network;
-
+        void SendChunkInPacket(network::connection& connect, network::cbPacket::type_cbp tp_, const network::cbChunkOut& ch_) {
             cbPacket::sign_cbp  signPacket(PACKET_HTON_SIGN(signConst));
             cbPacket::size_cbp  packetLength(PACKET_HTON_SIZE(ch_.GetSize()));
             tp_ = PACKET_HTON_TYPE(tp_);
 
-            rConnect_.SendData(reinterpret_cast<boost::uint8_t*>(&signPacket), sizeof(signPacket));
-            rConnect_.SendData(reinterpret_cast<boost::uint8_t*>(&packetLength), sizeof(packetLength));
-            rConnect_.SendData(reinterpret_cast<boost::uint8_t*>(&tp_), sizeof(tp_));
-            rConnect_.SendData(reinterpret_cast<boost::uint8_t*>(ch_.GetBuffer()), ch_.GetSize());
+            connect.SendData(reinterpret_cast<boost::uint8_t*>(&signPacket), sizeof(signPacket));
+            connect.SendData(reinterpret_cast<boost::uint8_t*>(&packetLength), sizeof(packetLength));
+            connect.SendData(reinterpret_cast<boost::uint8_t*>(&tp_), sizeof(tp_));
+            connect.SendData(reinterpret_cast<boost::uint8_t*>(ch_.GetBuffer()), ch_.GetSize());
         }
     }
 }

@@ -1,5 +1,4 @@
-﻿#ifndef __POSTGRES_H__
-#define __POSTGRES_H__
+﻿#pragma once
 
 #if defined(_WIN32) || defined(_WIN64)
 # include <windows.h>
@@ -15,22 +14,26 @@
 #include <string>
 #include <mutex>
 #include <condition_variable>
+
 #include <pqxx/pqxx>
+
 #include <boost/shared_ptr.hpp>
 #include <boost/scoped_ptr.hpp>
 #include "boost/date_time/posix_time/posix_time.hpp"
 
 #include <json/json.h>
 
+#include "net/token.h"
+
 namespace khorost {
-    namespace DB {
-        class DBConnectionPool {
+    namespace db {
+        class db_connection_pool {
             boost::scoped_ptr<pqxx::connection>    m_spConnect;
         public:
-            DBConnectionPool(const std::string& sConnectParam_) {
+            db_connection_pool(const std::string& sConnectParam_) {
                 Reconnect(sConnectParam_);
             }
-            virtual ~DBConnectionPool() {
+            virtual ~db_connection_pool() {
             }
 
             pqxx::connection& GetHandle() {
@@ -46,32 +49,31 @@ namespace khorost {
             bool    CheckConnect();
         };
 
-        typedef	boost::shared_ptr<DBConnectionPool>	DBConnectionPoolPtr;
+        typedef	boost::shared_ptr<db_connection_pool>	db_connection_pool_ptr;
 
-        class DBPool {
-            std::queue<DBConnectionPoolPtr>  m_FreePool;
+        class db_pool {
+            std::queue<db_connection_pool_ptr>  m_FreePool;
 
             std::mutex m_mutex;
             std::condition_variable m_condition;
 
         public:
-            DBPool() {
-            }
+            db_pool() = default;
 
             void Prepare(int nCount_, const std::string& sConnectParam_);
 
-            DBConnectionPoolPtr GetConnectionPool();
-            void    ReleaseConnectionPool(DBConnectionPoolPtr pdbc_);
+            db_connection_pool_ptr GetConnectionPool();
+            void    ReleaseConnectionPool(db_connection_pool_ptr pdbc_);
         };
 
-        class DBConnection {
-            DBPool&             m_dbPool;
-            DBConnectionPoolPtr m_pdbConnectionPool;
+        class db_connection {
+            db_pool&             m_dbPool;
+            db_connection_pool_ptr m_pdbConnectionPool;
         public:
-            DBConnection(DBPool& dbp_) : m_dbPool(dbp_), m_pdbConnectionPool(nullptr) {
+            db_connection(db_pool& dbp_) : m_dbPool(dbp_), m_pdbConnectionPool(nullptr) {
                 m_pdbConnectionPool = m_dbPool.GetConnectionPool();
             }
-            virtual ~DBConnection() {
+            virtual ~db_connection() {
                 ReleaseConnectionPool();
             }
 
@@ -88,7 +90,7 @@ namespace khorost {
         };
 
 
-        class Postgres : public DBPool  {
+        class postgres : public db_pool  {
             int         m_nPort;
             std::string m_sHost;
             std::string m_sDatabase;
@@ -96,10 +98,9 @@ namespace khorost {
             std::string m_sPassword;
 
         public:
-            Postgres() {
+            postgres() {
             }
-            virtual ~Postgres() {
-            }
+            virtual ~postgres() = default;
 
             std::string GetConnectParam() const;
 
@@ -117,12 +118,12 @@ namespace khorost {
 
         };
 
-        class LinkedPostgres {
+        class linked_postgres {
         protected:
-            Postgres& m_rDB;
+            postgres& m_rDB;
         public:
-            LinkedPostgres(Postgres& rDB_) : m_rDB(rDB_) {}
-            virtual ~LinkedPostgres() = default;
+            linked_postgres(postgres& rDB_) : m_rDB(rDB_) {}
+            virtual ~linked_postgres() = default;
 
             static std::string to_string(const pqxx::transaction_base& txn, const boost::posix_time::ptime& timestamp, bool nullable_infinity = true);
             static std::string to_string(const pqxx::transaction_base& txn, const Json::Value& info);
@@ -131,7 +132,14 @@ namespace khorost {
         private:
 
         };
+
+        class khl_postgres : protected linked_postgres {
+        public:
+            khl_postgres(postgres& db) : linked_postgres(db) {}
+            virtual ~khl_postgres() = default;
+
+            network::token_ptr create_token(int access_timeout, int refresh_timeout, const Json::Value& payload) const;
+            network::token_ptr load_token(bool is_refresh_token, const std::string& token_id) const;
+        };
     }
 }
-
-#endif  // __POSTGRES_H__

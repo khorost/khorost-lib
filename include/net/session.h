@@ -12,7 +12,7 @@
 #include <boost/make_shared.hpp>
 
 namespace khorost {
-    namespace Network {
+    namespace network {
         typedef std::map<std::string, bool>	dict_ip;
 
         class session {
@@ -64,12 +64,12 @@ namespace khorost {
             static std::string generate_session_id();
         };
 
-        typedef	boost::shared_ptr<session>	        SessionPtr;
-        typedef std::map<std::string, SessionPtr>	DictSession;
-        typedef std::list<SessionPtr>	            ListSession;
+        typedef	boost::shared_ptr<session>	        session_ptr;
+        typedef std::map<std::string, session_ptr>	dict_session;
+        typedef std::list<session_ptr>	            list_session;
 
         class session_controler {
-            class session_db : public DB::SQLite3 {
+            class session_db : public db::khl_sqlite3 {
             public:
                 session_db() = default;
 
@@ -77,27 +77,27 @@ namespace khorost {
 
                 bool update_session(session* session, int version);
                 bool remove_session(session* session);
-                bool load_sessions(session_controler& session_controler, const std::function<SessionPtr(const std::string& session_id, boost::posix_time::ptime created, boost::posix_time::ptime expired)> creator);
+                bool load_sessions(session_controler& session_controler, const std::function<session_ptr(const std::string& session_id, boost::posix_time::ptime created, boost::posix_time::ptime expired)> creator);
             };
 
             session_db m_SessionDB;
-            DictSession m_SessionMemory;
+            dict_session m_SessionMemory;
             int m_nVersionMin, m_nVersionCurrent;
 
         public:
             session_controler();
             virtual ~session_controler() = default;
 
-            bool open(const std::string& driver, int version_min, int version_current, const std::function<SessionPtr(const std::string& session_id, boost::posix_time::ptime created, boost::posix_time::ptime expired)> creator);
+            bool open(const std::string& driver, int version_min, int version_current, const std::function<session_ptr(const std::string& session_id, boost::posix_time::ptime created, boost::posix_time::ptime expired)> creator);
 
-            SessionPtr find_session(const std::string& session_id);
-            SessionPtr get_session(const std::string& session_id, bool& created, std::function<SessionPtr(const std::string& session_id, boost::posix_time::ptime created, boost::posix_time::ptime expired)> creator );
+            session_ptr find_session(const std::string& session_id);
+            session_ptr get_session(const std::string& session_id, bool& created, std::function<session_ptr(const std::string& session_id, boost::posix_time::ptime created, boost::posix_time::ptime expired)> creator );
 
             bool update_session(session* sp_);
             void remove_session(session* sp_);
 
             int GetVersionMin() { return m_nVersionMin; }
-            bool GetActiveSessionsStats(ListSession& rLS_);
+            bool GetActiveSessionsStats(list_session& rLS_);
             void CheckAliveSessions();
         };
     }

@@ -10,9 +10,9 @@
 #pragma comment(lib,"Ws2_32.lib")
 #endif	// WIN32
 
-using namespace khorost::Network;
+using namespace khorost::network;
 
-Connection::Connection(ConnectionController* pThis_, int ID_, evutil_socket_t fd_, struct sockaddr* sa_, int socklen_){
+connection::connection(connection_controller* pThis_, int ID_, evutil_socket_t fd_, struct sockaddr* sa_, int socklen_){
     m_pController = pThis_;
     m_ID = ID_;
     m_fd = fd_;
@@ -22,36 +22,36 @@ Connection::Connection(ConnectionController* pThis_, int ID_, evutil_socket_t fd
     m_nReceiveBytes = m_nSendBytes = 0;
 }
 
-Connection::~Connection(){
+connection::~connection(){
     if (m_bev!= nullptr) {
         bufferevent_free(m_bev);
     }
 }
 
-bool Connection::SendData(const boost::uint8_t* pBuffer_, size_t nBufferSize_) {
+bool connection::SendData(const boost::uint8_t* pBuffer_, size_t nBufferSize_) {
     m_nSendBytes += nBufferSize_;
     bufferevent_write(m_bev, pBuffer_, nBufferSize_);
     return true;
 }
 
-bool Connection::SendString(const std::string& rString_) {
+bool connection::SendString(const std::string& rString_) {
     return SendData(reinterpret_cast<const boost::uint8_t*>(rString_.c_str()), rString_.size());
 }
 
-bool Connection::SendString(const char* pString_, size_t nLength_) {
+bool connection::SendString(const char* pString_, size_t nLength_) {
     if (nLength_==-1) {
         nLength_ = strlen(pString_);
     }
     return SendData(reinterpret_cast<const boost::uint8_t*>(pString_), nLength_);
 }
 
-bool Connection::SendNumber(unsigned int nNumber_) {
+bool connection::SendNumber(unsigned int nNumber_) {
     char    st[25];
     sprintf(st, "%d", nNumber_);
     return SendString(st);
 }
 
-bool Connection::CompileBufferData() {
+bool connection::CompileBufferData() {
     size_t		s, nProcessedBytes = 0;
 
     for( s = 0; m_abSocketBuffer.GetFillSize() > s; s += nProcessedBytes ) {
@@ -63,15 +63,15 @@ bool Connection::CompileBufferData() {
     return true;
 }
 
-void Connection::stubConnWrite(bufferevent* bev_, void* ctx_) {
-    Connection* pThis = static_cast<Connection*>(ctx_);
+void connection::stubConnWrite(bufferevent* bev_, void* ctx_) {
+    connection* pThis = static_cast<connection*>(ctx_);
 	struct evbuffer *output = bufferevent_get_output(bev_);
 
     if (evbuffer_get_length(output) == 0) {
 		bufferevent_free(bev_);
         pThis->m_bev = nullptr;
 
-        ConnectionController* cc = pThis->GetController();
+        connection_controller* cc = pThis->GetController();
         if (cc!= nullptr){
             cc->RemoveConnection(pThis);
         }
@@ -80,8 +80,8 @@ void Connection::stubConnWrite(bufferevent* bev_, void* ctx_) {
 	}
 }
 
-void Connection::stubConnRead(bufferevent* bev_, void* ctx_){
-    Connection* pThis = static_cast<Connection*>(ctx_);
+void connection::stubConnRead(bufferevent* bev_, void* ctx_){
+    connection* pThis = static_cast<connection*>(ctx_);
     /* This callback is invoked when there is data to read on bev. */
     struct evbuffer* input = bufferevent_get_input(bev_);
 
@@ -95,15 +95,15 @@ void Connection::stubConnRead(bufferevent* bev_, void* ctx_){
     }
 }
 
-void Connection::stubConnEvent(bufferevent* bev_, short events_, void* ctx_){
-    Connection* pThis = static_cast<Connection*>(ctx_);
+void connection::stubConnEvent(bufferevent* bev_, short events_, void* ctx_){
+    connection* pThis = static_cast<connection*>(ctx_);
 	if (events_ & BEV_EVENT_EOF) {
 		LOG(DEBUG) << "Connection closed.";
 	} else if (events_ & BEV_EVENT_ERROR) {
 		LOG(WARNING) << "Got an error on the connection: " << strerror(errno);	/*XXX win32*/
 	} 
 
-    ConnectionController* cc = pThis->GetController();
+    connection_controller* cc = pThis->GetController();
     if (cc!= nullptr){
         cc->RemoveConnection(pThis);
     }
@@ -111,7 +111,7 @@ void Connection::stubConnEvent(bufferevent* bev_, short events_, void* ctx_){
     delete pThis;
 }
 
-bool Connection::OpenConnection(){
+bool connection::OpenConnection(){
     event_base* base = m_pController->GetBaseListen();
 
     m_bev = bufferevent_socket_new(base, m_fd, BEV_OPT_CLOSE_ON_FREE | BEV_OPT_THREADSAFE );
@@ -121,7 +121,7 @@ bool Connection::OpenConnection(){
     return true;
 }
 
-bool Connection::CloseConnection() {
+bool connection::CloseConnection() {
     struct evbuffer *output = bufferevent_get_output(m_bev);
 
     bufferevent_setwatermark(m_bev, EV_WRITE,  evbuffer_get_length(output), 0);
@@ -130,7 +130,7 @@ bool Connection::CloseConnection() {
         /* We still have to flush data from the other
 		 * side, but when that's done, close the other
 		 * side. */
-        bufferevent_setcb(m_bev, nullptr, Connection::stubConnWrite, Connection::stubConnEvent, this);
+        bufferevent_setcb(m_bev, nullptr, connection::stubConnWrite, connection::stubConnEvent, this);
 	    bufferevent_disable(m_bev, EV_READ);
     } else {
         LOG(DEBUG) << "Close connection";
@@ -145,23 +145,23 @@ bool Connection::CloseConnection() {
     return true;
 }
 
-ConnectionController::ConnectionController(ConnectionContext* pContext_){
+connection_controller::connection_controller(connection_context* pContext_){
     m_nUniqID = 0;
     m_pContext = pContext_;
     m_ptListen = nullptr;
     m_ptgWorkers = nullptr;
 }
 
-ConnectionController::~ConnectionController(){
+connection_controller::~connection_controller(){
     delete m_ptListen;
     delete m_ptgWorkers;
 }
 
-Connection* ConnectionController::CreateConnection(ConnectionController* pThis_, int ID_, evutil_socket_t fd_, struct sockaddr* sa_, int socklen_){
-    return new Connection(pThis_, ID_, fd_, sa_, socklen_);
+connection* connection_controller::CreateConnection(connection_controller* pThis_, int ID_, evutil_socket_t fd_, struct sockaddr* sa_, int socklen_){
+    return new connection(pThis_, ID_, fd_, sa_, socklen_);
 }
 
-bool ConnectionController::Shutdown(){
+bool connection_controller::Shutdown(){
     LOG(INFO) << "Shutdown listner";
     event_base_loopexit(m_pebBaseListen, nullptr);
 
@@ -175,14 +175,14 @@ bool ConnectionController::Shutdown(){
     return true;
 }
 
-bool ConnectionController::WaitListen() const {
+bool connection_controller::WaitListen() const {
     m_ptListen->join();
     m_ptgWorkers->join_all();
 
     return true;
 }
 
-bool ConnectionController::RemoveConnection(Connection* pConnection_){
+bool connection_controller::RemoveConnection(connection* pConnection_){
     boost::mutex::scoped_lock lock(m_mutex);
 
     LOGF(DEBUG
@@ -194,10 +194,10 @@ bool ConnectionController::RemoveConnection(Connection* pConnection_){
 // Так делать опасно, осуществляется вызов функции из libevent\util-internal.h
 extern "C" const char * evutil_format_sockaddr_port_(const struct sockaddr *sa, char *out, size_t outlen);
 
-Connection* ConnectionController::AddConnection(evutil_socket_t fd_, struct sockaddr* sa_, int socklen_){
+connection* connection_controller::AddConnection(evutil_socket_t fd_, struct sockaddr* sa_, int socklen_){
     boost::mutex::scoped_lock lock(m_mutex);
 
-    Connection* pConnection = CreateConnection(this, GetUniqID(), fd_, sa_, socklen_);
+    connection* pConnection = CreateConnection(this, GetUniqID(), fd_, sa_, socklen_);
 
     char    buf[1024];
     LOGF(DEBUG
@@ -209,7 +209,7 @@ Connection* ConnectionController::AddConnection(evutil_socket_t fd_, struct sock
     return pConnection;
 }
 
-void Connection::GetClientIP(char* pBuffer_, size_t nBufferSize_) {
+void connection::GetClientIP(char* pBuffer_, size_t nBufferSize_) {
     evutil_format_sockaddr_port_(&m_sa, pBuffer_, nBufferSize_);
     for (size_t k = 0; k < nBufferSize_ && pBuffer_[k] != '\0'; ++k) {
         if (pBuffer_[k] == ':') {
@@ -225,26 +225,26 @@ static void stubSignal(
                       , short events
                       , void *user_data)
 {
-    ConnectionController* pThis = static_cast<ConnectionController*>(user_data);
+    connection_controller* pThis = static_cast<connection_controller*>(user_data);
 
     printf("Caught an interrupt signal; exiting cleanly in two seconds.\n");
     pThis->Shutdown();
 }
 #endif
 
-void ConnectionController::stubAccept(
+void connection_controller::stubAccept(
                         struct evconnlistener *listener
                         , evutil_socket_t fd
                         , struct sockaddr *sa
                         , int socklen
                         , void *user_data)
 {
-    ConnectionController* pThis = static_cast<ConnectionController*>(user_data);
+    connection_controller* pThis = static_cast<connection_controller*>(user_data);
     pThis->AddConnection(fd,sa,socklen);
 }
 
 static void stubAcceptError(struct evconnlistener *listener, void *ctx) {
-    ConnectionController* pThis = static_cast<ConnectionController*>(ctx);
+    connection_controller* pThis = static_cast<connection_controller*>(ctx);
     struct event_base *base = evconnlistener_get_base(listener);
     const int err = EVUTIL_SOCKET_ERROR();
 	LOGF(WARNING, "Got an error %d (%s) on the listener. "
@@ -253,7 +253,7 @@ static void stubAcceptError(struct evconnlistener *listener, void *ctx) {
     pThis->Shutdown();
 }
 
-void ConnectionController::stubListenRun(ConnectionController* pThis_, int iListenPort_){
+void connection_controller::stubListenRun(connection_controller* pThis_, int iListenPort_){
     event_config*           cfg = event_config_new();
     evconnlistener*         pelListener;
     sockaddr_in             sin;
@@ -324,7 +324,7 @@ void ConnectionController::stubListenRun(ConnectionController* pThis_, int iList
     LOG(INFO) << "Listen stoped";
 }
 
-void ConnectionController::stubWorker(ConnectionController* pThis_){
+void connection_controller::stubWorker(connection_controller* pThis_){
     LOG(INFO) << "Start worker";
     event_base* base = event_base_new();
     pThis_->m_vWorkersBase.push_back(base);
@@ -336,7 +336,7 @@ void ConnectionController::stubWorker(ConnectionController* pThis_){
     LOG(INFO) << "Stop worker";
 }
 
-bool ConnectionController::StartListen(int iListenPort_, int iPollSize_){
+bool connection_controller::StartListen(int iListenPort_, int iPollSize_){
     LOG(INFO) << "Start listen on port " << iListenPort_;
     m_ptgWorkers = new boost::thread_group();
     for (int k=0; k<iPollSize_; ++k) {

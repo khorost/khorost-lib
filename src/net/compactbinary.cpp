@@ -1,7 +1,7 @@
 #include "net/compactbinary.h"
 
-using namespace khorost::Network;
-using namespace khorost::Data;
+using namespace khorost::network;
+using namespace khorost::data;
 
 union uint64x32_t {
     boost::uint64_t	m_ui64;
@@ -17,7 +17,7 @@ void cbChunkIn::ParsePacket(const boost::uint8_t* pBuffer_, size_t nBufferSize_)
     type_cbc    type;
     size_cbc    length;
     std::string sv;
-    Data::AutoBufferT<boost::uint8_t>   ab;
+    AutoBufferT<boost::uint8_t>   ab;
 
     while (true) {
         if (!CheckBuffer<id_cbc>(pBuffer_, nBufferSize_)) {
