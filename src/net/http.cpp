@@ -446,7 +446,7 @@ const char* http_text_protocol_header::GetHeaderParameter(const std::string& sPa
     return sDefault_;
 }
 
-void http_text_protocol_header::response(network::connection& connect, const char* response, size_t length) {
+void http_text_protocol_header::response(network::connection& connect, const char* response, const size_t length) {
     using namespace boost::posix_time;
 
     char  st[255];
@@ -536,15 +536,15 @@ static bool IsSlash (char ch_) { return ch_=='/'; }
 #endif
 
 
-bool HTTPFileTransfer::SendFile(const std::string& sQueryURI_, network::connection& connect, http_text_protocol_header& http, const std::string& sDocRoot_, const std::string& sFileName_) {
+bool http_file_transfer::send_file(const std::string& query_uri, network::connection& connect, http_text_protocol_header& http, const std::string& doc_root, const std::string& file_name) {
     using namespace boost::posix_time;
 
     // TODO сделать корректировку по абсолютно-относительным переходам
     std::string     sFileName;
-    if(sFileName_.empty()) {
-        sFileName = sDocRoot_ + sQueryURI_;
+    if(file_name.empty()) {
+        sFileName = doc_root + query_uri;
     } else {
-        sFileName = sDocRoot_ + sFileName_;
+        sFileName = doc_root + file_name;
     }
 
 #ifdef WIN32
@@ -571,7 +571,7 @@ bool HTTPFileTransfer::SendFile(const std::string& sQueryURI_, network::connecti
     if (sFileName.length() >= MAX_PATH) {
         LOGF(WARNING, "Path is too long");
         
-        http.set_response_status(404, "Not found");
+        http.set_response_status(HTTP_RESPONSE_STATUS_NOT_FOUND, "Not found");
         http.response(connect, "File not found");
         return false;
     }
@@ -583,7 +583,7 @@ bool HTTPFileTransfer::SendFile(const std::string& sQueryURI_, network::connecti
     if (!PathCanonicalize((LPSTR)bufCanonicFileName, sFileName.c_str())) {
         LOGF(WARNING, "PathCanonicalize failed");
 
-        http.set_response_status(404, "Not found");
+        http.set_response_status(HTTP_RESPONSE_STATUS_NOT_FOUND, "Not found");
         http.response(connect, "File not found");
         return false;
     }
@@ -591,7 +591,7 @@ bool HTTPFileTransfer::SendFile(const std::string& sQueryURI_, network::connecti
     if (!realpath(sFileName.c_str(), bufCanonicFileName)) {
         LOGF(WARNING, "realpath failed");
 
-        http.set_response_status(404, "Not found");
+        http.set_response_status(HTTP_RESPONSE_STATUS_NOT_FOUND, "Not found");
         http.response(connect, "File not found");
         return false;
     }
@@ -599,10 +599,10 @@ bool HTTPFileTransfer::SendFile(const std::string& sQueryURI_, network::connecti
 
     sCanonicFileName = bufCanonicFileName;
 
-    if (sCanonicFileName.substr(0, sDocRoot_.length()) != sDocRoot_) {
+    if (sCanonicFileName.substr(0, doc_root.length()) != doc_root) {
         LOGF(WARNING, "Access outside of docroot attempted");
 
-        http.set_response_status(404, "Not found");
+        http.set_response_status(HTTP_RESPONSE_STATUS_NOT_FOUND, "Not found");
         http.response(connect, "File not found");
         return false;
     }
@@ -635,7 +635,7 @@ bool HTTPFileTransfer::SendFile(const std::string& sQueryURI_, network::connecti
             time_t tt = timegm(&t);
 #endif  // WIN32
             if (tt >= ff.GetTimeUpdate()) {
-                LOGF(DEBUG, "Dont send file '%s' length = %zu. Response 304 (If-Modified-Since: '%s')", sQueryURI_.c_str(), ff.GetLength(), pIMS);
+                LOGF(DEBUG, "Dont send file '%s' length = %zu. Response 304 (If-Modified-Since: '%s')", query_uri.c_str(), ff.GetLength(), pIMS);
 
                 http.set_response_status(304, "Not Modified");
                 http.response(connect, nullptr, 0);
@@ -655,7 +655,7 @@ bool HTTPFileTransfer::SendFile(const std::string& sQueryURI_, network::connecti
             }
         }
 
-        LOGF(DEBUG, "Send file '%s' length = %zu", sQueryURI_.c_str(), ff.GetLength());
+        LOGF(DEBUG, "Send file '%s' length = %zu", query_uri.c_str(), ff.GetLength());
 
         if (nExt > 0) {
             pExt += nExt;
@@ -676,7 +676,7 @@ bool HTTPFileTransfer::SendFile(const std::string& sQueryURI_, network::connecti
     } else {
         LOGF(WARNING, "File not found '%s'", sCanonicFileName.c_str());
 
-        http.set_response_status(404, "Not found");
+        http.set_response_status(HTTP_RESPONSE_STATUS_NOT_FOUND, "Not found");
         http.response(connect, "File not found");
         return false;
     }

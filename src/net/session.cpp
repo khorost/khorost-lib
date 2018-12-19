@@ -63,11 +63,11 @@ void session::set_last_activity(const boost::posix_time::ptime value) {
     m_stats_update = true;
 }
 
-session_controler::session_controler() {
+session_controller::session_controller() {
     m_nVersionMin = m_nVersionCurrent = 1;
 }
 
-bool session_controler::open(const std::string& driver, int version_min, int version_current,
+bool session_controller::open(const std::string& driver, int version_min, int version_current,
                              const std::function<session_ptr(const std::string& session_id,
                                                              boost::posix_time::ptime created,
                                                              boost::posix_time::ptime expired)> creator) {
@@ -79,7 +79,7 @@ bool session_controler::open(const std::string& driver, int version_min, int ver
     return true;
 }
 
-bool session_controler::session_db::PrepareDatabase() {
+bool session_controller::session_db::PrepareDatabase() {
     if (!khl_sqlite3::PrepareDatabase()) {
         return false;
     }
@@ -101,7 +101,7 @@ bool session_controler::session_db::PrepareDatabase() {
     return true;
 }
 
-bool session_controler::session_db::update_session(session* session, const int version) {
+bool session_controller::session_db::update_session(session* session, const int version) {
     using namespace boost::posix_time;
 
     Inserter stmt(GetDB());
@@ -122,7 +122,7 @@ bool session_controler::session_db::update_session(session* session, const int v
     return stmt.Exec();
 }
 
-bool session_controler::session_db::remove_session(session* session) {
+bool session_controller::session_db::remove_session(session* session) {
     Inserter stmt(GetDB());
 
     stmt.Prepare("DELETE FROM sessions WHERE SID = ?");
@@ -131,7 +131,7 @@ bool session_controler::session_db::remove_session(session* session) {
     return stmt.Exec();
 }
 
-bool session_controler::session_db::load_sessions(session_controler& session_controler,
+bool session_controller::session_db::load_sessions(session_controller& session_controler,
                                                   const std::function<session_ptr(
                                                       const std::string& session_id, boost::posix_time::ptime created,
                                                       boost::posix_time::ptime expired)> creator) {
@@ -173,7 +173,7 @@ bool session_controler::session_db::load_sessions(session_controler& session_con
     return true;
 }
 
-void session_controler::CheckAliveSessions() {
+void session_controller::CheckAliveSessions() {
     using namespace boost::posix_time;
 
     const auto now = second_clock::universal_time();
@@ -188,7 +188,7 @@ void session_controler::CheckAliveSessions() {
     }
 }
 
-bool session_controler::GetActiveSessionsStats(list_session& rLS_) {
+bool session_controller::GetActiveSessionsStats(list_session& rLS_) {
     for (auto s : m_SessionMemory) {
         if (s.second->IsStatsUpdate(true) != 0) {
             rLS_.push_back(s.second);
@@ -197,12 +197,12 @@ bool session_controler::GetActiveSessionsStats(list_session& rLS_) {
     return rLS_.size() != 0;
 }
 
-session_ptr session_controler::find_session(const std::string& session_id) {
+session_ptr session_controller::find_session(const std::string& session_id) {
     const auto it = m_SessionMemory.find(session_id);
     return it != m_SessionMemory.end() ? it->second : nullptr;
 }
 
-session_ptr session_controler::get_session(const std::string& session_id, bool& created,
+session_ptr session_controller::get_session(const std::string& session_id, bool& created,
                                            const std::function<session_ptr(
                                                const std::string& session_id, boost::posix_time::ptime created,
                                                boost::posix_time::ptime expired)> creator) {
@@ -241,11 +241,11 @@ session_ptr session_controler::get_session(const std::string& session_id, bool& 
     return nullptr;
 }
 
-bool session_controler::update_session(session* session) {
+bool session_controller::update_session(session* session) {
     return m_SessionDB.update_session(session, m_nVersionCurrent);
 }
 
-void session_controler::remove_session(session* session) {
+void session_controller::remove_session(session* session) {
     m_SessionDB.remove_session(session);
 
     const auto it = m_SessionMemory.find(session->get_session_id());

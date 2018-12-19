@@ -71,6 +71,10 @@
 #define HTTP_CODEPAGE_UTF8                      "UTF-8"
 #define HTTP_CODEPAGE_NULL                      ""
 
+#define HTTP_RESPONSE_STATUS_OK                 200
+#define HTTP_RESPONSE_STATUS_UNAUTHORIZED       401
+#define HTTP_RESPONSE_STATUS_NOT_FOUND          404
+
 namespace khorost {
     namespace network {
         class http_packet {
@@ -156,7 +160,7 @@ namespace khorost {
 
                     m_Cookies.clear();
                     m_bAutoClose = true;
-                    m_nCode = 200;
+                    m_nCode = HTTP_RESPONSE_STATUS_OK;
                     m_sCodeReason = "Ok";
                     m_sContentType = HTTP_ATTRIBUTE_CONTENT_TYPE__TEXT_HTML;
                     m_sContentTypeCP = "UTF-8";
@@ -225,9 +229,9 @@ namespace khorost {
 
             void    set_cookie(const std::string& cookie, const std::string& value, boost::posix_time::ptime expire, const std::string&
                                domain, bool http_only);
-            void    set_response_status(int nCode_, const std::string& sCodeReason_) {
-                m_Replay.m_nCode = nCode_;
-                m_Replay.m_sCodeReason = sCodeReason_;
+            void    set_response_status(const int code, const std::string& code_reason) {
+                m_Replay.m_nCode = code;
+                m_Replay.m_sCodeReason = code_reason;
             }
             void    SetRedirect(int nCode_, const std::string& sRedirectURL_) {
                 m_Replay.m_sRedirectURL = sRedirectURL_;
@@ -254,14 +258,18 @@ namespace khorost {
             const char*     GetClientProxyIP();
 
             bool        GetMultiPart(size_t& rszIterator_, std::string& rsName_, std::string& rsContentType_, const char*& rpBuffer_, size_t& rszBuffer);
+
+            void end_of_response(connection& connection) {
+                response(connection, nullptr, 0);
+            }
         };
 
-        class HTTPFileTransfer {
+        class http_file_transfer final {
         public:
-            HTTPFileTransfer() {}
-            virtual ~HTTPFileTransfer() {}
+            http_file_transfer() {}
+            ~http_file_transfer() {}
 
-            bool    SendFile(const std::string& sQueryURI_, connection& connect, http_text_protocol_header& http, const std::string& sDocRoot_, const std::string& sFileName_ = "");
+            bool    send_file(const std::string& query_uri, connection& connect, http_text_protocol_header& http, const std::string& doc_root, const std::string& file_name = "");
         };
 
         template<typename T>

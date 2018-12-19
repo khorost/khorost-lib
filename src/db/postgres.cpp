@@ -164,17 +164,69 @@ std::string linked_postgres::to_string(const pqxx::transaction_base& txn, const 
     return std::to_string(value);
 }
 
+bool khl_postgres::refresh_token(khorost::network::token_ptr& token, int access_timeout, int refresh_timeout) const {
+    db_connection conn(m_rDB);
+    pqxx::work txn(conn.GetHandle());
+
+    std::string access_interval, refresh_interval;
+
+    if (access_timeout != 0) {
+        access_interval = "'" + std::to_string(access_timeout) + " SECONDS'";
+    } else {
+        access_interval = "'1 SECONDS' * (kt.payload#>>'{delta_access_time}')::int";
+    }
+
+    if (refresh_timeout != 0) {
+        refresh_interval = "'" + std::to_string(refresh_timeout) + " SECONDS'";
+    } else {
+        refresh_interval = "'1 SECONDS' * (kt.payload#>>'{delta_refresh_time}')::int";
+    }
+
+    const auto pre_refresh_token = token->get_refresh_token();
+    const auto r = txn.exec(
+        "INSERT INTO admin.khl_tokens "
+        " (access_token, access_time, refresh_token, refresh_time, payload) "
+        " SELECT uuid_generate_v4(), NOW() + INTERVAL " + access_interval + " , uuid_generate_v4(), NOW() + INTERVAL " + refresh_interval + ", kt.payload "
+        "  FROM admin.khl_tokens AS kt "
+        " WHERE kt.refresh_token = '" + pre_refresh_token + "' "
+        " RETURNING replace(access_token::text,'-',''), access_time AT TIME ZONE 'UTC', replace(refresh_token::text,'-',''), refresh_time AT TIME ZONE 'UTC'"
+    );
+
+    if (!r.empty()) {
+        const auto& row0 = r[0];
+
+        token->set_access_token(row0[0].as<std::string>());
+        token->set_access_expire(boost::posix_time::time_from_string(row0[1].as<std::string>()));
+        token->set_refresh_token(row0[2].as<std::string>());
+        token->set_refresh_expire(boost::posix_time::time_from_string(row0[3].as<std::string>()));
+
+        txn.exec(
+            "UPDATE admin.khl_tokens "
+            " SET access_time = NOW(), refresh_time = NOW() "
+            " WHERE refresh_token = '" + pre_refresh_token + "' "
+        );
+    }
+
+    txn.commit();
+
+    return true;
+}
+
 khorost::network::token_ptr khl_postgres::create_token(const int access_timeout, const int refresh_timeout,
                                                        const Json::Value& payload) const {
     db_connection conn(m_rDB);
     pqxx::work txn(conn.GetHandle());
+
+    auto token_payload = payload;
+    token_payload["delta_access_time"] = access_timeout;
+    token_payload["delta_refresh_time"] = access_timeout;
 
     const auto r = txn.exec(
         "INSERT INTO admin.khl_tokens "
         " (access_token, access_time, refresh_token, refresh_time, payload) "
         " VALUES( uuid_generate_v4(), NOW() + INTERVAL '" + std::to_string(access_timeout) +
         " SECONDS', uuid_generate_v4(), NOW() + INTERVAL '" + std::to_string(refresh_timeout) + " SECONDS', " +
-        to_string(txn, payload) + ") "
+        to_string(txn, token_payload) + ") "
         " RETURNING replace(access_token::text,'-',''), access_time AT TIME ZONE 'UTC', replace(refresh_token::text,'-',''), refresh_time AT TIME ZONE 'UTC'"
     );
     txn.commit();

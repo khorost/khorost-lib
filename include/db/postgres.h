@@ -140,6 +140,7 @@ namespace khorost {
 
             network::token_ptr create_token(int access_timeout, int refresh_timeout, const Json::Value& payload) const;
             network::token_ptr load_token(bool is_refresh_token, const std::string& token_id) const;
+            bool refresh_token(network::token_ptr& token, int access_timeout, int refresh_timeout) const;
         };
     }
 }

@@ -68,7 +68,7 @@ namespace khorost {
         typedef std::map<std::string, session_ptr>	dict_session;
         typedef std::list<session_ptr>	            list_session;
 
-        class session_controler {
+        class session_controller {
             class session_db : public db::khl_sqlite3 {
             public:
                 session_db() = default;
@@ -77,7 +77,7 @@ namespace khorost {
 
                 bool update_session(session* session, int version);
                 bool remove_session(session* session);
-                bool load_sessions(session_controler& session_controler, const std::function<session_ptr(const std::string& session_id, boost::posix_time::ptime created, boost::posix_time::ptime expired)> creator);
+                bool load_sessions(session_controller& session_controler, const std::function<session_ptr(const std::string& session_id, boost::posix_time::ptime created, boost::posix_time::ptime expired)> creator);
             };
 
             session_db m_SessionDB;
@@ -85,8 +85,8 @@ namespace khorost {
             int m_nVersionMin, m_nVersionCurrent;
 
         public:
-            session_controler();
-            virtual ~session_controler() = default;
+            session_controller();
+            virtual ~session_controller() = default;
 
             bool open(const std::string& driver, int version_min, int version_current, const std::function<session_ptr(const std::string& session_id, boost::posix_time::ptime created, boost::posix_time::ptime expired)> creator);
 

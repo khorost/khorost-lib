@@ -36,6 +36,18 @@ namespace khorost {
             Json::Value get_payload() const {
                 return m_payload;
             }
+
+            boost::posix_time::ptime get_access_expire() const { return m_access_expire; }
+            boost::posix_time::ptime get_refresh_expire() const { return m_refresh_expire; }
+
+            void set_access_token(const std::string& access_token) { m_access_token = access_token; }
+            void set_refresh_token(const std::string& refresh_token) { m_refresh_token = refresh_token; }
+
+            void set_access_expire(const boost::posix_time::ptime& access_expire) { m_access_expire = access_expire; }
+
+            void set_refresh_expire(const boost::posix_time::ptime& refresh_expire) {
+                m_refresh_expire = refresh_expire;
+            }
         };
 
         typedef boost::shared_ptr<token> token_ptr;

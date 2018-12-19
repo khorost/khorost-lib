@@ -10,6 +10,7 @@
 #include "app/s2hb-storage.h"
 #include "app/config.h"
 #include "net/geoip.h"
+#include "util//utils.h"
 
 namespace khorost {
     class server2_hb : public network::connection_context {
@@ -94,11 +95,11 @@ namespace khorost {
         http_controller      m_Connections;
 
         int			            m_nHTTPListenPort;
-        std::string             m_strDocRoot;       // место хранения вебсервера
-        std::string             m_sStorageRoot;     // альтернативное место сервера
+        std::string             m_doc_root;       // место хранения вебсервера
+        std::string             m_storage_root;     // альтернативное место сервера
 
         db::S2HBStorage         m_dbBase;
-        network::session_controler   m_Sessions;
+        network::session_controller   m_Sessions;
 
         void    TimerSessionUpdate();
         static void     stubTimerRun(server2_hb* pThis_);
@@ -114,10 +115,10 @@ namespace khorost {
         typedef std::function<network::session_ptr(const std::string& , boost::posix_time::ptime , boost::posix_time::ptime )> func_creator;
         virtual func_creator get_session_creator();
     protected:
-        virtual bool process_http_action(const std::string& action, const std::string& uri_params, network::s2h_session* session, http_connection& connection, network::http_text_protocol_header& http);
+        virtual bool process_http_action(const std::string& action, const std::string& uri_params, http_connection& connection, network::http_text_protocol_header& http);
         bool    process_http(http_connection& connection);
 
-        virtual bool    process_http_file_server(const std::string& query_uri, network::s2h_session* session, http_connection& connection, network::http_text_protocol_header& http);
+        virtual bool    process_http_file_server(const std::string& query_uri, http_connection& connection, network::http_text_protocol_header& http);
         
         virtual const char* GetContextDefaultName() const {
             return "s2h"; 
@@ -134,16 +135,32 @@ namespace khorost {
         virtual const char* GetURLParamActionParam() const {
             return "ap";
         }
-        virtual const char* GetURLPrefixStorage() const {
+        virtual const char* get_url_prefix_storage() const {
             return "/storage/";
         }
 
         network::session_ptr processing_session(http_connection& connection, network::http_text_protocol_header& http);
 
-        bool    action_auth(const std::string& uri_params, network::connection& connection, network::s2h_session* session, network::http_text_protocol_header& http);
+        network::token_ptr parse_token(khorost::network::http_text_protocol_header& http, bool is_access_token,
+                                       const boost::posix_time::ptime& check);
+        static void fill_json_token(const network::token_ptr& token, Json::Value& value);
+        bool action_refresh_token(const std::string& params_uri, khorost::network::connection& connection,
+                                  khorost::network::s2h_session* session,
+                                  khorost::network::http_text_protocol_header& http);
+        bool action_auth(const std::string& uri_params, network::connection& connection, network::s2h_session* session,
+                         network::http_text_protocol_header& http);
 
         network::token_ptr find_refresh_token(const std::string& refresh_token);
         network::token_ptr find_access_token(const std::string& access_token);
+        void update_tokens(const network::token_ptr& token, const std::string& access_token,
+                           const std::string& refresh_token);
+        void append_token(const khorost::network::token_ptr& token);
+
+        void remove_token(const khorost::network::token_ptr& token) {
+            remove_token(token->get_access_token(), token->get_refresh_token());
+        }
+
+        void remove_token(const std::string& access_token, const std::string& refresh_token);
 
         std::string     m_sConfigFileName;
 #if defined(_WIN32) || defined(_WIN64)
@@ -196,8 +213,8 @@ namespace khorost {
         void	SetListenPort(int nPort_) { m_nHTTPListenPort = nPort_; }
         //        void    SetStorageFolder(const std::string& strFolder_);
         void    SetHTTPDocRoot(const std::string& sDocRoot_, const std::string& sStorageRoot_) {
-            m_strDocRoot = sDocRoot_;
-            m_sStorageRoot = sStorageRoot_;
+            m_doc_root = sDocRoot_;
+            m_storage_root = sStorageRoot_;
         }
         void    SetSessionDriver(const std::string& driver);
 
@@ -232,5 +249,14 @@ namespace khorost {
 #define S2H_JSON_ROLES                      "roles"
 
 #define S2H_DEFAULT_TCP_PORT                7709
+
+#define KHL_HTTP_PARAM__AUTHORIZATION   "Authorization"
+#define KHL_JSON_PARAM__DURATION "0dur"
+
+#define KHL_SET_TIMESTAMP_MILLISECONDS(json_object, json_tag, json_value)       json_object[json_tag] = khorost::data::EpochDiff(json_value).total_milliseconds()
+#define KHL_SET_TIMESTAMP_MICROSECONDS(json_object, json_tag, json_value)       json_object[json_tag] = khorost::data::EpochDiff(json_value).total_microseconds()
+
+#define KHL_SET_CPU_DURATION(json_object, json_tag, now_value) \
+    json_object[json_tag] = (boost::posix_time::microsec_clock::universal_time() - now_value).total_microseconds()
 
 #endif // __SERVER_2HB__
