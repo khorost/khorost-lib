@@ -524,7 +524,7 @@ bool server2_hb::Finish() {
 }
 
 void server2_hb::http_connection::GetClientIP(char* pBuffer_, size_t nBufferSize_) {
-    const char* pPIP = m_HTTP.GetClientProxyIP();
+    const char* pPIP = m_http.GetClientProxyIP();
     if (pPIP != nullptr) {
         strncpy(pBuffer_, pPIP, nBufferSize_);
     } else {
@@ -532,14 +532,14 @@ void server2_hb::http_connection::GetClientIP(char* pBuffer_, size_t nBufferSize
     }
 }
 
-bool server2_hb::process_http_action(const std::string& action, const std::string& uri_params,
-                                     http_connection& connection, network::http_text_protocol_header& http) {
+bool server2_hb::process_http_action(const std::string& action, const std::string& uri_params,                                     http_connection& connection) {
+    auto http = connection.get_http();
     const auto s2_h_session = reinterpret_cast<network::s2h_session*>(processing_session(connection, http).get());
 
     const auto it = m_dictActionS2H.find(action);
     if (it != m_dictActionS2H.end()) {
         const auto func_action = it->second;
-        return (this->*func_action)(uri_params, connection, s2_h_session, http);
+        return (this->*func_action)(uri_params, connection, s2_h_session);
     }
     return false;
 }
@@ -556,7 +556,7 @@ void server2_hb::parse_action(const std::string& query, std::string& action, std
 }
 
 bool server2_hb::process_http(http_connection& connection) {
-    auto& http = connection.GetHTTP();
+    auto& http = connection.get_http();
     const auto query_uri = http.GetQueryURI();
     const auto url_prefix_action = GetURLPrefixAction();
     const auto size_upa = strlen(url_prefix_action);
@@ -566,7 +566,7 @@ bool server2_hb::process_http(http_connection& connection) {
     if (strncmp(query_uri, url_prefix_action, size_upa) == 0) {
         std::string action, params;
         parse_action(query_uri + size_upa, action, params);
-        if (process_http_action(action, params, connection, http)) {
+        if (process_http_action(action, params, connection)) {
             return true;
         }
 
@@ -577,19 +577,19 @@ bool server2_hb::process_http(http_connection& connection) {
 
         return false;
     }
-    return process_http_file_server(query_uri, connection, http);
+    return process_http_file_server(query_uri, connection);
 }
 
-bool server2_hb::process_http_file_server(const std::string& query_uri, http_connection& connection, network::http_text_protocol_header& http) {
-    network::http_file_transfer    hft;
+bool server2_hb::process_http_file_server(const std::string& query_uri, http_connection& connection ) {
+    auto http = connection.get_http();
 
     const std::string prefix = get_url_prefix_storage();
 
     if (prefix == query_uri.substr(0, prefix.size())) {
-        return hft.send_file(query_uri.substr(prefix.size() - 1), connection, http, m_storage_root);
+        return http.send_file(query_uri.substr(prefix.size() - 1), connection, m_storage_root);
     }
 
-    return hft.send_file(query_uri, connection, http, m_doc_root);
+    return http.send_file(query_uri, connection, m_doc_root);
 }
 
 void server2_hb::TimerSessionUpdate() {
@@ -694,8 +694,9 @@ network::token_ptr server2_hb::parse_token(khorost::network::http_text_protocol_
     static const std::string token_mask = "token ";
     std::string id;
 
-    if (is_access_token) {
-        const auto token_id = data::EscapeString(http.GetHeaderParameter(KHL_HTTP_PARAM__AUTHORIZATION, ""));
+    const auto header_authorization = http.GetHeaderParameter(KHL_HTTP_PARAM__AUTHORIZATION);
+    if (header_authorization != nullptr) {
+        const auto token_id = data::EscapeString(header_authorization);
         const auto token_pos = token_mask.size();
 
         if (token_id.size() <= token_pos || token_id.substr(0, token_pos) != token_mask) {
@@ -704,11 +705,12 @@ network::token_ptr server2_hb::parse_token(khorost::network::http_text_protocol_
 
         id = token_id.substr(token_pos);
     } else {
-        id = data::EscapeString(http.GetParameter("token_refresh", ""));
+        id = data::EscapeString(http.GetParameter("token", ""));
     }
 
     auto token = is_access_token ? find_access_token(id) : find_refresh_token(id);
-    if (token != nullptr && check != boost::date_time::neg_infin && !token->is_no_expire_access(check)) {
+    if (token != nullptr && check != boost::date_time::neg_infin && (is_access_token && !token->
+        is_no_expire_access(check) || !is_access_token && !token->is_no_expire_refresh(check))) {
         remove_token(token);
         return nullptr;
     }
@@ -723,9 +725,9 @@ void server2_hb::fill_json_token(const network::token_ptr& token, Json::Value& v
     KHL_SET_TIMESTAMP_MILLISECONDS(value, "refresh_expire", token->get_refresh_expire());
 }
 
-bool server2_hb::action_refresh_token(const std::string& params_uri, khorost::network::connection& connection,
-                                      khorost::network::s2h_session* session,
-                                      khorost::network::http_text_protocol_header& http) {
+bool server2_hb::action_refresh_token(const std::string& params_uri, http_connection& connection,
+                                      khorost::network::s2h_session* session) {
+    auto http = connection.get_http();
     Json::Value json_root;
     const auto now = boost::posix_time::microsec_clock::universal_time();
 
@@ -761,8 +763,10 @@ bool server2_hb::action_refresh_token(const std::string& params_uri, khorost::ne
     return true;
 }
 
-bool server2_hb::action_auth(const std::string& uri_params, network::connection& connection, network::s2h_session* session, network::http_text_protocol_header& http) {
+bool server2_hb::action_auth(const std::string& uri_params, http_connection& connection, network::s2h_session* session) {
     using namespace boost::posix_time;
+
+    auto http = connection.get_http();
 
     Json::Value root;
     Json::Reader reader;

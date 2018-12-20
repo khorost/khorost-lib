@@ -127,7 +127,7 @@ bool http_text_protocol_header::GetChunk(const char*& rpBuffer_, size_t& rnBuffe
     return false;
 }
 
-size_t  http_text_protocol_header::ProcessData(network::connection& rConnect_, const boost::uint8_t *pBuffer_, size_t nBufferSize_) {
+size_t  http_text_protocol_header::process_data(network::connection& rConnect_, const boost::uint8_t *pBuffer_, size_t nBufferSize_) {
     size_t nProcessByte = 0, nChunkSize, nChunkSizeV;
     switch (m_eHeaderProcess) {
     case eProcessingFirst:
@@ -536,7 +536,7 @@ static bool IsSlash (char ch_) { return ch_=='/'; }
 #endif
 
 
-bool http_file_transfer::send_file(const std::string& query_uri, network::connection& connect, http_text_protocol_header& http, const std::string& doc_root, const std::string& file_name) {
+bool http_text_protocol_header::send_file(const std::string& query_uri, network::connection& connect, const std::string& doc_root, const std::string& file_name) {
     using namespace boost::posix_time;
 
     // TODO сделать корректировку по абсолютно-относительным переходам
@@ -571,8 +571,8 @@ bool http_file_transfer::send_file(const std::string& query_uri, network::connec
     if (sFileName.length() >= MAX_PATH) {
         LOGF(WARNING, "Path is too long");
         
-        http.set_response_status(HTTP_RESPONSE_STATUS_NOT_FOUND, "Not found");
-        http.response(connect, "File not found");
+        set_response_status(HTTP_RESPONSE_STATUS_NOT_FOUND, "Not found");
+        response(connect, "File not found");
         return false;
     }
 
@@ -583,8 +583,8 @@ bool http_file_transfer::send_file(const std::string& query_uri, network::connec
     if (!PathCanonicalize((LPSTR)bufCanonicFileName, sFileName.c_str())) {
         LOGF(WARNING, "PathCanonicalize failed");
 
-        http.set_response_status(HTTP_RESPONSE_STATUS_NOT_FOUND, "Not found");
-        http.response(connect, "File not found");
+        set_response_status(HTTP_RESPONSE_STATUS_NOT_FOUND, "Not found");
+        response(connect, "File not found");
         return false;
     }
 #else
@@ -602,8 +602,8 @@ bool http_file_transfer::send_file(const std::string& query_uri, network::connec
     if (sCanonicFileName.substr(0, doc_root.length()) != doc_root) {
         LOGF(WARNING, "Access outside of docroot attempted");
 
-        http.set_response_status(HTTP_RESPONSE_STATUS_NOT_FOUND, "Not found");
-        http.response(connect, "File not found");
+        set_response_status(HTTP_RESPONSE_STATUS_NOT_FOUND, "Not found");
+        response(connect, "File not found");
         return false;
     }
 
@@ -625,7 +625,7 @@ bool http_file_transfer::send_file(const std::string& query_uri, network::connec
             , { nullptr, nullptr, nullptr }
         };
 
-        const char* pIMS = http.GetHeaderParameter("If-Modified-Since");
+        const char* pIMS = GetHeaderParameter("If-Modified-Since");
         if (pIMS != nullptr) {
             tm t;
             strptime(pIMS, "%a, %d-%b-%Y %H:%M:%S GMT", &t);
@@ -637,8 +637,8 @@ bool http_file_transfer::send_file(const std::string& query_uri, network::connec
             if (tt >= ff.GetTimeUpdate()) {
                 LOGF(DEBUG, "Dont send file '%s' length = %zu. Response 304 (If-Modified-Since: '%s')", query_uri.c_str(), ff.GetLength(), pIMS);
 
-                http.set_response_status(304, "Not Modified");
-                http.response(connect, nullptr, 0);
+                set_response_status(304, "Not Modified");
+                response(connect, nullptr, 0);
                 return true;
             }
         }
@@ -661,14 +661,14 @@ bool http_file_transfer::send_file(const std::string& query_uri, network::connec
             pExt += nExt;
             for (int k = 0; s_SECT[k].m_Ext != nullptr; ++k) {
                 if (strcmp(s_SECT[k].m_Ext, pExt) == 0) {
-                    http.set_content_type(s_SECT[k].m_CT, s_SECT[k].m_CP);
+                    set_content_type(s_SECT[k].m_CT, s_SECT[k].m_CP);
                     break;
                 }
             }
         }
 
-        http.SetLastModify(from_time_t(ff.GetTimeUpdate()));
-        http.response(connect, nullptr, ff.GetLength());
+        SetLastModify(from_time_t(ff.GetTimeUpdate()));
+        response(connect, nullptr, ff.GetLength());
 
         connect.SendData(reinterpret_cast<const boost::uint8_t*>(ff.GetMemory()), ff.GetLength());
 
@@ -676,8 +676,8 @@ bool http_file_transfer::send_file(const std::string& query_uri, network::connec
     } else {
         LOGF(WARNING, "File not found '%s'", sCanonicFileName.c_str());
 
-        http.set_response_status(HTTP_RESPONSE_STATUS_NOT_FOUND, "Not found");
-        http.response(connect, "File not found");
+        set_response_status(HTTP_RESPONSE_STATUS_NOT_FOUND, "Not found");
+        response(connect, "File not found");
         return false;
     }
 

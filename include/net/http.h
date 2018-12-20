@@ -75,6 +75,11 @@
 #define HTTP_RESPONSE_STATUS_UNAUTHORIZED       401
 #define HTTP_RESPONSE_STATUS_NOT_FOUND          404
 
+#define HTTP_RESPONSE_STATUS_ERROR              503
+
+#define HTTP_RESPONSE_STATUS_UNAUTHORIZED_DESC  "Unauthorized"
+#define HTTP_RESPONSE_STATUS_ERROR_DESC         "Server internal error"
+
 namespace khorost {
     namespace network {
         class http_packet {
@@ -177,10 +182,10 @@ namespace khorost {
                 , m_abcQueryURI(m_abHeader)
                 , m_abcQueryVersion(m_abHeader)
             {
-                Reset();
+                reset();
             }
 
-            void    Reset() {
+            void    reset() {
                 m_abcQueryMethod.Reset();
                 m_abcQueryURI.Reset();
                 m_abcQueryVersion.Reset();
@@ -202,9 +207,9 @@ namespace khorost {
                 m_Replay.Clear();
             }
 
-            size_t  ProcessData(network::connection& rConnect_, const boost::uint8_t* pBuffer_, size_t nBufferSize_);
-            bool    IsReady() const { return m_eHeaderProcess == eSuccessful && m_eBodyProcess == eSuccessful; }
-            bool    IsAutoClose() const { return m_Replay.m_bAutoClose; }
+            size_t  process_data(network::connection& rConnect_, const boost::uint8_t* pBuffer_, size_t nBufferSize_);
+            bool    is_ready() const { return m_eHeaderProcess == eSuccessful && m_eBodyProcess == eSuccessful; }
+            bool    is_auto_close() const { return m_Replay.m_bAutoClose; }
 
             const char*    GetQueryMethod() const { return m_abcQueryMethod.GetChunk(); }
             const char*    GetQueryURI() const { return m_abcQueryURI.GetChunk(); }
@@ -262,14 +267,8 @@ namespace khorost {
             void end_of_response(connection& connection) {
                 response(connection, nullptr, 0);
             }
-        };
 
-        class http_file_transfer final {
-        public:
-            http_file_transfer() {}
-            ~http_file_transfer() {}
-
-            bool    send_file(const std::string& query_uri, connection& connect, http_text_protocol_header& http, const std::string& doc_root, const std::string& file_name = "");
+            bool    send_file(const std::string& query_uri, connection& connect, const std::string& doc_root, const std::string& file_name = "");
         };
 
         template<typename T>

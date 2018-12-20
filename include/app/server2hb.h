@@ -33,19 +33,19 @@ namespace khorost {
             std::string         m_SaltConnect;
             boost::uuids::uuid  m_idUser;
 
-            network::http_text_protocol_header m_HTTP;
+            network::http_text_protocol_header m_http;
         protected:
             virtual size_t	DataProcessing(const boost::uint8_t* pBuffer_, size_t nBufferSize_) {
                 server2_hb*		pServer = reinterpret_cast<server2_hb*>(GetController()->GetContext());
 
-                size_t nProcessBytes = m_HTTP.ProcessData(*this, pBuffer_, nBufferSize_);
+                size_t nProcessBytes = m_http.process_data(*this, pBuffer_, nBufferSize_);
                 if (nProcessBytes != 0) {
-                    if (m_HTTP.IsReady()) {
+                    if (m_http.is_ready()) {
                         pServer->process_http(*this);
-                        if (m_HTTP.IsAutoClose()) {
+                        if (m_http.is_auto_close()) {
                             CloseConnection();
                         }
-                        m_HTTP.Reset();
+                        m_http.reset();
                     }
                 }
                 return nProcessBytes;
@@ -62,7 +62,7 @@ namespace khorost {
 
             const std::string& GetSalt(bool Reset_ = false);
 
-            network::http_text_protocol_header&   GetHTTP() { return m_HTTP; }
+            network::http_text_protocol_header&   get_http() { return m_http; }
             virtual void    GetClientIP(char* pBuffer_, size_t nBufferSize_);
         };
 
@@ -107,7 +107,7 @@ namespace khorost {
         bool                                m_bShutdownTimer;
         boost::shared_ptr<boost::thread>    m_TimerThread;
         // ****************************************************************
-        typedef bool (server2_hb::*funcActionS2H)(const std::string& uri_params, network::connection& connection, network::s2h_session* session, network::http_text_protocol_header& http);
+        typedef bool (server2_hb::*funcActionS2H)(const std::string& uri_params, http_connection& connection, network::s2h_session* session);
         typedef std::map<std::string, funcActionS2H>		DictionaryActionS2H;
 
         DictionaryActionS2H    m_dictActionS2H;
@@ -115,10 +115,10 @@ namespace khorost {
         typedef std::function<network::session_ptr(const std::string& , boost::posix_time::ptime , boost::posix_time::ptime )> func_creator;
         virtual func_creator get_session_creator();
     protected:
-        virtual bool process_http_action(const std::string& action, const std::string& uri_params, http_connection& connection, network::http_text_protocol_header& http);
+        virtual bool process_http_action(const std::string& action, const std::string& uri_params, http_connection& connection);
         bool    process_http(http_connection& connection);
 
-        virtual bool    process_http_file_server(const std::string& query_uri, http_connection& connection, network::http_text_protocol_header& http);
+        virtual bool    process_http_file_server(const std::string& query_uri, http_connection& connection);
         
         virtual const char* GetContextDefaultName() const {
             return "s2h"; 
@@ -144,11 +144,9 @@ namespace khorost {
         network::token_ptr parse_token(khorost::network::http_text_protocol_header& http, bool is_access_token,
                                        const boost::posix_time::ptime& check);
         static void fill_json_token(const network::token_ptr& token, Json::Value& value);
-        bool action_refresh_token(const std::string& params_uri, khorost::network::connection& connection,
-                                  khorost::network::s2h_session* session,
-                                  khorost::network::http_text_protocol_header& http);
-        bool action_auth(const std::string& uri_params, network::connection& connection, network::s2h_session* session,
-                         network::http_text_protocol_header& http);
+
+        bool action_refresh_token(const std::string& params_uri, http_connection& connection, khorost::network::s2h_session* session);
+        bool action_auth(const std::string& uri_params, http_connection& connection, network::s2h_session* session);
 
         network::token_ptr find_refresh_token(const std::string& refresh_token);
         network::token_ptr find_access_token(const std::string& access_token);
@@ -203,7 +201,7 @@ namespace khorost {
         virtual bool    Run();
         virtual bool    Finish();
 
-        void parse_action(const std::string& query, std::string& action, std::string& params);
+        static void parse_action(const std::string& query, std::string& action, std::string& params);
         static std::string json_string(const Json::Value& value, bool styled = false);
         static void json_fill_auth(network::s2h_session* session, bool full_info, Json::Value& value);
 

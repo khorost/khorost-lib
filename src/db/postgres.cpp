@@ -219,7 +219,7 @@ khorost::network::token_ptr khl_postgres::create_token(const int access_timeout,
 
     auto token_payload = payload;
     token_payload["delta_access_time"] = access_timeout;
-    token_payload["delta_refresh_time"] = access_timeout;
+    token_payload["delta_refresh_time"] = refresh_timeout;
 
     const auto r = txn.exec(
         "INSERT INTO admin.khl_tokens "
