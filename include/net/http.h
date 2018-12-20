@@ -82,7 +82,7 @@
 
 namespace khorost {
     namespace network {
-        class http_packet {
+        class http_packet final {
         public:
             static  const   char*   HTTP_QUERY_REQUEST_METHOD_GET;
             static  const   char*   HTTP_QUERY_REQUEST_METHOD_POST;
@@ -100,7 +100,7 @@ namespace khorost {
 
             typedef std::list< std::pair<size_t, size_t> > ListPairs;
 
-            ListPairs   m_HeaderValue;  // словарь для заголовка
+            ListPairs   m_header_values;  // словарь для заголовка
             ListPairs   m_ParamsValue;  // словарь для параметров
             ListPairs   m_Cookies;      // словарь для кук
 
@@ -196,7 +196,7 @@ namespace khorost {
                 m_nPort = -1;
                 m_nHost = -1;
 
-                m_HeaderValue.clear();
+                m_header_values.clear();
                 m_ParamsValue.clear();
                 m_Cookies.clear();
 
@@ -211,23 +211,23 @@ namespace khorost {
             bool    is_ready() const { return m_eHeaderProcess == eSuccessful && m_eBodyProcess == eSuccessful; }
             bool    is_auto_close() const { return m_Replay.m_bAutoClose; }
 
-            const char*    GetQueryMethod() const { return m_abcQueryMethod.GetChunk(); }
-            const char*    GetQueryURI() const { return m_abcQueryURI.GetChunk(); }
-            const char*    GetHeaderParameter(const std::string& sParam_, const char* sDefault_ = nullptr) const;
-            const char*    GetParameter(const std::string& sKey_, bool* pbExist_ = nullptr) const;
+            const char*    get_query_method() const { return m_abcQueryMethod.GetChunk(); }
+            const char*    get_query_uri() const { return m_abcQueryURI.GetChunk(); }
+            const char*    get_header_parameter(const std::string& param, const char* default_value = nullptr) const;
+            const char*    get_parameter(const std::string& key, bool* exist_flag = nullptr) const;
             const char*    get_cookie(const std::string& sKey_, bool* pbExist_ = nullptr) const;
-            const char*    GetCookieParameter(const std::string& sKey_, const char* sDefault_ = nullptr) const;
-            const boost::uint8_t*  GetBody() const { return reinterpret_cast<boost::uint8_t*>(m_abBody.GetHead()); }
-            size_t          GetBodyLength() const { return m_abBody.GetFillSize(); }
-            const char*     GetHost();
-            const char*     GetPort();
-            void            CalculateHostPort();
+            const char*    get_cookie_parameter(const std::string& sKey_, const char* sDefault_ = nullptr) const;
+            const boost::uint8_t*  get_body() const { return reinterpret_cast<boost::uint8_t*>(m_abBody.GetHead()); }
+            size_t          get_body_length() const { return m_abBody.GetFillSize(); }
+            const char*     get_host();
+            const char*     get_port();
+            void            calculate_host_port();
 
             void            FillParameter2Array(const std::string& sKey_, std::vector<int>& rArray_);
-            bool            GetParameter(const std::string& sKey_, bool bDefault_) const;
-            int             GetParameter(const std::string& sKey_, int nDefault_) const;
-            int64_t         GetParameter64(const std::string& sKey_, int64_t nDefault_) const;
-            const char*     GetParameter(const std::string& sKey_, const char* sDefault_) const;
+            bool            get_parameter(const std::string& key, bool default_value) const;
+            int             get_parameter(const std::string& key, int default_value) const;
+            int64_t         get_parameter64(const std::string& key, int64_t default_value) const;
+            const char*     get_parameter(const std::string& key, const char* default_value) const;
             size_t          GetParameterIndex(const std::string& sKey_) const;
             size_t          GetHeaderIndex(const std::string& sKey_) const;
             bool            IsParameterExist(const std::string& sKey_) const;
@@ -260,7 +260,7 @@ namespace khorost {
                 response(connect, body.c_str(), body.size());
             }
 
-            const char*     GetClientProxyIP();
+            const char*     get_client_proxy_ip();
 
             bool        GetMultiPart(size_t& rszIterator_, std::string& rsName_, std::string& rsContentType_, const char*& rpBuffer_, size_t& rszBuffer);
 
@@ -270,9 +270,10 @@ namespace khorost {
 
             bool    send_file(const std::string& query_uri, connection& connect, const std::string& doc_root, const std::string& file_name = "");
         };
+        typedef	boost::shared_ptr<http_text_protocol_header>	http_text_protocol_header_ptr;
 
         template<typename T>
-        class HTTPCurlT {
+        class http_curl_t {
             static size_t WriteAutobufferCallback(void* Contents_, size_t nSize_, size_t nMemb_, void *Ctx_) {
                 size_t nRealSize = (nSize_ * nMemb_) / sizeof(T);
                 data::AutoBufferT<T>* pBuffer = reinterpret_cast<data::AutoBufferT<T>*>(Ctx_);
@@ -285,10 +286,10 @@ namespace khorost {
         protected:
             CURL*       m_curl;
         public:
-            HTTPCurlT() {
+            http_curl_t() {
                 m_curl = curl_easy_init();
             }
-            virtual ~HTTPCurlT() {
+            virtual ~http_curl_t() {
                 if (m_curl != nullptr) {
                     /* always cleanup */
                     curl_easy_cleanup(m_curl);
@@ -296,7 +297,7 @@ namespace khorost {
                 }
             }
 
-            bool DoRequest(const std::string& sURL_, data::AutoBufferT<T>& abBuffer_) {
+            bool do_request(const std::string& sURL_, data::AutoBufferT<T>& abBuffer_) {
                 bool    bResult = false;
 
                 CURLcode    curlCode, nRespCode;
@@ -316,15 +317,15 @@ namespace khorost {
             }
         };
 
-        class   HTTPCurlString : HTTPCurlT<char> {
+        class   http_curl_string : http_curl_t<char> {
             data::AutoBufferChar    m_abBuffer;
         public:
-            bool    DoEasyRequest(const std::string& sURL_) {
-                return DoRequest(sURL_, m_abBuffer);
+            bool    do_easy_request(const std::string& sURL_) {
+                return do_request(sURL_, m_abBuffer);
             }
 
-            const data::AutoBufferChar&   GetBuffer() const { return m_abBuffer; }
-            const char* GetURIEncode(const char* pURIString_) {
+            const data::AutoBufferChar&   get_buffer() const { return m_abBuffer; }
+            const char* get_uri_encode(const char* pURIString_) {
 
                 if (pURIString_ == nullptr || *pURIString_ == '\0') {
                     m_abBuffer.CheckSize(sizeof(char));

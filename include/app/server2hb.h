@@ -17,9 +17,9 @@ namespace khorost {
     protected:
         class cb_connection : public network::connection {
         protected:
-            virtual size_t	DataProcessing(const boost::uint8_t* pBuffer_, size_t nBufferSize_) {
-                server2_hb*		pServer = reinterpret_cast<server2_hb*>(GetController()->GetContext());
-                return pServer->m_Dispatcher.DoProcessCB(*this, pBuffer_, nBufferSize_);
+            virtual size_t	data_processing(const boost::uint8_t* buffer, const size_t buffer_size) {
+                auto server = reinterpret_cast<server2_hb*>(get_controller()->get_context());
+                return server->m_Dispatcher.DoProcessCB(*this, buffer, buffer_size);
             }
         public:
             cb_connection(network::connection_controller* pThis_, int ID_, evutil_socket_t fd_, struct sockaddr* sa_, int socklen_) :
@@ -28,42 +28,42 @@ namespace khorost {
             }
         };
 
-        class http_connection : public network::connection {
-            bool		        m_bAuthenticate;
-            std::string         m_SaltConnect;
-            boost::uuids::uuid  m_idUser;
+        class http_connection final : public network::connection {
+            bool		        m_authenticate;
+            std::string         m_salt_connect;
+            boost::uuids::uuid  m_id_user{};
 
-            network::http_text_protocol_header m_http;
+            network::http_text_protocol_header_ptr m_http;
         protected:
-            virtual size_t	DataProcessing(const boost::uint8_t* pBuffer_, size_t nBufferSize_) {
-                server2_hb*		pServer = reinterpret_cast<server2_hb*>(GetController()->GetContext());
+            size_t	data_processing(const boost::uint8_t* buffer, const size_t buffer_size) override {
+                auto server = reinterpret_cast<server2_hb*>(get_controller()->get_context());
+                const auto process_bytes = m_http->process_data(*this, buffer, buffer_size);
 
-                size_t nProcessBytes = m_http.process_data(*this, pBuffer_, nBufferSize_);
-                if (nProcessBytes != 0) {
-                    if (m_http.is_ready()) {
-                        pServer->process_http(*this);
-                        if (m_http.is_auto_close()) {
-                            CloseConnection();
+                if (process_bytes != 0) {
+                    if (m_http->is_ready()) {
+                        server->process_http(*this);
+                        if (m_http->is_auto_close()) {
+                            close_connection();
                         }
                         m_http.reset();
                     }
                 }
-                return nProcessBytes;
+                return process_bytes;
             }
         public:
             http_connection(network::connection_controller* pThis_, int ID_, evutil_socket_t fd_, struct sockaddr* sa_, int socklen_) :
                 network::connection(pThis_, ID_, fd_, sa_, socklen_)
-                , m_bAuthenticate(false) {
-
+                , m_authenticate(false) {
+                m_http = boost::make_shared<network::http_text_protocol_header>();
             }
 
-            bool IsAuthenticate() const { return m_bAuthenticate; }
-            void SetAuthenticate(bool bValue_) { m_bAuthenticate = bValue_; }
+            bool is_authenticate() const { return m_authenticate; }
+            void set_authenticate(bool value) { m_authenticate = value; }
 
-            const std::string& GetSalt(bool Reset_ = false);
+            const std::string& get_salt(bool Reset_ = false);
 
-            network::http_text_protocol_header&   get_http() { return m_http; }
-            virtual void    GetClientIP(char* pBuffer_, size_t nBufferSize_);
+            network::http_text_protocol_header_ptr   get_http() { return m_http; }
+            virtual void    get_client_ip(char* pBuffer_, size_t nBufferSize_);
         };
 
         db::postgres                    m_dbConnect;
@@ -139,9 +139,9 @@ namespace khorost {
             return "/storage/";
         }
 
-        network::session_ptr processing_session(http_connection& connection, network::http_text_protocol_header& http);
+        network::session_ptr processing_session(http_connection& connection);
 
-        network::token_ptr parse_token(khorost::network::http_text_protocol_header& http, bool is_access_token,
+        network::token_ptr parse_token(khorost::network::http_text_protocol_header_ptr& http, bool is_access_token,
                                        const boost::posix_time::ptime& check);
         static void fill_json_token(const network::token_ptr& token, Json::Value& value);
 
@@ -251,8 +251,8 @@ namespace khorost {
 #define KHL_HTTP_PARAM__AUTHORIZATION   "Authorization"
 #define KHL_JSON_PARAM__DURATION "0dur"
 
-#define KHL_SET_TIMESTAMP_MILLISECONDS(json_object, json_tag, json_value)       json_object[json_tag] = khorost::data::EpochDiff(json_value).total_milliseconds()
-#define KHL_SET_TIMESTAMP_MICROSECONDS(json_object, json_tag, json_value)       json_object[json_tag] = khorost::data::EpochDiff(json_value).total_microseconds()
+#define KHL_SET_TIMESTAMP_MILLISECONDS(json_object, json_tag, json_value)       json_object[json_tag] = khorost::data::epoch_diff(json_value).total_milliseconds()
+#define KHL_SET_TIMESTAMP_MICROSECONDS(json_object, json_tag, json_value)       json_object[json_tag] = khorost::data::epoch_diff(json_value).total_microseconds()
 
 #define KHL_SET_CPU_DURATION(json_object, json_tag, now_value) \
     json_object[json_tag] = (boost::posix_time::microsec_clock::universal_time() - now_value).total_microseconds()

@@ -523,18 +523,18 @@ bool server2_hb::Finish() {
     return true;
 }
 
-void server2_hb::http_connection::GetClientIP(char* pBuffer_, size_t nBufferSize_) {
-    const char* pPIP = m_http.GetClientProxyIP();
+void server2_hb::http_connection::get_client_ip(char* pBuffer_, size_t nBufferSize_) {
+    const char* pPIP = m_http->get_client_proxy_ip();
     if (pPIP != nullptr) {
         strncpy(pBuffer_, pPIP, nBufferSize_);
     } else {
-        connection::GetClientIP(pBuffer_, nBufferSize_);
+        connection::get_client_ip(pBuffer_, nBufferSize_);
     }
 }
 
-bool server2_hb::process_http_action(const std::string& action, const std::string& uri_params,                                     http_connection& connection) {
+bool server2_hb::process_http_action(const std::string& action, const std::string& uri_params, http_connection& connection) {
     auto http = connection.get_http();
-    const auto s2_h_session = reinterpret_cast<network::s2h_session*>(processing_session(connection, http).get());
+    const auto s2_h_session = reinterpret_cast<network::s2h_session*>(processing_session(connection).get());
 
     const auto it = m_dictActionS2H.find(action);
     if (it != m_dictActionS2H.end()) {
@@ -556,8 +556,8 @@ void server2_hb::parse_action(const std::string& query, std::string& action, std
 }
 
 bool server2_hb::process_http(http_connection& connection) {
-    auto& http = connection.get_http();
-    const auto query_uri = http.GetQueryURI();
+    auto http = connection.get_http();
+    const auto query_uri = http->get_query_uri();
     const auto url_prefix_action = GetURLPrefixAction();
     const auto size_upa = strlen(url_prefix_action);
 
@@ -572,8 +572,8 @@ bool server2_hb::process_http(http_connection& connection) {
 
         LOG(DEBUG) << "[HTTP_PROCESS] worker pQueryAction not found";
 
-        http.set_response_status(HTTP_RESPONSE_STATUS_NOT_FOUND, "Not found");
-        http.response(connection, "File not found");
+        http->set_response_status(HTTP_RESPONSE_STATUS_NOT_FOUND, "Not found");
+        http->response(connection, "File not found");
 
         return false;
     }
@@ -586,10 +586,10 @@ bool server2_hb::process_http_file_server(const std::string& query_uri, http_con
     const std::string prefix = get_url_prefix_storage();
 
     if (prefix == query_uri.substr(0, prefix.size())) {
-        return http.send_file(query_uri.substr(prefix.size() - 1), connection, m_storage_root);
+        return http->send_file(query_uri.substr(prefix.size() - 1), connection, m_storage_root);
     }
 
-    return http.send_file(query_uri, connection, m_doc_root);
+    return http->send_file(query_uri, connection, m_doc_root);
 }
 
 void server2_hb::TimerSessionUpdate() {
@@ -642,17 +642,19 @@ void   server2_hb::SetSessionDriver(const std::string& driver) {
     m_Sessions.open(driver, SESSION_VERSION_MIN, SESSION_VERSION_CURRENT, get_session_creator());
 }
 
-network::session_ptr server2_hb::processing_session(http_connection& connection, network::http_text_protocol_header& http) {
+network::session_ptr server2_hb::processing_session(http_connection& connection) {
     using namespace boost::posix_time;
 
+    auto http = connection.get_http();
+
     auto created = false;
-    const auto session_id = http.get_cookie(get_session_code());
+    const auto session_id = http->get_cookie(get_session_code());
     network::session_ptr sp = m_Sessions.get_session(session_id != nullptr ? session_id : "", created,
                                                     get_session_creator());
     network::s2h_session* s2hSession = reinterpret_cast<network::s2h_session*>(sp.get());
 
     char sIP[255];
-    connection.GetClientIP(sIP, sizeof(sIP));
+    connection.get_client_ip(sIP, sizeof(sIP));
 
     if (s2hSession != nullptr) {
         s2hSession->set_last_activity(second_clock::universal_time());
@@ -661,19 +663,19 @@ network::session_ptr server2_hb::processing_session(http_connection& connection,
         if (created) {
             Json::Value    jvStats;
 
-            const char* pHP = http.GetHeaderParameter(HTTP_ATTRIBUTE_USER_AGENT);
+            const char* pHP = http->get_header_parameter(HTTP_ATTRIBUTE_USER_AGENT);
             if (pHP != nullptr) {
                 jvStats["UserAgent"] = pHP;
             }
-            pHP = http.GetHeaderParameter(HTTP_ATTRIBUTE_ACCEPT_ENCODING);
+            pHP = http->get_header_parameter(HTTP_ATTRIBUTE_ACCEPT_ENCODING);
             if (pHP != nullptr) {
                 jvStats["AcceptEncoding"] = pHP;
             }
-            pHP = http.GetHeaderParameter(HTTP_ATTRIBUTE_ACCEPT_LANGUAGE);
+            pHP = http->get_header_parameter(HTTP_ATTRIBUTE_ACCEPT_LANGUAGE);
             if (pHP != nullptr) {
                 jvStats["AcceptLanguage"] = pHP;
             }
-            pHP = http.GetHeaderParameter(HTTP_ATTRIBUTE_REFERER);
+            pHP = http->get_header_parameter(HTTP_ATTRIBUTE_REFERER);
             if (pHP != nullptr) {
                 jvStats["Referer"] = pHP;
             }
@@ -681,7 +683,7 @@ network::session_ptr server2_hb::processing_session(http_connection& connection,
         }
     }
 
-    http.set_cookie(get_session_code(), sp->get_session_id(), sp->get_expired(), http.GetHost(), true);
+    http->set_cookie(get_session_code(), sp->get_session_id(), sp->get_expired(), http->get_host(), true);
 
     LOGF(DEBUG, "%s = '%s' ClientIP = '%s' ConnectID = #%d InS = '%s' "
         , get_session_code(), sp->get_session_id().c_str(), sIP, connection.GetID()
@@ -690,13 +692,13 @@ network::session_ptr server2_hb::processing_session(http_connection& connection,
     return sp;
 }
 
-network::token_ptr server2_hb::parse_token(khorost::network::http_text_protocol_header& http, const bool is_access_token, const boost::posix_time::ptime& check) {
+network::token_ptr server2_hb::parse_token(khorost::network::http_text_protocol_header_ptr& http, const bool is_access_token, const boost::posix_time::ptime& check) {
     static const std::string token_mask = "token ";
     std::string id;
 
-    const auto header_authorization = http.GetHeaderParameter(KHL_HTTP_PARAM__AUTHORIZATION);
+    const auto header_authorization = http->get_header_parameter(KHL_HTTP_PARAM__AUTHORIZATION);
     if (header_authorization != nullptr) {
-        const auto token_id = data::EscapeString(header_authorization);
+        const auto token_id = data::escape_string(header_authorization);
         const auto token_pos = token_mask.size();
 
         if (token_id.size() <= token_pos || token_id.substr(0, token_pos) != token_mask) {
@@ -705,7 +707,7 @@ network::token_ptr server2_hb::parse_token(khorost::network::http_text_protocol_
 
         id = token_id.substr(token_pos);
     } else {
-        id = data::EscapeString(http.GetParameter("token", ""));
+        id = data::escape_string(http->get_parameter("token", ""));
     }
 
     auto token = is_access_token ? find_access_token(id) : find_refresh_token(id);
@@ -725,8 +727,7 @@ void server2_hb::fill_json_token(const network::token_ptr& token, Json::Value& v
     KHL_SET_TIMESTAMP_MILLISECONDS(value, "refresh_expire", token->get_refresh_expire());
 }
 
-bool server2_hb::action_refresh_token(const std::string& params_uri, http_connection& connection,
-                                      khorost::network::s2h_session* session) {
+bool server2_hb::action_refresh_token(const std::string& params_uri, http_connection& connection, khorost::network::s2h_session* session) {
     auto http = connection.get_http();
     Json::Value json_root;
     const auto now = boost::posix_time::microsec_clock::universal_time();
@@ -734,8 +735,8 @@ bool server2_hb::action_refresh_token(const std::string& params_uri, http_connec
     try {
         auto token = parse_token(http, false, now);
         if (token != nullptr) {
-            const auto time_refresh = http.GetParameter("time_refresh", 0);
-            const auto time_access = http.GetParameter("time_access", 0);
+            const auto time_refresh = http->get_parameter("time_refresh", 0);
+            const auto time_access = http->get_parameter("time_access", 0);
 
             const auto access_token = token->get_access_token();
             const auto refresh_token = token->get_refresh_token();
@@ -747,17 +748,17 @@ bool server2_hb::action_refresh_token(const std::string& params_uri, http_connec
             }
         }
     } catch (const std::exception&) {
-        http.set_response_status(402, "UNKNOWN_ERROR");
+        http->set_response_status(402, "UNKNOWN_ERROR");
     }
 
     if (!json_root.isNull()) {
         KHL_SET_CPU_DURATION(json_root, KHL_JSON_PARAM__DURATION, now);
 
-        http.set_content_type(HTTP_ATTRIBUTE_CONTENT_TYPE__APP_JSON);
-        http.response(connection, json_string(json_root));
+        http->set_content_type(HTTP_ATTRIBUTE_CONTENT_TYPE__APP_JSON);
+        http->response(connection, json_string(json_root));
     } else {
-        http.set_response_status(HTTP_RESPONSE_STATUS_UNAUTHORIZED, "Unauthorized");
-        http.end_of_response(connection);
+        http->set_response_status(HTTP_RESPONSE_STATUS_UNAUTHORIZED, "Unauthorized");
+        http->end_of_response(connection);
     }
 
     return true;
@@ -778,9 +779,9 @@ bool server2_hb::action_auth(const std::string& uri_params, http_connection& con
 
     if (action == "login") {
         Json::Value auth;
-        const auto body = reinterpret_cast<const char*>(http.GetBody());
+        const auto body = reinterpret_cast<const char*>(http->get_body());
 
-        if (reader.parse(body, body + http.GetBodyLength(), auth)) {
+        if (reader.parse(body, body + http->get_body_length(), auth)) {
             const auto login = auth["login"].asString();
             const auto password = auth["password"].asString();
 
@@ -806,21 +807,21 @@ bool server2_hb::action_auth(const std::string& uri_params, http_connection& con
         session->reset();
         session->set_expired(second_clock::universal_time());
 
-        http.set_cookie(get_session_code(), session->get_session_id(), session->get_expired(), http.GetHost(), true);
+        http->set_cookie(get_session_code(), session->get_session_id(), session->get_expired(), http->get_host(), true);
 
         m_dbBase.SessionUpdate(session);
         m_Sessions.remove_session(session);
     } else if (action == "change") {
         std::string login;
-        const auto current_password = http.GetParameter("curpwd");
+        const auto current_password = http->get_parameter("curpwd");
 
         if (current_password != nullptr
             && m_dbBase.GetUserInfo(session->GetUserID(), login, nickname, hash, salt)
             && IsPasswordHashEqual3(hash, login, current_password, salt)) {
 
-            const auto new_password = http.GetParameter("newpwd");
-            if (http.IsParameterExist("loginpwd")) {
-                login = http.GetParameter("loginpwd");
+            const auto new_password = http->get_parameter("newpwd");
+            if (http->IsParameterExist("loginpwd")) {
+                login = http->get_parameter("loginpwd");
 
                 if (m_dbBase.get_user_info(login, user_id, nickname, hash, salt)) {
                     RecalcPasswordHash(hash, login, new_password, salt);
@@ -838,8 +839,8 @@ bool server2_hb::action_auth(const std::string& uri_params, http_connection& con
         json_fill_auth(session, true, root);
     }
 
-    http.set_content_type(HTTP_ATTRIBUTE_CONTENT_TYPE__APP_JS);
-    http.response(connection, json_string(root));
+    http->set_content_type(HTTP_ATTRIBUTE_CONTENT_TYPE__APP_JS);
+    http->response(connection, json_string(root));
 
     return true;
 }

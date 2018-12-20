@@ -1,7 +1,7 @@
 #include "util/utils.h"
 #include <regex>
 
-std::string khorost::data::EscapeString(const std::string& s_) {
+std::string khorost::data::escape_string(const std::string& s_) {
     std::string r;
 
     for (std::string::const_iterator cit=s_.begin();cit!=s_.end();++cit) {
@@ -19,12 +19,12 @@ std::string khorost::data::EscapeString(const std::string& s_) {
 
 static boost::posix_time::ptime               s_time_t_epoch(boost::gregorian::date(1970, 1, 1));
 
-boost::posix_time::time_duration khorost::data::EpochDiff(boost::posix_time::ptime pt_) {
-    return pt_ - s_time_t_epoch;
+boost::posix_time::time_duration khorost::data::epoch_diff(boost::posix_time::ptime pt) {
+    return pt - s_time_t_epoch;
 }
 
-boost::posix_time::ptime khorost::data::EpochMicroseconds2ptime(uint64_t ms_) {
-    return s_time_t_epoch + boost::posix_time::microseconds(ms_);
+boost::posix_time::ptime khorost::data::epoch_microseconds2ptime(uint64_t ms) {
+    return s_time_t_epoch + boost::posix_time::microseconds(ms);
 }
 
 // The trimming method comes from https://stackoverflow.com/a/1798170/1613961

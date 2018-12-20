@@ -73,13 +73,13 @@ namespace khorost {
             size_t      m_nSendBytes;
 
             bool    CompileBufferData();
-            virtual size_t DataProcessing(const boost::uint8_t* pBuffer_, size_t nBufferSize_){ return 0; }
+            virtual size_t data_processing(const boost::uint8_t* buffer, const size_t buffer_size){ return 0; }
         public:
             connection(connection_controller* pThis_, int ID_, evutil_socket_t fd_, struct sockaddr* sa_, int socklen_);
             virtual ~connection();
 
-            bool    OpenConnection();
-            bool    CloseConnection();
+            bool    open_connection();
+            bool    close_connection();
 
             bool    SendData(const boost::uint8_t* pBuffer_, size_t nBufferSize_);
             bool    SendString(const char* pString_, size_t nLength_ = -1);
@@ -87,12 +87,12 @@ namespace khorost {
             bool    SendNumber(unsigned int nNumber_);
 
             int     GetID() const { return m_ID; }
-            connection_controller*    GetController() { return m_pController; }
+            connection_controller*    get_controller() { return m_pController; }
 
             size_t  GetReceiveBytes() const { return m_nReceiveBytes; }
             size_t  GetSendBytes() const { return m_nSendBytes; }
 
-            virtual void    GetClientIP(char* pBuffer_, size_t nBufferSize_);
+            virtual void    get_client_ip(char* buffer, size_t buffer_size);
         };
 
         typedef boost::shared_ptr<connection>		connection_ptr;
@@ -102,7 +102,7 @@ namespace khorost {
 
         class connection_controller {
             int						m_nUniqID;
-            connection_context*      m_pContext;
+            connection_context*      m_context;
         protected:
             boost::mutex            m_mutex;
             // основной слушающий поток 
@@ -131,11 +131,11 @@ namespace khorost {
 
             event_base* GetBaseListen() { return m_pebBaseListen; }
 
-            connection_context*  GetContext() { return m_pContext; }
-            void                SetContext(connection_context* pContext_) { m_pContext = pContext_; }
+            connection_context*  get_context() const { return m_context; }
+            void                set_context(connection_context* context) { m_context = context; }
 
-            connection* AddConnection(evutil_socket_t fd_, struct sockaddr* sa_, int socklen_);
-            bool        RemoveConnection(connection* pConnection_);
+            connection* add_connection(evutil_socket_t fd_, struct sockaddr* sa_, int socklen_);
+            bool        remove_connection(connection* pConnection_);
         };
     }
 }

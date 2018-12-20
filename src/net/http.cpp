@@ -202,7 +202,7 @@ size_t  http_text_protocol_header::process_data(network::connection& rConnect_, 
                 }
                 nProcessByte    += nChunkSize + nChunkSizeV;
 
-                m_HeaderValue.push_back(std::make_pair(abcHeaderKey.GetReference(), abcHeaderValue.GetReference()));
+                m_header_values.push_back(std::make_pair(abcHeaderKey.GetReference(), abcHeaderValue.GetReference()));
                 if (m_nContentLength==-1 && strcmp(HTTP_ATTRIBUTE_CONTENT_LENGTH, abcHeaderKey.GetChunk())==0) {
                     m_nContentLength  = atoi(abcHeaderValue.GetChunk());
                 } else if (strcmp(HTTP_ATTRIBUTE_COOKIE, abcHeaderKey.GetChunk())==0) {
@@ -227,7 +227,7 @@ size_t  http_text_protocol_header::process_data(network::connection& rConnect_, 
             if (m_abBody.GetFillSize() >= (size_t)m_nContentLength) {
                 m_eBodyProcess = eSuccessful;
 
-                const char *pszContentType = GetHeaderParameter(HTTP_ATTRIBUTE_CONTENT_TYPE);
+                const char *pszContentType = get_header_parameter(HTTP_ATTRIBUTE_CONTENT_TYPE);
                 if (pszContentType!= nullptr && FindSubValue(pszContentType, -1, HTTP_ATTRIBUTE_CONTENT_TYPE__FORM, sizeof(HTTP_ATTRIBUTE_CONTENT_TYPE__FORM) - 1, '=', ';')) {
 //                if (strcmp(HTTP_ATTRIBUTE_CONTENT_TYPE__FORM, pszContentType) == 0) {
                     size_t k = m_abParams.GetFillSize();
@@ -260,7 +260,7 @@ size_t  http_text_protocol_header::process_data(network::connection& rConnect_, 
 }
 
 bool http_text_protocol_header::GetMultiPart(size_t& rszIterator_, std::string& rsName_, std::string& rsContentType_, const char*& rpBuffer_, size_t& rszBuffer) {
-    const char *pszContentType = GetHeaderParameter(HTTP_ATTRIBUTE_CONTENT_TYPE);
+    const char *pszContentType = get_header_parameter(HTTP_ATTRIBUTE_CONTENT_TYPE);
     if (pszContentType == nullptr) {
         return false;
     }
@@ -357,11 +357,11 @@ bool http_text_protocol_header::ParseString(char* pBuffer_, size_t nBufferSize_,
     return true;
 }
 
-const char* http_text_protocol_header::GetCookieParameter(const std::string& sKey_, const char* sDefault_) const {
+const char* http_text_protocol_header::get_cookie_parameter(const std::string& sKey_, const char* sDefault_) const {
     const char* psValue = get_cookie(sKey_);
 
     if (psValue == nullptr) {
-        psValue = GetParameter(sKey_, sDefault_);
+        psValue = get_parameter(sKey_, sDefault_);
     }
     return psValue;
 }
@@ -402,7 +402,7 @@ size_t http_text_protocol_header::GetParameterIndex(const std::string& sKey_) co
 }
 
 size_t http_text_protocol_header::GetHeaderIndex(const std::string& sKey_) const {
-    for (const auto& cit : m_HeaderValue) {
+    for (const auto& cit : m_header_values) {
         if (strcmp(sKey_.c_str(), m_abHeader.GetPosition(cit.first)) == 0) {
             return cit.second;
         }
@@ -419,15 +419,15 @@ void http_text_protocol_header::FillParameter2Array(const std::string& sKey_, st
     }
 }
 
-const char* http_text_protocol_header::GetParameter(const std::string& sKey_, bool* pbExist_) const {
-    if (pbExist_!= nullptr) {
-        *pbExist_ = false;
+const char* http_text_protocol_header::get_parameter(const std::string& key, bool* exist_flag) const {
+    if (exist_flag!= nullptr) {
+        *exist_flag = false;
     }
 
     for (const auto& cit : m_ParamsValue) {
-        if (strcmp(sKey_.c_str(), m_abParams.GetPosition(cit.first)) == 0) {
-            if (pbExist_ != nullptr) {
-                *pbExist_ = true;
+        if (strcmp(key.c_str(), m_abParams.GetPosition(cit.first)) == 0) {
+            if (exist_flag != nullptr) {
+                *exist_flag = true;
             }
             return cit.second != -1 ? m_abParams.GetPosition(cit.second) : nullptr;
         }
@@ -436,14 +436,14 @@ const char* http_text_protocol_header::GetParameter(const std::string& sKey_, bo
     return nullptr;
 }
 
-const char* http_text_protocol_header::GetHeaderParameter(const std::string& sParam_, const char* sDefault_) const {
-    for (const auto& cit : m_HeaderValue) {
-        if (strcmp(sParam_.c_str(), m_abHeader.GetPosition(cit.first)) == 0) {
+const char* http_text_protocol_header::get_header_parameter(const std::string& param, const char* default_value) const {
+    for (const auto& cit : m_header_values) {
+        if (strcmp(param.c_str(), m_abHeader.GetPosition(cit.first)) == 0) {
             return m_abHeader.GetPosition(cit.second);
         }
     }
 
-    return sDefault_;
+    return default_value;
 }
 
 void http_text_protocol_header::response(network::connection& connect, const char* response, const size_t length) {
@@ -470,7 +470,7 @@ void http_text_protocol_header::response(network::connection& connect, const cha
         connect.SendString(HTTP_ATTRIBUTE_ENDL, sizeof(HTTP_ATTRIBUTE_ENDL) - 1);
     }
 
-    const auto pAC = GetHeaderParameter(HTTP_ATTRIBUTE_CONNECTION);
+    const auto pAC = get_header_parameter(HTTP_ATTRIBUTE_CONNECTION);
     if (pAC== nullptr || strcmp(HTTP_ATTRIBUTE_CONNECTION__KEEP_ALIVE, pAC)!=0) {
         m_Replay.m_bAutoClose = true;
     } else {
@@ -480,14 +480,14 @@ void http_text_protocol_header::response(network::connection& connect, const cha
         std::string("Connection: ") + std::string(pAC != nullptr ? pAC : "close") + std::string(HTTP_ATTRIBUTE_ENDL));
 
     // CORS
-    const auto origin = GetHeaderParameter(HTTP_ATTRIBUTE__ORIGIN);
+    const auto origin = get_header_parameter(HTTP_ATTRIBUTE__ORIGIN);
     if (origin != nullptr) {
         connect.SendString(HTTP_ATTRIBUTE__ACCESS_CONTROL_ALLOW_ORIGIN ": " + std::string(origin) + std::string(HTTP_ATTRIBUTE_ENDL));
         connect.SendString(HTTP_ATTRIBUTE__ACCESS_CONTROL_ALLOW_CREDENTIALS ": true" HTTP_ATTRIBUTE_ENDL);
     }
 
     for (const auto& c : m_Replay.m_Cookies) {
-        time_t gmt = data::EpochDiff(c.m_dtExpire).total_seconds();
+        time_t gmt = data::epoch_diff(c.m_dtExpire).total_seconds();
         strftime(st, sizeof(st), "%a, %d-%b-%Y %H:%M:%S GMT", gmtime(&gmt));
 
         connect.SendString(
@@ -513,7 +513,7 @@ void http_text_protocol_header::response(network::connection& connect, const cha
 
     if (!m_Replay.m_tLastModify.is_not_a_date_time()) {
         connect.SendString(HTTP_ATTRIBUTE_LAST_MODIFIED HTTP_ATTRIBUTE_DIV);
-        time_t gmt = data::EpochDiff(m_Replay.m_tLastModify).total_seconds();
+        time_t gmt = data::epoch_diff(m_Replay.m_tLastModify).total_seconds();
         strftime(st, sizeof(st), "%a, %d-%b-%Y %H:%M:%S GMT", gmtime(&gmt));
         connect.SendString(st);
         connect.SendString(HTTP_ATTRIBUTE_ENDL, sizeof(HTTP_ATTRIBUTE_ENDL)-1);
@@ -625,7 +625,7 @@ bool http_text_protocol_header::send_file(const std::string& query_uri, network:
             , { nullptr, nullptr, nullptr }
         };
 
-        const char* pIMS = GetHeaderParameter("If-Modified-Since");
+        const char* pIMS = get_header_parameter("If-Modified-Since");
         if (pIMS != nullptr) {
             tm t;
             strptime(pIMS, "%a, %d-%b-%Y %H:%M:%S GMT", &t);
@@ -684,31 +684,31 @@ bool http_text_protocol_header::send_file(const std::string& query_uri, network:
     return true;
 }
 
-bool http_text_protocol_header::GetParameter(const std::string& sKey_, bool bDefault_) const {
-    bool bExist;
-    const char* pValue = GetParameter(sKey_, &bExist);
-    return bExist ? strcmp(pValue, "true") == 0 : bDefault_;
+bool http_text_protocol_header::get_parameter(const std::string& key, bool default_value) const {
+    bool exist_flag;
+    const auto value = get_parameter(key, &exist_flag);
+    return exist_flag ? strcmp(value, "true") == 0 : default_value;
 }
 
-int http_text_protocol_header::GetParameter(const std::string& sKey_, int nDefault_) const {
-    bool bExist;
-    const char* pValue = GetParameter(sKey_, &bExist);
-    return bExist?atoi(pValue):nDefault_;
+int http_text_protocol_header::get_parameter(const std::string& key, int default_value) const {
+    bool exist_flag;
+    const auto value = get_parameter(key, &exist_flag);
+    return exist_flag ? atoi(value) : default_value;
 }
 
-int64_t http_text_protocol_header::GetParameter64(const std::string& sKey_, int64_t nDefault_) const {
-    bool bExist;
-    const char* pValue = GetParameter(sKey_, &bExist);
-    return bExist ? atoll(pValue) : nDefault_;
+int64_t http_text_protocol_header::get_parameter64(const std::string& key, int64_t default_value) const {
+    bool exist_flag;
+    const auto value = get_parameter(key, &exist_flag);
+    return exist_flag ? atoll(value) : default_value;
 }
 
-const char* http_text_protocol_header::GetParameter(const std::string& sKey_, const char* sDefault_) const {
-    bool bExist;
-    const char* pValue = GetParameter(sKey_, &bExist);
-    return bExist?pValue:sDefault_;
+const char* http_text_protocol_header::get_parameter(const std::string& key, const char* default_value) const {
+    bool exist;
+    const char* pValue = get_parameter(key, &exist);
+    return exist?pValue:default_value;
 }
 
-void http_text_protocol_header::CalculateHostPort() {
+void http_text_protocol_header::calculate_host_port() {
     size_t idx = GetHeaderIndex(HTTP_ATTRIBUTE_HOST);
     if (idx==-1) {
         return;
@@ -728,22 +728,22 @@ void http_text_protocol_header::CalculateHostPort() {
     }
 }
 
-const char* http_text_protocol_header::GetHost() {
+const char* http_text_protocol_header::get_host() {
     if (m_nHost==-1) {
-        CalculateHostPort();
+        calculate_host_port();
     }
     return m_nHost==-1?"":m_abHeader.GetPosition(m_nHost);
 }
 
-const char* http_text_protocol_header::GetPort() {
+const char* http_text_protocol_header::get_port() {
     if (m_nHost==-1) {
-        CalculateHostPort();
+        calculate_host_port();
     }
     return (m_nPort==-1 || m_nPort==0)?"":m_abHeader.GetPosition(m_nPort);
 }
 
-const char* http_text_protocol_header::GetClientProxyIP() {
-    size_t  idx = GetHeaderIndex(HTTP_ATTRIBUTE_X_FORWARDED_FOR);
+const char* http_text_protocol_header::get_client_proxy_ip() {
+    size_t idx = GetHeaderIndex(HTTP_ATTRIBUTE_X_FORWARDED_FOR);
     if (idx==-1) {
         idx = GetHeaderIndex(HTTP_ATTRIBUTE_X_REAL_IP);
         if (idx==-1) {

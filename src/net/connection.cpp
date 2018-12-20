@@ -55,7 +55,7 @@ bool connection::CompileBufferData() {
     size_t		s, nProcessedBytes = 0;
 
     for( s = 0; m_abSocketBuffer.GetFillSize() > s; s += nProcessedBytes ) {
-        nProcessedBytes = DataProcessing(m_abSocketBuffer.GetPosition(s), m_abSocketBuffer.GetFillSize() - s);
+        nProcessedBytes = data_processing(m_abSocketBuffer.GetPosition(s), m_abSocketBuffer.GetFillSize() - s);
         if (nProcessedBytes==0)
             break;
     }
@@ -71,9 +71,9 @@ void connection::stubConnWrite(bufferevent* bev_, void* ctx_) {
 		bufferevent_free(bev_);
         pThis->m_bev = nullptr;
 
-        connection_controller* cc = pThis->GetController();
+        connection_controller* cc = pThis->get_controller();
         if (cc!= nullptr){
-            cc->RemoveConnection(pThis);
+            cc->remove_connection(pThis);
         }
 
         delete pThis;
@@ -103,15 +103,15 @@ void connection::stubConnEvent(bufferevent* bev_, short events_, void* ctx_){
 		LOG(WARNING) << "Got an error on the connection: " << strerror(errno);	/*XXX win32*/
 	} 
 
-    connection_controller* cc = pThis->GetController();
+    connection_controller* cc = pThis->get_controller();
     if (cc!= nullptr){
-        cc->RemoveConnection(pThis);
+        cc->remove_connection(pThis);
     }
 
     delete pThis;
 }
 
-bool connection::OpenConnection(){
+bool connection::open_connection(){
     event_base* base = m_pController->GetBaseListen();
 
     m_bev = bufferevent_socket_new(base, m_fd, BEV_OPT_CLOSE_ON_FREE | BEV_OPT_THREADSAFE );
@@ -121,7 +121,7 @@ bool connection::OpenConnection(){
     return true;
 }
 
-bool connection::CloseConnection() {
+bool connection::close_connection() {
     struct evbuffer *output = bufferevent_get_output(m_bev);
 
     bufferevent_setwatermark(m_bev, EV_WRITE,  evbuffer_get_length(output), 0);
@@ -147,7 +147,7 @@ bool connection::CloseConnection() {
 
 connection_controller::connection_controller(connection_context* pContext_){
     m_nUniqID = 0;
-    m_pContext = pContext_;
+    m_context = pContext_;
     m_ptListen = nullptr;
     m_ptgWorkers = nullptr;
 }
@@ -182,7 +182,7 @@ bool connection_controller::WaitListen() const {
     return true;
 }
 
-bool connection_controller::RemoveConnection(connection* pConnection_){
+bool connection_controller::remove_connection(connection* pConnection_){
     boost::mutex::scoped_lock lock(m_mutex);
 
     LOGF(DEBUG
@@ -194,7 +194,7 @@ bool connection_controller::RemoveConnection(connection* pConnection_){
 // Так делать опасно, осуществляется вызов функции из libevent\util-internal.h
 extern "C" const char * evutil_format_sockaddr_port_(const struct sockaddr *sa, char *out, size_t outlen);
 
-connection* connection_controller::AddConnection(evutil_socket_t fd_, struct sockaddr* sa_, int socklen_){
+connection* connection_controller::add_connection(evutil_socket_t fd_, struct sockaddr* sa_, int socklen_){
     boost::mutex::scoped_lock lock(m_mutex);
 
     connection* pConnection = CreateConnection(this, GetUniqID(), fd_, sa_, socklen_);
@@ -204,16 +204,17 @@ connection* connection_controller::AddConnection(evutil_socket_t fd_, struct soc
         , "Detect incoming connect #%d from %s. Accepted on socket #%X"
         , pConnection->GetID(), evutil_format_sockaddr_port_(sa_, buf, sizeof(buf)), fd_);
 
-    pConnection->OpenConnection();
+    pConnection->open_connection();
 
     return pConnection;
 }
 
-void connection::GetClientIP(char* pBuffer_, size_t nBufferSize_) {
-    evutil_format_sockaddr_port_(&m_sa, pBuffer_, nBufferSize_);
-    for (size_t k = 0; k < nBufferSize_ && pBuffer_[k] != '\0'; ++k) {
-        if (pBuffer_[k] == ':') {
-            pBuffer_[k] = '\0';
+void connection::get_client_ip(char* buffer, size_t buffer_size) {
+    evutil_format_sockaddr_port_(&m_sa, buffer, buffer_size);
+
+    for (size_t k = 0; k < buffer_size && buffer[k] != '\0'; ++k) {
+        if (buffer[k] == ':') {
+            buffer[k] = '\0';
             break;
         }
     }
@@ -240,7 +241,7 @@ void connection_controller::stubAccept(
                         , void *user_data)
 {
     connection_controller* pThis = static_cast<connection_controller*>(user_data);
-    pThis->AddConnection(fd,sa,socklen);
+    pThis->add_connection(fd,sa,socklen);
 }
 
 static void stubAcceptError(struct evconnlistener *listener, void *ctx) {

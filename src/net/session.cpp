@@ -111,9 +111,9 @@ bool session_controller::session_db::update_session(session* session, const int 
 
     stmt.BindParam(1, session->get_session_id());
     stmt.BindParam(2, version);
-    stmt.BindParam(3, static_cast<int>(data::EpochDiff(session->get_created()).total_seconds()));
+    stmt.BindParam(3, static_cast<int>(data::epoch_diff(session->get_created()).total_seconds()));
     stmt.BindParam(4, static_cast<int>(time(nullptr)));
-    stmt.BindParam(5, static_cast<int>(data::EpochDiff(session->get_expired()).total_seconds()));
+    stmt.BindParam(5, static_cast<int>(data::epoch_diff(session->get_expired()).total_seconds()));
 
     std::string data;
     session->export_data(data);
