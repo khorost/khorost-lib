@@ -591,8 +591,8 @@ bool http_text_protocol_header::send_file(const std::string& query_uri, network:
     if (!realpath(sFileName.c_str(), bufCanonicFileName)) {
         LOGF(WARNING, "realpath failed");
 
-        http.set_response_status(HTTP_RESPONSE_STATUS_NOT_FOUND, "Not found");
-        http.response(connect, "File not found");
+        set_response_status(HTTP_RESPONSE_STATUS_NOT_FOUND, "Not found");
+        response(connect, "File not found");
         return false;
     }
 #endif
