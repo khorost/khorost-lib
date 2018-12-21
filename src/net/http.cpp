@@ -703,9 +703,9 @@ int64_t http_text_protocol_header::get_parameter64(const std::string& key, int64
 }
 
 const char* http_text_protocol_header::get_parameter(const std::string& key, const char* default_value) const {
-    bool exist;
-    const char* pValue = get_parameter(key, &exist);
-    return exist?pValue:default_value;
+    bool exist_flag;
+    auto value = get_parameter(key, &exist_flag);
+    return exist_flag ? value : default_value;
 }
 
 void http_text_protocol_header::calculate_host_port() {
