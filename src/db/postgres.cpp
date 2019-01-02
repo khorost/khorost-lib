@@ -12,6 +12,7 @@
 #include <boost/make_shared.hpp>
 
 #include "util/logger.h"
+#include "app/khl-define.h"
 
 using namespace khorost::db;
 
@@ -34,7 +35,8 @@ db_connection_pool_ptr db_pool::GetConnectionPool() {
     m_FreePool.pop();
 
     if (m_FreePool.size() < 3) {
-        LOG(DEBUG) << "[get from pool] size = " << m_FreePool.size();
+        auto logger = spdlog::get(KHL_LOGGER_COMMON);
+        logger->debug("[get from pool] size = {:d}", m_FreePool.size());
     }
 
     return conn;
@@ -42,12 +44,14 @@ db_connection_pool_ptr db_pool::GetConnectionPool() {
 
 void db_pool::ReleaseConnectionPool(db_connection_pool_ptr pdbc_) {
     std::unique_lock<std::mutex> locker(m_mutex);
+
     m_FreePool.push(pdbc_);
     locker.unlock();
     m_condition.notify_one();
 
     if (m_FreePool.size() < 4) {
-        LOG(DEBUG) << "[return to pool] size = " << m_FreePool.size();
+        auto logger = spdlog::get(KHL_LOGGER_COMMON);
+        logger->debug("[return to pool] size = {:d}",m_FreePool.size());
     }
 }
 

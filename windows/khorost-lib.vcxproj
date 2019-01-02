@@ -138,15 +138,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\external\src\g3log\crashhandler_windows.cpp" />
-    <ClCompile Include="..\external\src\g3log\filesink.cpp" />
-    <ClCompile Include="..\external\src\g3log\g3log.cpp" />
-    <ClCompile Include="..\external\src\g3log\logcapture.cpp" />
-    <ClCompile Include="..\external\src\g3log\loglevels.cpp" />
-    <ClCompile Include="..\external\src\g3log\logmessage.cpp" />
-    <ClCompile Include="..\external\src\g3log\logworker.cpp" />
-    <ClCompile Include="..\external\src\g3log\stacktrace_windows.cpp" />
-    <ClCompile Include="..\external\src\g3log\time.cpp" />
     <ClCompile Include="..\external\src\ini\dictionary.c" />
     <ClCompile Include="..\external\src\ini\iniparser.c" />
     <ClCompile Include="..\external\src\json\jsoncpp.cpp" />
@@ -170,7 +161,6 @@
     <ClCompile Include="..\src\util\utils.cxx" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\external\src\g3log\g2log.hpp" />
     <ClInclude Include="..\include\app\config.h" />
     <ClInclude Include="..\include\app\framework.h" />
     <ClInclude Include="..\include\app\server2hb.h" />
@@ -188,9 +178,6 @@
     <ClInclude Include="..\include\util\autobuffer.h" />
     <ClInclude Include="..\include\util\logger.h" />
     <ClInclude Include="..\include\util\utils.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="..\external\src\g3log\filesinkhelper.ipp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

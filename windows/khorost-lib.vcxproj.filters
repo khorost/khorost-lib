@@ -10,19 +10,10 @@
     <ClCompile Include="..\src\net\connection.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\external\src\g3log\crashhandler_windows.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\external\src\ini\dictionary.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\src\system\fastfile.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\external\src\g3log\filesink.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\external\src\g3log\g3log.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\src\net\http.cpp">
@@ -34,19 +25,7 @@
     <ClCompile Include="..\external\src\json\jsoncpp.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\external\src\g3log\logcapture.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\util\logger.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\external\src\g3log\loglevels.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\external\src\g3log\logmessage.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\external\src\g3log\logworker.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\src\db\mysql.cpp">
@@ -70,13 +49,7 @@
     <ClCompile Include="..\src\db\sqlite3.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\external\src\g3log\stacktrace_windows.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\external\src\win\strptime.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\external\src\g3log\time.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\src\util\utils.cxx">
@@ -109,9 +82,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\include\app\framework.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\external\src\g3log\g2log.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\include\net\http.h">
@@ -157,10 +127,5 @@
       <UniqueIdentifier>{0dfe5697-a2af-444f-a1ce-60f2a4515bad}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="..\external\src\g3log\filesinkhelper.ipp">
-      <Filter>Source Files</Filter>
-    </None>
   </ItemGroup>
 </Project>

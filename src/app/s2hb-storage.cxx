@@ -18,6 +18,7 @@
 #include "boost/date_time/posix_time/posix_time.hpp"
 
 #include <openssl/md5.h>
+#include "app/khl-define.h"
 
 using namespace khorost::network;
 using namespace khorost::db;
@@ -45,7 +46,9 @@ void khorost::db::S2HBStorage::SessionIPUpdate() {
         " LIMIT 10"
         );
 
-    if (r.size() != 0) {
+    if (!r.empty()) {
+        auto logger = spdlog::get(KHL_LOGGER_COMMON);
+        
         for (const auto& row : r) {
             struct sockaddr_in saGNI = { 0 };
             char    hostname[1024] = "NULL", servInfo[1024];
@@ -54,17 +57,17 @@ void khorost::db::S2HBStorage::SessionIPUpdate() {
 
             auto sIP = row[0].as<std::string>();
 
-            LOG(DEBUG) << "[IP_UPDATE] check('" << sIP << "')";
+            logger->debug("[IP_UPDATE] check('{}')",sIP);
 
             inet_pton(AF_INET, sIP.c_str(), &saGNI.sin_addr);
             if (getnameinfo((struct sockaddr *)&saGNI, sizeof(struct sockaddr), hostname, sizeof(hostname), servInfo, sizeof(servInfo), NI_NUMERICSERV) == 0) {
-                LOG(DEBUG) << "[IP_UPDATE] getnameinfo('" << sIP << "') = '" << hostname << "'"  ;
+                logger->debug("[IP_UPDATE] getnameinfo('{}') = '{}'", sIP, hostname);
                 txn.exec(
                     "UPDATE admin.khl_sessions_ip "
                     " SET host = '" + std::string(hostname) + "' "
                     " WHERE ip = '" + sIP + "' AND host is NULL ");
             } else {
-                LOG(DEBUG) << "[IP_UPDATE] getnameinfo('" << sIP << "') failed";
+                logger->debug("[IP_UPDATE] getnameinfo('{}') failed", sIP);
                 txn.exec(
                     "UPDATE admin.khl_sessions_ip "
                     " SET host = 'n/a' "

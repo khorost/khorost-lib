@@ -170,7 +170,7 @@ namespace khorost {
                         if (sizePacket <= nBufferSize_) {
                             nProcessBytes += nHeaderSize + sizePacket;
 
-                            LOGF(DEBUG, "Process packet type = 0x%04X size = %d bytes", typePacket, sizePacket);
+  //                          LOGF(DEBUG, "Process packet type = 0x%04X size = %d bytes", typePacket, sizePacket);
 
                             auto	itDPCCB = m_ProcessCommandCB.find(typePacket);
                             if (itDPCCB != m_ProcessCommandCB.end()) {
@@ -189,7 +189,7 @@ namespace khorost {
                         }
                     } else {
                         // неправильный формат
-                        LOGF(WARNING, "Wrong signature - %x", sign);
+//                        LOGF(WARNING, "Wrong signature - %x", sign);
                         break;
                     }
                 }
@@ -205,10 +205,10 @@ namespace khorost {
             cbPacket::size_cbp  packetLength(PACKET_HTON_SIZE(ch_.GetSize()));
             tp_ = PACKET_HTON_TYPE(tp_);
 
-            connect.SendData(reinterpret_cast<boost::uint8_t*>(&signPacket), sizeof(signPacket));
-            connect.SendData(reinterpret_cast<boost::uint8_t*>(&packetLength), sizeof(packetLength));
-            connect.SendData(reinterpret_cast<boost::uint8_t*>(&tp_), sizeof(tp_));
-            connect.SendData(reinterpret_cast<boost::uint8_t*>(ch_.GetBuffer()), ch_.GetSize());
+            connect.send_data(reinterpret_cast<boost::uint8_t*>(&signPacket), sizeof(signPacket));
+            connect.send_data(reinterpret_cast<boost::uint8_t*>(&packetLength), sizeof(packetLength));
+            connect.send_data(reinterpret_cast<boost::uint8_t*>(&tp_), sizeof(tp_));
+            connect.send_data(reinterpret_cast<boost::uint8_t*>(ch_.GetBuffer()), ch_.GetSize());
         }
     }
 }

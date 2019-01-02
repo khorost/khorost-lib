@@ -1,126 +1,43 @@
-﻿
-#if defined(_WIN32) || defined(_WIN64)
- #include <Windows.h>
-#endif
+﻿#include "util/logger.h"
 
-#include <stdio.h>
-#include <stdarg.h>
-#include <string.h>
-#include <iostream>
+#include <spdlog/sinks/rotating_file_sink.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
+#include <spdlog/sinks/basic_file_sink.h>
+#include <spdlog/sinks/daily_file_sink.h>
 
-#define BOOST_FILESYSTEM_VERSION 3
-#include <boost/filesystem.hpp>
+void khorost::log::prepare_logger(const config& configure, const std::string& logger_name) {
+    spdlog::flush_every(std::chrono::seconds(5));
 
-#include "util/logger.h"
+    const auto pattern = configure.get_value("log:pattern", "[%Y-%m-%d %T.%F] [%n] [thread %t] [%^%l%$] %v");
+    const auto level = configure.get_value("log:level", "WARNING");
+    auto rotating_sink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(configure.get_value("log:file_name", "./log")
+                                                                                , configure.get_value("log:max_file_size", 1048576 * 5)
+                                                                                , configure.get_value("log:max_files", 3));
+    rotating_sink->set_pattern(pattern);
 
-#pragma comment(lib,"dbghelp.lib")
+    auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+    console_sink->set_pattern(pattern);
 
-#if defined(_WIN32) || defined(_WIN64)
+    std::vector<spdlog::sink_ptr> sinks = {console_sink, rotating_sink};
+    auto logger = std::make_shared<spdlog::logger>(logger_name, sinks.begin(), sinks.end());
 
-struct ColorCoutSinkWin32 {
-    bool textcolorprotect = true;
-    /*doesn't let textcolor be the same as backgroung color if true*/
-    enum concol {
-        black = 0,
-        dark_blue = 1,
-        dark_green = 2,
-        dark_aqua, dark_cyan = 3,
-        dark_red = 4,
-        dark_purple = 5, dark_pink = 5, dark_magenta = 5,
-        dark_yellow = 6,
-        dark_white = 7,
-        gray = 8,
-        blue = 9,
-        green = 10,
-        aqua = 11, cyan = 11,
-        red = 12,
-        purple = 13, pink = 13, magenta = 13,
-        yellow = 14,
-        white = 15
-    };
-
-    int textcolor() {
-        CONSOLE_SCREEN_BUFFER_INFO csbi;
-        GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
-        int a = csbi.wAttributes;
-        return a % 16;
-    }
-    int backcolor() {
-        CONSOLE_SCREEN_BUFFER_INFO csbi;
-        GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
-        int a = csbi.wAttributes;
-        return (a / 16) % 16;
+    if (level == "DEBUG") {
+        logger->set_level(spdlog::level::debug);
+    } else if (level == "TRACE") {
+        logger->set_level(spdlog::level::trace);
+    } else if (level == "INFO") {
+        logger->set_level(spdlog::level::info);
+    } else if (level == "ERROR") {
+        logger->set_level(spdlog::level::err);
+    } else if (level == "CRITICAL") {
+        logger->set_level(spdlog::level::critical);
+    } else if (level == "OFF") {
+        logger->set_level(spdlog::level::off);
+    } else {
+        logger->set_level(spdlog::level::warn);
     }
 
-    concol GetColor(const LEVELS level, concol defaultColor) const {
-        if (level.value == WARNING.value) { return yellow; }
-        if (level.value == DEBUG.value) { return green; }
-        if (g3::internal::wasFatal(level)) { return red; }
+    spdlog::register_logger(logger);
 
-        return defaultColor;
-    }
-
-    inline void setcolor(concol textcol, concol backcol) {
-        setcolor(int(textcol), int(backcol));
-    }
-
-    inline void setcolor(int textcol, int backcol) {
-        if (textcolorprotect) {
-            if ((textcol % 16) == (backcol % 16))textcol++;
-        }
-        textcol %= 16; backcol %= 16;
-        unsigned short wAttributes = ((unsigned)backcol << 4) | (unsigned)textcol;
-        SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), wAttributes);
-    }
-
-    void ReceiveLogMessage(g3::LogMessageMover logEntry) {
-        auto level = logEntry.get()._level;
-        auto defaultColor = concol(textcolor());
-        auto color = GetColor(level, defaultColor);
-        
-        if (color != defaultColor) {
-            setcolor(color, backcolor());
-        }
-        std::cout << logEntry.get().toString() /*<< std::endl*/;
-        if (color != defaultColor) {
-            setcolor(defaultColor, backcolor());
-        }
-    }
-};
-
-#else
-struct ColorCoutSink {
-    // Linux xterm color
-    // http://stackoverflow.com/questions/2616906/how-do-i-output-coloured-text-to-a-linux-terminal
-    enum FG_Color { YELLOW = 33, RED = 31, GREEN = 32, WHITE = 97 };
-
-    FG_Color GetColor(const LEVELS level) const {
-        if (level.value == WARNING.value) { return YELLOW; }
-        if (level.value == DEBUG.value) { return GREEN; }
-        if (g3::internal::wasFatal(level)) { return RED; }
-
-        return WHITE;
-    }
-
-    void ReceiveLogMessage(g3::LogMessageMover logEntry) {
-        auto level = logEntry.get()._level;
-        auto color = GetColor(level);
-
-        std::cout << "\033[" << color << "m"
-            << logEntry.get().toString() << "\033[m" << std::endl;
-    }
-    };
-#endif // WIN
-
-std::unique_ptr<g3::LogWorker>  g_Logger;
-
-void khorost::log::appendColorSink(g3::LogWorker* logger_) {
-	if (logger_!=NULL){
-#if defined(_WIN32) || defined(_WIN64)
-		logger_->addSink(std::make_unique<ColorCoutSinkWin32>(), &ColorCoutSinkWin32::ReceiveLogMessage);
-#else
-//		logger_->addSink(std::make_unique<ColorCoutSink>(), &ColorCoutSink::ReceiveLogMessage);
-#endif  // WIN
-    }
+    logger->info("logger prepare successful. level = {}", level);
 }
-

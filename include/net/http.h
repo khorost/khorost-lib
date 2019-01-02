@@ -278,7 +278,7 @@ namespace khorost {
                 size_t nRealSize = (nSize_ * nMemb_) / sizeof(T);
                 data::AutoBufferT<T>* pBuffer = reinterpret_cast<data::AutoBufferT<T>*>(Ctx_);
 
-                pBuffer->CheckSize(pBuffer->GetFillSize() + nRealSize);
+                pBuffer->check_size(pBuffer->GetFillSize() + nRealSize);
                 pBuffer->Append(reinterpret_cast<const T*>(Contents_), nRealSize);
 
                 return nRealSize * sizeof(T);
@@ -328,7 +328,7 @@ namespace khorost {
             const char* get_uri_encode(const char* pURIString_) {
 
                 if (pURIString_ == nullptr || *pURIString_ == '\0') {
-                    m_abBuffer.CheckSize(sizeof(char));
+                    m_abBuffer.check_size(sizeof(char));
                     m_abBuffer[0] = '\0';
                 } else {
                     int nLenghtOut = 0;
@@ -340,7 +340,7 @@ namespace khorost {
                     //            string url = std::str_replace("+", "%20", str);
                     char* pt = curl_easy_unescape(m_curl, abTemp.GetHead(), static_cast<int>(abTemp.GetFillSize()), &nLenghtOut);
 
-                    m_abBuffer.CheckSize(nLenghtOut);
+                    m_abBuffer.check_size(nLenghtOut);
                     strcpy(m_abBuffer.GetHead(), pt);
                     m_abBuffer.FlushFreeSize();
                     m_abBuffer.DecrementFreeSize(nLenghtOut);

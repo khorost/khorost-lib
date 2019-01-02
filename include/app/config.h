@@ -4,24 +4,23 @@
 #include <json/json.h>
 
 namespace khorost {
-    class Config {
-        Json::Value     m_Container;
+    class config final {
+        Json::Value m_container;
     public:
-        Config() {}
-        virtual ~Config(){}
+        config() = default;
+        ~config() = default;
 
-        bool    Load(const std::string& sFileName_);
+        bool load(const std::string& file_name);
 
-        typedef Json::Value Iterator;
+        typedef Json::Value iterator;
 
-        Iterator&    operator[](const std::string& sKey_);
+        iterator& operator[](const std::string& key);
 
-        Iterator            FindItem(const std::string& sSuperKey_, const std::string& sDiv_ = ":");
-        int                 GetValue(const std::string& sSuperKey_, int nDefaultValue_ = 0, const std::string& sDiv_ = ":");
-        const std::string   GetValue(const std::string& sSuperKey_, const std::string& sDefaultValue_ = "", const std::string& sDiv_ = ":");
+        iterator find_item(const std::string& super_key, const std::string& div = ":") const;
+        int get_value(const std::string& super_key, int default_value = 0, const std::string& div = ":") const;
+        std::string get_value(const std::string& super_key, const std::string& default_value = "", const std::string& div = ":") const;
     private:
     };
 };
 
 #endif // _CONFIG__H_
-

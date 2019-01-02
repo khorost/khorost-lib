@@ -64,52 +64,58 @@ bool IsPasswordHashEqual3(const std::string& sChecked_, const std::string& sFirs
 
 #ifdef UNIX
 void UNIXSignal(int sg_) {
-    LOGF(INFO, "Receive stopped signal...");
+    auto logger = spdlog::get(KHL_LOGGER_COMMON);
+    logger->info("Receive stopped signal...");
     if (g_pS2HB != nullptr) {
-        g_pS2HB->Shutdown();
+        g_pS2HB->shutdown();
     }
-    LOGF(INFO, "Stopped signal processed");
+    logger->info("Stopped signal processed");
 }
 #else
 bool WinSignal(DWORD SigType_) {
-    LOGF(INFO, "Receive stopped signal...");
+    auto logger = spdlog::get(KHL_LOGGER_COMMON);
+
+    logger->info("Receive stopped signal...");
+
     switch (SigType_) {
     case CTRL_C_EVENT:
     case CTRL_BREAK_EVENT:
-        LOGF(INFO, "Interrupted by keyboard");
+        logger->info("Interrupted by keyboard");
         break;
     case CTRL_CLOSE_EVENT:
-        LOGF(INFO, "Interrupted by Close");
+        logger->info("Interrupted by Close");
         break;
     case CTRL_LOGOFF_EVENT:
-        LOGF(INFO, "Interrupted by LogOff");
+        logger->info("Interrupted by LogOff");
         break;
     case CTRL_SHUTDOWN_EVENT:
-        LOGF(INFO, "Interrupted by Shutdown");
+        logger->info("Interrupted by shutdown");
         break;
     default:
-        LOGF(INFO, "Interrupted by unknown signal");
+        logger->info("Interrupted by unknown signal");
         break;
     }
+
     if (g_pS2HB != nullptr) {
-        g_pS2HB->Shutdown();
+        g_pS2HB->shutdown();
     }
-    LOGF(INFO, "Stopped signal processed");
+
+    logger->info("Stopped signal processed");
     return true;
 }
 
 void WINAPI ServiceControl(DWORD dwControlCode) {
     switch (dwControlCode) {
     case SERVICE_CONTROL_STOP:
-        g_pS2HB->ReportServiceStatus(SERVICE_STOP_PENDING, NO_ERROR, 0);
-        g_pS2HB->Shutdown();
-        g_pS2HB->ReportServiceStatus(SERVICE_STOPPED, NOERROR, 0);
+        g_pS2HB->report_service_status(SERVICE_STOP_PENDING, NO_ERROR, 0);
+        g_pS2HB->shutdown();
+        g_pS2HB->report_service_status(SERVICE_STOPPED, NOERROR, 0);
         break;
     case SERVICE_CONTROL_INTERROGATE:
-        g_pS2HB->ReportServiceStatus(g_pS2HB->GetSSCurrentState(), NOERROR, 0);
+        g_pS2HB->report_service_status(g_pS2HB->get_ss_current_state(), NOERROR, 0);
         break;
     default:
-        g_pS2HB->ReportServiceStatus(g_pS2HB->GetSSCurrentState(), NOERROR, 0);
+        g_pS2HB->report_service_status(g_pS2HB->get_ss_current_state(), NOERROR, 0);
         break;
     }
 }
@@ -122,52 +128,53 @@ void WINAPI ServiceMain(DWORD dwArgc, LPTSTR* plszArgv) {
         PathRemoveFileSpec(ServicePath);
         SetCurrentDirectory(ServicePath);
 
-        SERVICE_STATUS_HANDLE ssHandle = RegisterServiceCtrlHandler(g_pS2HB->GetServiceName(), ServiceControl);
+        SERVICE_STATUS_HANDLE ssHandle = RegisterServiceCtrlHandler(g_pS2HB->get_service_name(), ServiceControl);
 
         if (ssHandle != NULL) {
-            g_pS2HB->SetSSHandle(ssHandle);
+            g_pS2HB->set_ss_handle(ssHandle);
         }
 
-        g_pS2HB->ReportServiceStatus(SERVICE_RUNNING, NO_ERROR, 0);
+        g_pS2HB->report_service_status(SERVICE_RUNNING, NO_ERROR, 0);
 
-        if (g_pS2HB->PrepareToStart() && g_pS2HB->AutoExecute() && g_pS2HB->Startup()) {
-            g_pS2HB->Run();
+        if (g_pS2HB->prepare_to_start() && g_pS2HB->auto_execute() && g_pS2HB->startup()) {
+            g_pS2HB->run();
         }
 
-        g_pS2HB->Finish();
+        g_pS2HB->finish();
     }
 }
 
-void server2_hb::ReportServiceStatus(DWORD dwCurrentState_, DWORD dwWin32ExitCode_, DWORD dwWaitHint_) {
+void server2_hb::report_service_status(DWORD dwCurrentState_, DWORD dwWin32ExitCode_, DWORD dwWaitHint_) {
     static DWORD dwCheckPoint = 1;
 
     if (dwCurrentState_ == SERVICE_START_PENDING) {
-        m_ss.dwControlsAccepted = 0;
+        m_service_status.dwControlsAccepted = 0;
     } else {
-        m_ss.dwControlsAccepted = SERVICE_ACCEPT_STOP;
+        m_service_status.dwControlsAccepted = SERVICE_ACCEPT_STOP;
     }
-    m_ss.dwCurrentState = dwCurrentState_;
-    m_ss.dwWin32ExitCode = dwWin32ExitCode_;
-    m_ss.dwWaitHint = dwWaitHint_;
+    m_service_status.dwCurrentState = dwCurrentState_;
+    m_service_status.dwWin32ExitCode = dwWin32ExitCode_;
+    m_service_status.dwWaitHint = dwWaitHint_;
 
     if ((dwCurrentState_ == SERVICE_RUNNING) ||
         (dwCurrentState_ == SERVICE_STOPPED)) {
-        m_ss.dwCheckPoint = 0;
+        m_service_status.dwCheckPoint = 0;
     } else {
-        m_ss.dwCheckPoint = dwCheckPoint++;
+        m_service_status.dwCheckPoint = dwCheckPoint++;
     }
-    SetServiceStatus(m_ssHandle, &m_ss);
+    SetServiceStatus(m_service_status_handle, &m_service_status);
 }
 
-bool server2_hb::ServiceInstall() {
-    LOG(DEBUG) << "ServiceInstalling...";
+bool server2_hb::service_install() {
+    auto logger = get_logger();
+    logger->debug("ServiceInstalling...");
 
     SC_HANDLE hSCManager;
     SC_HANDLE hService;
 
     hSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_CREATE_SERVICE);
     if (!hSCManager) {
-        LOG(WARNING) << "ServiceInstall: Не удалось открыть SC Manager";
+        logger->warn("ServiceInstall: Не удалось открыть SC Manager");
         return false;
     }
 
@@ -183,13 +190,13 @@ bool server2_hb::ServiceInstall() {
     lstrcat(ServicePath, " --service --cfg ");
     lstrcat(ServicePath, m_sConfigFileName.c_str());
 
-    LOG(DEBUG) << ServicePath;
+    logger->debug(ServicePath);
 
     // Создаём службу
     hService = CreateService(
         hSCManager,
-        m_sServiceName.c_str(),
-        m_sServiceDisplayName.c_str(),
+        m_service_name.c_str(),
+        m_service_display_name.c_str(),
         0,
         SERVICE_WIN32_OWN_PROCESS,
         SERVICE_AUTO_START,
@@ -204,30 +211,31 @@ bool server2_hb::ServiceInstall() {
     CloseServiceHandle(hSCManager);
 
     if (!hService) {
-        LOG(WARNING) << "ServiceInstall: Не удалось создать службу";
+        logger->warn("ServiceInstall: Не удалось создать службу");
         return false;
     }
 
     CloseServiceHandle(hService);
-    LOG(DEBUG) << "ServiceInstalled";
+    logger->debug("ServiceInstalled");
     return true;
 };
 
-bool server2_hb::ServiceUninstall() {
-    LOG(DEBUG) << "ServiceUninstall...";
+bool server2_hb::service_uninstall() {
+    auto logger = get_logger();
+    logger->debug("ServiceUninstall...");
 
     SC_HANDLE hSCManager;
     SC_HANDLE hService;
 
     hSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
     if (!hSCManager) {
-        LOG(WARNING) << "ServiceUninstall: Не удалось открыть SC Manager";
+        logger->warn("ServiceUninstall: Не удалось открыть SC Manager");
         return false;
     }
 
-    hService = OpenService(hSCManager, m_sServiceName.c_str(), DELETE | SERVICE_STOP);
+    hService = OpenService(hSCManager, m_service_name.c_str(), DELETE | SERVICE_STOP);
     if (!hService) {
-        LOG(WARNING) << "ServiceUninstall: Не удалось открыть службу";
+        logger->warn("ServiceUninstall: Не удалось открыть службу");
         CloseServiceHandle(hSCManager);
         return true;
     }
@@ -240,55 +248,57 @@ bool server2_hb::ServiceUninstall() {
     CloseServiceHandle(hService);
     CloseServiceHandle(hSCManager);
 
-    LOG(DEBUG) << "ServiceUninstalled";
+    logger->debug("ServiceUninstalled");
     return true;
 };
 
-bool server2_hb::ServiceStart() {
-    LOG(DEBUG) << "ServiceStarting...";
+bool server2_hb::service_start() {
+    auto logger = get_logger();
+    logger->debug("ServiceStarting...");
 
     SC_HANDLE hSCManager;
     SC_HANDLE hService;
 
     hSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
     if (!hSCManager) {
-        LOG(WARNING) << "ServiceStart: no open SC Manager";
+        logger->warn("ServiceStart: no open SC Manager");
         return false;
     }
 
-    hService = OpenService(hSCManager, m_sServiceName.c_str(), SERVICE_START);
+    hService = OpenService(hSCManager, m_service_name.c_str(), SERVICE_START);
     if (!hService) {
-        LOG(WARNING) << "ServiceStart: not open service";
+        logger->warn("ServiceStart: not open service");
         CloseServiceHandle(hSCManager);
         return true;
     }
     if (!StartService(hService, 0, NULL)) {
-        LOG(WARNING) << "ServiceStart: not started";
+        logger->warn("ServiceStart: not started");
         return false;
     }
 
     CloseServiceHandle(hService);
     CloseServiceHandle(hSCManager);
 
-    LOG(DEBUG) << "ServiceStarted";
+    logger->debug("ServiceStarted");
     return true;
 };
 
-bool server2_hb::ServiceStop() {
-    LOG(DEBUG) << "Service Stopping...";
+bool server2_hb::service_stop() {
+    auto logger = get_logger();
+    logger->debug("Service Stopping...");
 
     SC_HANDLE hSCManager;
     SC_HANDLE hService;
 
     hSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
     if (!hSCManager) {
-        LOG(WARNING) << "ServiceStop: Не удалось открыть SC Manager";
+        logger->warn("ServiceStop: Не удалось открыть SC Manager");
         return false;
     }
 
-    hService = OpenService(hSCManager, m_sServiceName.c_str(), SERVICE_STOP);
+    hService = OpenService(hSCManager, m_service_name.c_str(), SERVICE_STOP);
     if (!hService) {
-        LOG(WARNING) << "ServiceStop: Не удалось открыть службу";
+        logger->warn("ServiceStop: Не удалось открыть службу");
         CloseServiceHandle(hSCManager);
         return true;
     }
@@ -300,23 +310,23 @@ bool server2_hb::ServiceStop() {
     CloseServiceHandle(hService);
     CloseServiceHandle(hSCManager);
 
-    LOG(DEBUG) << "Service Stopped...";
+    logger->debug("Service Stopped...");
     return true;
 };
 
 #define SVC_ERROR                        ((DWORD)0xC0020001L)
 
-void server2_hb::ServiceReportEvent(LPTSTR szFunction) {
+void server2_hb::service_report_event(LPTSTR szFunction) {
     HANDLE hEventSource;
     LPCTSTR lpszStrings[2];
     TCHAR Buffer[80];
 
-    hEventSource = RegisterEventSource(NULL, m_sServiceName.c_str());
+    hEventSource = RegisterEventSource(NULL, m_service_name.c_str());
 
     if (NULL != hEventSource) {
         StringCchPrintf(Buffer, 80, TEXT("%s failed with %d"), szFunction, GetLastError());
 
-        lpszStrings[0] = m_sServiceName.c_str();
+        lpszStrings[0] = m_service_name.c_str();
         lpszStrings[1] = Buffer;
 
         ReportEvent(hEventSource,        // event log handle
@@ -337,53 +347,53 @@ void server2_hb::ServiceReportEvent(LPTSTR szFunction) {
 
 
 server2_hb::server2_hb() :
-    m_Connections(reinterpret_cast<connection_context*>(this))
-    , m_dbBase(m_dbConnect)
+    m_connections(reinterpret_cast<connection_context*>(this))
+    , m_db_base(m_db_connect)
     , m_nHTTPListenPort(0)
-    , m_Dispatcher(this)
+    , m_dispatcher(this)
     , m_bShutdownTimer(false) {
 }
 
-bool server2_hb::Shutdown() {
+bool server2_hb::shutdown() {
     m_bShutdownTimer = true;
-    return m_Connections.Shutdown();
+    return m_connections.shutdown();
 }
 
-bool server2_hb::PrepareToStart() {
-    LOG(DEBUG) << "PrepareToStart";
+bool server2_hb::prepare_to_start() {
+    auto logger = get_logger();
+    logger->debug("prepare_to_start");
 
     network::init();
 
     m_dictActionS2H.insert(std::pair<std::string, funcActionS2H>(S2H_PARAM_ACTION_AUTH, &server2_hb::action_auth));
     m_dictActionS2H.insert(std::pair<std::string, funcActionS2H>("refresh_token", &server2_hb::action_refresh_token));
 
-    SetListenPort(m_Configure.GetValue("http:port", S2H_DEFAULT_TCP_PORT));
-    SetHTTPDocRoot(m_Configure.GetValue("http:docroot", "./"), m_Configure.GetValue("http:storageroot", "./"));
-    SetSessionDriver(m_Configure.GetValue("http:session", "./session.db"));
+    set_listen_port(m_configure.get_value("http:port", S2H_DEFAULT_TCP_PORT));
+    set_http_doc_root(m_configure.get_value("http:docroot", "./"), m_configure.get_value("http:storageroot", "./"));
+    set_session_driver(m_configure.get_value("http:session", "./session.db"));
 
-    SetConnect(
-        m_Configure.GetValue("storage:host", "localhost")
-        , m_Configure.GetValue("storage:port", 5432)
-        , m_Configure.GetValue("storage:db", "")
-        , m_Configure.GetValue("storage:user", "")
-        , m_Configure.GetValue("storage:password", "")
+    set_connect(
+        m_configure.get_value("storage:host", "localhost")
+        , m_configure.get_value("storage:port", 5432)
+        , m_configure.get_value("storage:db", "")
+        , m_configure.get_value("storage:user", "")
+        , m_configure.get_value("storage:password", "")
     );
 
-    m_dbGeoIP.OpenDatabase(m_Configure.GetValue("geoip:db", ""));
+    m_db_geo_ip.open_database(m_configure.get_value("geoip:db", ""));
 
     return true;
 }
 
-bool server2_hb::AutoExecute() {
-    LOG(DEBUG) << "AutoExecute";
+bool server2_hb::auto_execute() {
+    auto logger = get_logger();
+    logger->info("AutoExecute");
 
-    Config::Iterator    cfgCreateUser = m_Configure["autoexec"]["Create"]["User"];
-    if (!cfgCreateUser.isNull()) {
-        for (Config::Iterator::ArrayIndex k = 0; k < cfgCreateUser.size(); ++k) {
-            Config::Iterator cfgUser = cfgCreateUser[k];
-
-            if (!m_dbBase.IsUserExist(cfgUser["Login"].asString())) {
-                m_dbBase.CreateUser(cfgUser);
+    auto cfg_create_user = m_configure["autoexec"]["Create"]["User"];
+    if (!cfg_create_user.isNull()) {
+        for (auto cfg_user : cfg_create_user) {
+            if (!m_db_base.IsUserExist(cfg_user["Login"].asString())) {
+                m_db_base.CreateUser(cfg_user);
             }
         }
     }
@@ -391,7 +401,7 @@ bool server2_hb::AutoExecute() {
     return true;
 }
 
-bool server2_hb::CheckParams(int argc_, char* argv_[], int& nResult_, g3::LogWorker* logger_) {
+bool server2_hb::check_params(int argc, char* argv[], int& result) {
     g_pS2HB = this;
 
     po::options_description desc("Allowable options");
@@ -409,55 +419,53 @@ bool server2_hb::CheckParams(int argc_, char* argv_[], int& nResult_, g3::LogWor
         ;
     po::variables_map vm;
     try {
-        po::store(po::parse_command_line(argc_, argv_, desc), vm);
+        po::store(po::parse_command_line(argc, argv, desc), vm);
     } catch (...) {
         std::cout << desc << std::endl;
-        nResult_ = EXIT_FAILURE;
+        result = EXIT_FAILURE;
         return false;
     }
 
     po::notify(vm);
 
-    m_sConfigFileName = std::string("configure.") + GetContextDefaultName() + std::string(".json");
+    m_sConfigFileName = std::string("configure.") + get_context_default_name() + std::string(".json");
     if (vm.count("cfg")) {
         m_sConfigFileName = vm["cfg"].as<std::string>();
     }
 
-    if (m_Configure.Load(m_sConfigFileName)) {
-        LOG(INFO) << "Config file parsed";
-
-        if (logger_ != NULL) {
-            auto fs = logger_->addDefaultLogger(GetContextDefaultName(), m_Configure.GetValue("log:path", "./"), "s2");
-            std::future<std::string> log_file_name = fs->call(&g3::FileSink::fileName);
-            LOG(DEBUG) << "Append file log - \'" << log_file_name.get() << "\'";
-        }
+    auto console = spdlog::get(KHL_LOGGER_CONSOLE);
+    if (m_configure.load(m_sConfigFileName)) {
+        console->debug("Config file parsed");
+        khorost::log::prepare_logger(m_configure, KHL_LOGGER_COMMON);
     } else {
-        LOG(WARNING) << "Config file not parsed";
+        console->warn("Config file not parsed");
         return false;
     }
+
+    auto logger = get_logger();
 #if defined(_WIN32) || defined(_WIN64)
-    m_sServiceName = vm.count("name")?vm["name"].as<std::string>(): m_Configure.GetValue("service:name", std::string("khlsrv_") + GetContextDefaultName());
-    m_sServiceDisplayName = m_Configure.GetValue("service:displayName", std::string("Khorost Service (") + GetContextDefaultName() + ")");
+    m_service_name = vm.count("name")?vm["name"].as<std::string>(): m_configure.get_value("service:name", std::string("khlsrv_") + get_context_default_name());
+    m_service_display_name = m_configure.get_value("service:displayName", std::string("Khorost Service (") + get_context_default_name() + ")");
 
     if (vm.count("service")) {
-        m_bRunAsService = true;
+        m_run_as_service = true;
 
-        LOG(INFO) << "Service = " << m_sServiceName;
+        logger->info("Service = {}", m_service_name);
         SERVICE_TABLE_ENTRY DispatcherTable[] = {
-            { (LPSTR)m_sServiceName.c_str(), (LPSERVICE_MAIN_FUNCTION)ServiceMain },
-            { NULL, NULL }
+            { (LPSTR)m_service_name.c_str(), (LPSERVICE_MAIN_FUNCTION)ServiceMain },
+            {nullptr, nullptr }
         };
 
         if (!StartServiceCtrlDispatcher(DispatcherTable)) {
-            LOG(WARNING) << "InitAsService: Probable error 1063";
+            logger->info("InitAsService: Probable error 1063");
         };
-        
-        LOG(DEBUG) << "Service shutdown";
+
+        logger->info("Service shutdown");
         return false;
     }
     if (vm.count("configure")) {
         FreeConsole();
-        CallServerConfigurator();
+        call_server_configurator();
         return false;
     }
     if (vm.count("help")) {
@@ -466,32 +474,32 @@ bool server2_hb::CheckParams(int argc_, char* argv_[], int& nResult_, g3::LogWor
     }
     // Управление сервисом
     if (vm.count("install")) {
-        m_bRunAsService = true;
-        ServiceUninstall();
-        ServiceInstall();
-        LOG(INFO) << "Install Service";
+        m_run_as_service = true;
+        service_uninstall();
+        service_install();
+        logger->info("Install Service");
         return false;
     } else if (vm.count("start")) {
-        m_bRunAsService = true;
-        ServiceStart();
-        LOG(INFO) << "Start Service";
+        m_run_as_service = true;
+        service_start();
+        logger->info("Start Service");
         return false;
     } else if (vm.count("stop")) {
-        m_bRunAsService = true;
-        ServiceStop();
-        LOG(INFO) <<"Stop Service";
+        m_run_as_service = true;
+        service_stop();
+        logger->info("Stop Service");
         return false;
     } else if (vm.count("restart")) {
-        m_bRunAsService = true;
-        ServiceStop();
-        LOG(INFO) << "Stop Service";
-        ServiceStart();
-        LOG(INFO) << "Start Service";
+        m_run_as_service = true;
+        service_stop();
+        logger->info("Stop Service");
+        service_start();
+        logger->info("Start Service");
         return false;
     } else if (vm.count("uninstall")) {
-        m_bRunAsService = true;
-        ServiceUninstall();
-        LOG(INFO) << "Uninstall Service";
+        m_run_as_service = true;
+        service_uninstall();
+        logger->info("Uninstall Service");
         return false;
     }
 
@@ -507,19 +515,23 @@ bool server2_hb::CheckParams(int argc_, char* argv_[], int& nResult_, g3::LogWor
     return true;
 }
 
-bool server2_hb::Startup() {
-    m_TimerThread.reset(new boost::thread(boost::bind(&stubTimerRun, this)));
-    return m_Connections.StartListen(m_nHTTPListenPort, 5);
+bool server2_hb::startup() {
+    m_TimerThread.reset(new boost::thread(boost::bind(&stub_timer_run, this)));
+    return m_connections.StartListen(m_nHTTPListenPort, 5);
 }
 
-bool server2_hb::Run() {
+bool server2_hb::run() {
     m_TimerThread->join();
-    return m_Connections.WaitListen();
+    return m_connections.wait_listen();
 }
 
-bool server2_hb::Finish() {
-    m_dbGeoIP.CloseDatabase();
+bool server2_hb::finish() {
+    m_db_geo_ip.close_database();
     khorost::network::destroy();
+
+    m_logger = nullptr;
+    spdlog::shutdown();
+
     return true;
 }
 
@@ -556,12 +568,14 @@ void server2_hb::parse_action(const std::string& query, std::string& action, std
 }
 
 bool server2_hb::process_http(http_connection& connection) {
+    auto logger = get_logger();
+
     auto http = connection.get_http();
     const auto query_uri = http->get_query_uri();
-    const auto url_prefix_action = GetURLPrefixAction();
+    const auto url_prefix_action = get_url_prefix_action();
     const auto size_upa = strlen(url_prefix_action);
 
-    LOGF(DEBUG, "[HTTP_PROCESS] URI='%s'", query_uri);
+    logger->debug("[HTTP_PROCESS] URI='{}'", query_uri);
 
     if (strncmp(query_uri, url_prefix_action, size_upa) == 0) {
         std::string action, params;
@@ -570,7 +584,7 @@ bool server2_hb::process_http(http_connection& connection) {
             return true;
         }
 
-        LOG(DEBUG) << "[HTTP_PROCESS] worker pQueryAction not found";
+        logger->debug("[HTTP_PROCESS] worker pQueryAction not found");
 
         http->set_response_status(HTTP_RESPONSE_STATUS_NOT_FOUND, "Not found");
         http->response(connection, "File not found");
@@ -592,19 +606,21 @@ bool server2_hb::process_http_file_server(const std::string& query_uri, http_con
     return http->send_file(query_uri, connection, m_doc_root);
 }
 
-void server2_hb::TimerSessionUpdate() {
+void server2_hb::timer_session_update() {
     network::list_session ls;
 
-    m_Sessions.CheckAliveSessions();
+    m_sessions.CheckAliveSessions();
 
-    if (m_Sessions.GetActiveSessionsStats(ls)) {
-        m_dbBase.SessionUpdate(ls);
+    if (m_sessions.GetActiveSessionsStats(ls)) {
+        m_db_base.SessionUpdate(ls);
     }
 }
 
-void server2_hb::stubTimerRun(server2_hb* pThis_) {
+void server2_hb::stub_timer_run(server2_hb* pThis_) {
     using namespace boost;
     using namespace posix_time;
+
+    auto logger = pThis_->get_logger();
 
     ptime   ptSessionUpdate, ptSessionIPUpdate;
 
@@ -614,20 +630,20 @@ void server2_hb::stubTimerRun(server2_hb* pThis_) {
         const auto now = second_clock::universal_time();
 
         if ((now - ptSessionUpdate).minutes() >= 10) {
-            LOG(DEBUG) << "Every 10 minutes check";
+            logger->debug("[TIMER] Every 10 minutes check");
             ptSessionUpdate = now;
-            pThis_->TimerSessionUpdate();
+            pThis_->timer_session_update();
         }
         if ((now - ptSessionIPUpdate).hours() >= 1) {
-            LOG(DEBUG) << "Every Hours check";
+            logger->debug("[TIMER] Every Hours check");
             ptSessionIPUpdate = now;
-            pThis_->m_dbBase.SessionIPUpdate();
+            pThis_->m_db_base.SessionIPUpdate();
         }
 
         this_thread::sleep_for(chrono::milliseconds(1000));
     }
     // сбросить кэш
-    pThis_->TimerSessionUpdate();
+    pThis_->timer_session_update();
 }
 
 server2_hb::func_creator server2_hb::get_session_creator() {
@@ -638,27 +654,28 @@ server2_hb::func_creator server2_hb::get_session_creator() {
     };
 }
 
-void   server2_hb::SetSessionDriver(const std::string& driver) {
-    m_Sessions.open(driver, SESSION_VERSION_MIN, SESSION_VERSION_CURRENT, get_session_creator());
+void   server2_hb::set_session_driver(const std::string& driver) {
+    m_sessions.open(driver, SESSION_VERSION_MIN, SESSION_VERSION_CURRENT, get_session_creator());
 }
 
-network::session_ptr server2_hb::processing_session(http_connection& connection) {
+network::session_ptr server2_hb::processing_session(http_connection& connect) {
     using namespace boost::posix_time;
 
-    auto http = connection.get_http();
+    auto logger = get_logger();
+    auto http = connect.get_http();
 
     auto created = false;
     const auto session_id = http->get_cookie(get_session_code());
-    network::session_ptr sp = m_Sessions.get_session(session_id != nullptr ? session_id : "", created,
+    network::session_ptr sp = m_sessions.get_session(session_id != nullptr ? session_id : "", created,
                                                     get_session_creator());
-    network::s2h_session* s2hSession = reinterpret_cast<network::s2h_session*>(sp.get());
+    auto* s2_h_session = reinterpret_cast<network::s2h_session*>(sp.get());
 
-    char sIP[255];
-    connection.get_client_ip(sIP, sizeof(sIP));
+    char s_ip[255];
+    connect.get_client_ip(s_ip, sizeof(s_ip));
 
-    if (s2hSession != nullptr) {
-        s2hSession->set_last_activity(second_clock::universal_time());
-        s2hSession->set_ip(sIP);
+    if (s2_h_session != nullptr) {
+        s2_h_session->set_last_activity(second_clock::universal_time());
+        s2_h_session->set_ip(s_ip);
 
         if (created) {
             Json::Value    jvStats;
@@ -679,21 +696,22 @@ network::session_ptr server2_hb::processing_session(http_connection& connection)
             if (pHP != nullptr) {
                 jvStats["Referer"] = pHP;
             }
-            m_dbBase.SessionLogger(s2hSession, jvStats);
+            m_db_base.SessionLogger(s2_h_session, jvStats);
         }
     }
 
     http->set_cookie(get_session_code(), sp->get_session_id(), sp->get_expired(), http->get_host(), true);
 
-    LOGF(DEBUG, "%s = '%s' ClientIP = '%s' ConnectID = #%d InS = '%s' "
-        , get_session_code(), sp->get_session_id().c_str(), sIP, connection.GetID()
-        , session_id != NULL ? (strcmp(sp->get_session_id().c_str(), session_id) == 0 ? "+" : session_id) : "-"
+    logger->debug("{} = '{}' ClientIP = '{}' ConnectID = #{:d} InS = '{}' "
+        , get_session_code(), sp->get_session_id().c_str(), s_ip, connect.get_id()
+        , session_id != nullptr ? (strcmp(sp->get_session_id().c_str(), session_id) == 0 ? "+" : session_id) : "-"
     );
     return sp;
 }
 
 network::token_ptr server2_hb::parse_token(khorost::network::http_text_protocol_header_ptr& http, const bool is_access_token, const boost::posix_time::ptime& check) {
     static const std::string token_mask = "token ";
+    auto logger = get_logger();
     std::string id;
 
     const auto header_authorization = http->get_header_parameter(KHL_HTTP_PARAM__AUTHORIZATION);
@@ -702,6 +720,7 @@ network::token_ptr server2_hb::parse_token(khorost::network::http_text_protocol_
         const auto token_pos = token_mask.size();
 
         if (token_id.size() <= token_pos || token_id.substr(0, token_pos) != token_mask) {
+            logger->warn("[OAUTH] Bad token format '{}'", token_id);
             return nullptr;
         }
 
@@ -713,16 +732,25 @@ network::token_ptr server2_hb::parse_token(khorost::network::http_text_protocol_
     auto token = is_access_token ? find_access_token(id) : find_refresh_token(id);
     if (token != nullptr && check != boost::date_time::neg_infin && (is_access_token && !token->
         is_no_expire_access(check) || !is_access_token && !token->is_no_expire_refresh(check))) {
+        logger->debug("[OAUTH] {} Token {} expire. timestamp = {}"
+            , is_access_token ? "Access" : "Refresh"
+            , id
+            , to_iso_extended_string(is_access_token ? token->get_access_expire() : token->get_refresh_expire()));
         remove_token(token);
         return nullptr;
     }
 
+    logger->debug("[OAUTH] {} Token {} expired after {}"
+        , is_access_token ? "Access" : "Refresh"
+        , id
+        , to_iso_extended_string(is_access_token?token->get_access_expire(): token->get_refresh_expire()));
     return token;
 }
 
 void server2_hb::fill_json_token(const network::token_ptr& token, Json::Value& value) {
     value["access_token"] = token->get_access_token();
     value["refresh_token"] = token->get_refresh_token();
+
     KHL_SET_TIMESTAMP_MILLISECONDS(value, "access_expire", token->get_access_expire());
     KHL_SET_TIMESTAMP_MILLISECONDS(value, "refresh_expire", token->get_refresh_expire());
 }
@@ -741,7 +769,7 @@ bool server2_hb::action_refresh_token(const std::string& params_uri, http_connec
             const auto access_token = token->get_access_token();
             const auto refresh_token = token->get_refresh_token();
 
-            if (m_dbBase.refresh_token(token, time_access, time_refresh)) {
+            if (m_db_base.refresh_token(token, time_access, time_refresh)) {
                 update_tokens(token, access_token, refresh_token);
 
                 fill_json_token(token, json_root);
@@ -785,7 +813,7 @@ bool server2_hb::action_auth(const std::string& uri_params, http_connection& con
             const auto login = auth["login"].asString();
             const auto password = auth["password"].asString();
 
-            if (m_dbBase.get_user_info(login, user_id, nickname, hash, salt)) {
+            if (m_db_base.get_user_info(login, user_id, nickname, hash, salt)) {
                 decltype(hash) calculate_passowrd_hash;
 
                 RecalcPasswordHash(calculate_passowrd_hash, login, password, salt);
@@ -795,10 +823,10 @@ bool server2_hb::action_auth(const std::string& uri_params, http_connection& con
                     // TODO: pSession->SetPostion(/*------* /);
                     session->SetAuthenticate(true);
 
-                    m_dbBase.GetUserRoles(user_id, session);
-                    m_dbBase.SessionUpdate(session);
+                    m_db_base.GetUserRoles(user_id, session);
+                    m_db_base.SessionUpdate(session);
 
-                    m_Sessions.update_session(session);
+                    m_sessions.update_session(session);
                 }
             }
         }
@@ -809,29 +837,29 @@ bool server2_hb::action_auth(const std::string& uri_params, http_connection& con
 
         http->set_cookie(get_session_code(), session->get_session_id(), session->get_expired(), http->get_host(), true);
 
-        m_dbBase.SessionUpdate(session);
-        m_Sessions.remove_session(session);
+        m_db_base.SessionUpdate(session);
+        m_sessions.remove_session(session);
     } else if (action == "change") {
         std::string login;
         const auto current_password = http->get_parameter("curpwd");
 
         if (current_password != nullptr
-            && m_dbBase.GetUserInfo(session->GetUserID(), login, nickname, hash, salt)
+            && m_db_base.GetUserInfo(session->GetUserID(), login, nickname, hash, salt)
             && IsPasswordHashEqual3(hash, login, current_password, salt)) {
 
             const auto new_password = http->get_parameter("newpwd");
             if (http->IsParameterExist("loginpwd")) {
                 login = http->get_parameter("loginpwd");
 
-                if (m_dbBase.get_user_info(login, user_id, nickname, hash, salt)) {
+                if (m_db_base.get_user_info(login, user_id, nickname, hash, salt)) {
                     RecalcPasswordHash(hash, login, new_password, salt);
-                    m_dbBase.UpdatePassword(user_id, hash);
+                    m_db_base.UpdatePassword(user_id, hash);
                 } else {
                     // пользователь не найден
                 }
             } else {
                 RecalcPasswordHash(hash, login, new_password, salt);
-                m_dbBase.UpdatePassword(session->GetUserID(), hash);
+                m_db_base.UpdatePassword(session->GetUserID(), hash);
             }
         } else {
             root[S2H_JSON_REASON] = "UserNotFound";
@@ -886,7 +914,7 @@ network::token_ptr server2_hb::find_refresh_token(const std::string& refresh_tok
         return it->second;
     }
 
-    auto token = m_dbBase.load_token(true, refresh_token);
+    auto token = m_db_base.load_token(true, refresh_token);
     if (token!=nullptr) {
         append_token(token);
     }
@@ -900,7 +928,7 @@ network::token_ptr server2_hb::find_access_token(const std::string& access_token
         return it->second;
     }
 
-    auto token = m_dbBase.load_token(false, access_token);
+    auto token = m_db_base.load_token(false, access_token);
     if (token != nullptr) {
         append_token(token);
     }
@@ -908,3 +936,9 @@ network::token_ptr server2_hb::find_access_token(const std::string& access_token
     return token;
 }
 
+std::shared_ptr<spdlog::logger> server2_hb::get_logger() {
+    if (m_logger == nullptr) {
+        m_logger = spdlog::get(KHL_LOGGER_COMMON);
+    }
+    return m_logger;
+}

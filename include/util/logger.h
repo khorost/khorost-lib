@@ -3,13 +3,14 @@
 
 #include <string>
 
-#include <g3log/g3log.hpp>
-#include <g3log/logworker.hpp>
-#include <g3log/std2_make_unique.hpp>
+#include <spdlog/spdlog.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
+
+#include "app/config.h"
 
 namespace khorost {
     namespace log {
-        void appendColorSink(g3::LogWorker* logger_);
+        void prepare_logger(const config& configure, const std::string& logger_name);
     }
 }
 

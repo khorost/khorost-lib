@@ -4,58 +4,58 @@
 
 using namespace khorost;
 
-bool Config::Load(const std::string& sFileName_) {
-    Json::Reader        reader;
-    System::FastFile    ff;
-    bool                bResult = false;
+bool config::load(const std::string& file_name) {
+    Json::Reader reader;
+    System::FastFile ff;
+    auto result = false;
 
-    if (ff.Open(sFileName_, -1, true)) {
-        char* pConfigText = reinterpret_cast<char*>(ff.GetMemory());
-        if (reader.parse(pConfigText, pConfigText + ff.GetLength(), m_Container)) {
-            bResult = true;
+    if (ff.Open(file_name, -1, true)) {
+        const auto config_text = reinterpret_cast<char*>(ff.GetMemory());
+        if (reader.parse(config_text, config_text + ff.GetLength(), m_container)) {
+            result = true;
         } else {
             auto em = reader.getFormattedErrorMessages();
-            LOGF(WARNING, "Error parse config file - %s", em.c_str() );
+//            LOGF(WARNING, "Error parse config file - %s", em.c_str() );
         }
         ff.Close();
     }
 
-    return bResult;
+    return result;
 }
 
-Config::Iterator& Config::operator[](const std::string& sKey_) {
-    return m_Container[sKey_];
+config::iterator& config::operator[](const std::string& key) {
+    return m_container[key];
 }
 
-int Config::GetValue(const std::string& sSuperKey_, int nDefaultValue_, const std::string& sDiv_) {
-    Iterator    item = FindItem(sSuperKey_, sDiv_);
-    return item.isNull() ? nDefaultValue_ : item.asInt();
+int config::get_value(const std::string& super_key, int default_value, const std::string& div) const {
+    auto item = find_item(super_key, div);
+    return item.isNull() ? default_value : item.asInt();
 }
 
-const std::string Config::GetValue(const std::string& sSuperKey_, const std::string& sDefaultValue_, const std::string& sDiv_) {
-    Iterator    item = FindItem(sSuperKey_, sDiv_);
-    return item.isNull() ? sDefaultValue_ : item.asString();
+std::string config::get_value(const std::string& super_key, const std::string& default_value, const std::string& div) const {
+    auto item = find_item(super_key, div);
+    return item.isNull() ? default_value : item.asString();
 }
 
-Config::Iterator Config::FindItem(const std::string& sSuperKey_, const std::string& sDiv_ ) {
-    Config::Iterator    item = m_Container;
-    auto sKey = sSuperKey_;
+config::iterator config::find_item(const std::string& super_key, const std::string& div) const {
+    auto item = m_container;
+    auto key = super_key;
 
     while (true) {
-        auto pos = sKey.find(sDiv_);
+        const auto pos = key.find(div);
         if (std::string::npos != pos) {
-            const Config::Iterator&    it2 = item[sKey.substr(0, pos)];
+            const auto& it2 = item[key.substr(0, pos)];
             if (it2.isNull()) {
                 return Json::nullValue;
-            } else {
-                item = it2;
-                sKey = sKey.substr(pos + sDiv_.length());
-                if (sKey.size() == 0) {
-                    return Json::nullValue;
-                }
+            }
+
+            item = it2;
+            key = key.substr(pos + div.length());
+            if (key.empty()) {
+                return Json::nullValue;
             }
         } else {
-            return item[sKey];
+            return item[key];
         }
     }
 }

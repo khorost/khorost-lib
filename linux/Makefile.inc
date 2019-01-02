@@ -15,9 +15,7 @@ KHL_LIB = -L/usr/local/lib -lmysqlclient -lGeoIP \
 	-lstdc++ -lcrypto -lpqxx -lpq  -lboost_program_options -lboost_date_time -lm
 
 
-KHL_EXT_SRC = json/jsoncpp.cpp g3log/time.cpp g3log/logworker.cpp g3log/logmessage.cpp g3log/loglevels.cpp \
-	g3log/logcapture.cpp g3log/g3log.cpp g3log/filesink.cpp g3log/crashhandler_unix.cpp
+KHL_EXT_SRC = json/jsoncpp.cpp 
 
-KHL_EXT_OBJECTS = json/jsoncpp.o g3log/time.o g3log/logworker.o g3log/logmessage.o g3log/loglevels.o \
-	g3log/logcapture.o g3log/g3log.o g3log/filesink.o g3log/crashhandler_unix.o
+KHL_EXT_OBJECTS = json/jsoncpp.o 
 

@@ -1,31 +1,22 @@
-#ifndef __FRAMEWORK__
-#define __FRAMEWORK__
+#pragma once
 
-#ifdef UNIX
-#else
+#ifndef UNIX
 #include <windows.h>
 #endif
 
-#include "util/logger.h"
-#include "app/server2hb.h"
-
-#define FRAMEWORK_2HTTP_BINARY_SERVER( TSERVER ) \
-int main(int argc_, char* argv_[]) { \
-	TSERVER _Server_; \
-    int     nResult = EXIT_SUCCESS; \
-	std::unique_ptr<g3::LogWorker>  logger(g3::LogWorker::createLogWorker()); \
-	g3::initializeLogging(logger.get()); \
-    khorost::log::appendColorSink(logger.get()); \
-	LOG(INFO) << "Start application";\
-    if (!_Server_.CheckParams(argc_, argv_, nResult, logger.get())){\
-        return nResult;\
+#define FRAMEWORK_HTTP_APP_SERVER( TSERVER, LOGGER ) \
+int main(int argc, char* argv[]) { \
+	TSERVER _server_; \
+    int result = EXIT_SUCCESS; \
+    auto _logger_ = LOGGER; \
+	_logger_->info("Start application");\
+    if (!_server_.check_params(argc, argv, result)){\
+        return result;\
     }\
-    if (_Server_.PrepareToStart() && _Server_.AutoExecute() && _Server_.Startup()) {\
-        _Server_.Run();\
+    if (_server_.prepare_to_start() && _server_.auto_execute() && _server_.startup()) {\
+        _server_.run();\
     }\
-    _Server_.Finish();\
-    LOG(INFO) << "Terminate application";\
-    return nResult; \
+    _server_.finish();\
+    _logger_->info("Terminate application");\
+    return result; \
 }
-
-#endif // __FRAMEWORK__

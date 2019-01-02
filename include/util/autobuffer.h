@@ -46,7 +46,7 @@ namespace khorost {
             //	**********************************************************************
             T*  GetHead() const { return m_pBuffer; }
             T*  GetPosition(size_t nPosition_ = 0) const { return m_pBuffer + nPosition_; }
-            T*  GetFreePosition() { return m_pBuffer + m_nReadyPosition; }
+            T*  get_free_position() { return m_pBuffer + m_nReadyPosition; }
             //	**********************************************************************
             T   GetElement(size_t nPosition_){ return m_pBuffer[nPosition_]; }
             T   GetLastElement(){ return m_pBuffer[m_nReadyPosition - 1]; }
@@ -90,16 +90,16 @@ namespace khorost {
 
             size_t Append(const T* pBuffer_, size_t nCount_, size_t nBufferGranulate_ = nDefaultBufferGranulate){
                 if (nCount_ > GetFreeSize()) {
-                    CheckSize(GetFillSize() + nCount_, nBufferGranulate_);
+                    check_size(GetFillSize() + nCount_, nBufferGranulate_);
                 }
 
-                memcpy(GetFreePosition(), pBuffer_, nCount_*sizeof(T));
+                memcpy(get_free_position(), pBuffer_, nCount_*sizeof(T));
 
                 m_nReadyPosition += nCount_;
                 return m_nReadyPosition;
             }
 
-            void CheckSize(size_t nDemandSize_, size_t nBufferGranulate_ = nDefaultBufferGranulate){
+            void check_size(size_t nDemandSize_, size_t nBufferGranulate_ = nDefaultBufferGranulate){
                 if (nDemandSize_ == 0)
                     nDemandSize_ = m_nReadyPosition + nBufferGranulate_;
 
@@ -149,7 +149,7 @@ namespace khorost {
                 for (size_t km = 0; km <= nMaxPos;){
                     if (memcmp(m_pBuffer + km, pMatchBuffer_, nMatchBytes) == 0){
                         if (nDeltaExpand != 0) {
-                            CheckSize(m_nReadyPosition + nDeltaExpand);
+                            check_size(m_nReadyPosition + nDeltaExpand);
                         }
                         // сдвигаем хвост
                         if (nDeltaExpand != 0 || nDeltaSub != 0) {

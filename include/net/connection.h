@@ -58,21 +58,21 @@ namespace khorost {
         class connection_controller;
 
         class connection {
-            connection_controller*       m_pController;
-            int                         m_ID;
-            bufferevent*                m_bev;
-            evutil_socket_t             m_fd;
-            sockaddr                    m_sa;
+            connection_controller* m_controller;
+            int m_id;
+            bufferevent* m_bev;
+            evutil_socket_t m_fd;
+            sockaddr m_sa;
 
-            static void stubConnRead(bufferevent* bev_, void* ctx_);
-            static void stubConnWrite(bufferevent* bev_, void* ctx_);
-            static void stubConnEvent(bufferevent* bev_, short events_, void* ctx_);
+            static void stub_conn_read(bufferevent* bev, void* ctx);
+            static void stub_conn_write(bufferevent* bev, void* ctx);
+            static void stub_conn_event(bufferevent* bev, short events, void* ctx);
         protected:
-            data::AutoBufferT<boost::uint8_t>  m_abSocketBuffer;
-            size_t      m_nReceiveBytes;
-            size_t      m_nSendBytes;
+            data::AutoBufferT<boost::uint8_t>  m_socket_buffer;
+            size_t      m_receive_bytes;
+            size_t      m_send_bytes;
 
-            bool    CompileBufferData();
+            bool    compile_buffer_data();
             virtual size_t data_processing(const boost::uint8_t* buffer, const size_t buffer_size){ return 0; }
         public:
             connection(connection_controller* pThis_, int ID_, evutil_socket_t fd_, struct sockaddr* sa_, int socklen_);
@@ -81,16 +81,16 @@ namespace khorost {
             bool    open_connection();
             bool    close_connection();
 
-            bool    SendData(const boost::uint8_t* pBuffer_, size_t nBufferSize_);
-            bool    SendString(const char* pString_, size_t nLength_ = -1);
-            bool    SendString(const std::string& rString_);
-            bool    SendNumber(unsigned int nNumber_);
+            bool    send_data(const boost::uint8_t* buffer, size_t buffer_size);
+            bool    send_string(const char* value, size_t length = -1);
+            bool    send_string(const std::string& value);
+            bool    send_number(unsigned int number);
 
-            int     GetID() const { return m_ID; }
-            connection_controller*    get_controller() { return m_pController; }
+            int     get_id() const { return m_id; }
+            connection_controller*    get_controller() const { return m_controller; }
 
-            size_t  GetReceiveBytes() const { return m_nReceiveBytes; }
-            size_t  GetSendBytes() const { return m_nSendBytes; }
+            size_t  get_receive_bytes() const { return m_receive_bytes; }
+            size_t  get_send_bytes() const { return m_send_bytes; }
 
             virtual void    get_client_ip(char* buffer, size_t buffer_size);
         };
@@ -119,15 +119,15 @@ namespace khorost {
 
             int     	GetUniqID(){ return ++m_nUniqID; }
 
-            virtual connection* CreateConnection(connection_controller* pThis_, int ID_, evutil_socket_t fd_, struct sockaddr* sa_, int socklen_);
+            virtual connection* create_connection(connection_controller* pThis_, int ID_, evutil_socket_t fd_, struct sockaddr* sa_, int socklen_);
         public:
             connection_controller(connection_context* pContext_);
             virtual ~connection_controller();
 
             // Запуск слушащего сокета. Управление возвращается сразу
             bool	StartListen(int iListenPort_, int iPollSize_ = 0);
-            bool    WaitListen() const;
-            bool    Shutdown();
+            bool    wait_listen() const;
+            bool    shutdown();
 
             event_base* GetBaseListen() { return m_pebBaseListen; }
 
@@ -135,7 +135,7 @@ namespace khorost {
             void                set_context(connection_context* context) { m_context = context; }
 
             connection* add_connection(evutil_socket_t fd_, struct sockaddr* sa_, int socklen_);
-            bool        remove_connection(connection* pConnection_);
+            bool        remove_connection(connection* connect);
         };
     }
 }

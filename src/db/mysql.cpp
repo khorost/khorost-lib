@@ -9,7 +9,7 @@
 
 #include "db/mysql.h"
 #include "util/logger.h"
-//#include "kfunc.h"
+#include "app/khl-define.h"
 
 #ifndef LOG_CTX_DATABASE
 #define LOG_CTX_DATABASE "database"
@@ -47,7 +47,8 @@ bool khl_mysql::Reconnect(){
 		mysql_options(&m_mysql, MYSQL_READ_DEFAULT_GROUP, m_sConfigGroup.c_str());
 	}
 	if (!(m_Handle = mysql_real_connect(&m_mysql, m_sHost.c_str(), m_sLogin.c_str(), m_sPassword.c_str(), m_sDatabase.c_str(), m_nPort, NULL, CLIENT_MULTI_RESULTS))) {
-        LOGF(WARNING,"[KMySQL::Reconnect()] error '%s'",mysql_error(&m_mysql));
+        auto logger = spdlog::get(KHL_LOGGER_COMMON);
+        logger->warn("[KMySQL::Reconnect()] error '{}'",mysql_error(&m_mysql));
 		return false;
 	}
 
@@ -67,6 +68,7 @@ bool khl_mysql::Close(){
 bool khl_mysql::ExecuteSQL(const std::string& strSQL){
 	int		iTry = 3;
 	bool	bReconnectEnable = true;
+    auto logger = spdlog::get(KHL_LOGGER_COMMON);
 m1:
 	if(mysql_query(m_Handle,strSQL.c_str())){
 		int iErrorCode = mysql_errno(m_Handle);
@@ -76,16 +78,16 @@ m1:
 			if(iErrorCode==CR_SERVER_GONE_ERROR || iErrorCode==CR_SERVER_LOST){
 				mysql_query(m_Handle,"SET CHARACTER SET utf8");
 
-				LOGF(WARNING, "[KMySQL::ExecuteSQL()] repair after '%d' error",iErrorCode);
+				logger->warn("[KMySQL::ExecuteSQL()] repair after '{:d}' error",iErrorCode);
 				goto m1;
 			}
 		}
 		if(bReconnectEnable && Reconnect()){
 			bReconnectEnable = false;
-            LOGF(WARNING, "[KMySQL::ExecuteSQL()] use Reconnect repair after '%d' error",iErrorCode);
+            logger->warn( "[KMySQL::ExecuteSQL()] use Reconnect repair after '{:d}' error",iErrorCode);
 			goto m1;
 		}
-        LOGF(WARNING, "[KMySQL::ExecuteSQL()] %d %s",iErrorCode,mysql_error(m_Handle));
+        logger->warn("[KMySQL::ExecuteSQL()] {:d} {}",iErrorCode,mysql_error(m_Handle));
 		return false;
 	}
 	return true;
@@ -159,7 +161,7 @@ void khl_mysql::Query::BindValue64(const char* psTag_, uint64_t nValue_) {
 
 void khl_mysql::Query::BindValueBLOB(const char* psTag_, const AutoBufferT<uint8_t>& abBLOB_) {
 	data::AutoBufferChar	abTemp;
-	abTemp.CheckSize(abBLOB_.GetFillSize()*2 + 1 + 2);
+	abTemp.check_size(abBLOB_.GetFillSize()*2 + 1 + 2);
 	uint32_t uiReplaceSize = mysql_real_escape_string(m_Handle, abTemp.GetPosition(1), (char*)abBLOB_.GetPosition(0), abBLOB_.GetFillSize());
 	abTemp.DecrementFreeSize(uiReplaceSize + 2);
 	*(abTemp.GetPosition(0)) = '\'';
@@ -177,6 +179,7 @@ void MySQL::Query::BindValue(const char* strTag,const char* strTagMS,const Syste
 void khl_mysql::Query::Execute(){
 	int		iTry = 3;
 	bool	bReconnectEnable = true;
+    auto logger = spdlog::get(KHL_LOGGER_COMMON);
 
     // нужна z-строка, а то ошибки ползут
     *m_abQuery.GetPosition(m_abQuery.GetFillSize()) = '\0';
@@ -189,14 +192,14 @@ m1:
 			if(iErrorCode==CR_SERVER_GONE_ERROR || iErrorCode==CR_SERVER_LOST){
 				mysql_query(m_Handle,"SET CHARACTER SET utf8");
 
-                LOGF(WARNING, "[MySQL::Query::Execute()] repair after '%d' error",iErrorCode);
+                logger->warn("[MySQL::Query::Execute()] repair after '{:d}' error",iErrorCode);
 				goto m1;
 			}
 		}
 
 		if(bReconnectEnable && m_Connection!=NULL && m_Connection->Reconnect()){
 			bReconnectEnable = false;
-            LOGF(WARNING, "[MySQL::ExecuteSQL()] use Reconnect repair after '%d' error",iErrorCode);
+            logger->warn("[MySQL::ExecuteSQL()] use Reconnect repair after '{:d}' error",iErrorCode);
 			goto m1;
 		}
 

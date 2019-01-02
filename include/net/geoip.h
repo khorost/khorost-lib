@@ -12,13 +12,13 @@ namespace khorost {
             }
 
             virtual ~geo_ip_database() {
-                CloseDatabase();
+                close_database();
             }
 
-            bool OpenDatabase(const std::string& sGeoiIPDatFile);
-            void CloseDatabase();
+            bool open_database(const std::string& sGeoiIPDatFile);
+            void close_database();
 
-            std::string GetCountryCodeByIP(const std::string& sIP);
+            std::string get_country_code_by_ip(const std::string& ip) const;
         };
     }
 }

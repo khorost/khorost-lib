@@ -1,9 +1,9 @@
-﻿#ifndef __SERVER_2HB__
-#define __SERVER_2HB__
+﻿#pragma once
 
 #include <boost/uuid/uuid.hpp>
 
 #include "net/http.h"
+#include "app/khl-define.h"
 #include "app/framework.h"
 #include "app/server2hb-np.h"
 #include "app/s2h-session.h"
@@ -19,7 +19,7 @@ namespace khorost {
         protected:
             virtual size_t	data_processing(const boost::uint8_t* buffer, const size_t buffer_size) {
                 auto server = reinterpret_cast<server2_hb*>(get_controller()->get_context());
-                return server->m_Dispatcher.DoProcessCB(*this, buffer, buffer_size);
+                return server->m_dispatcher.DoProcessCB(*this, buffer, buffer_size);
             }
         public:
             cb_connection(network::connection_controller* pThis_, int ID_, evutil_socket_t fd_, struct sockaddr* sa_, int socklen_) :
@@ -66,9 +66,10 @@ namespace khorost {
             virtual void    get_client_ip(char* pBuffer_, size_t nBufferSize_);
         };
 
-        db::postgres                    m_dbConnect;
-        Config                          m_Configure;
-        network::geo_ip_database          m_dbGeoIP;
+        db::postgres m_db_connect;
+        config m_configure;
+        network::geo_ip_database m_db_geo_ip;
+        std::shared_ptr<spdlog::logger> m_logger;
 
         typedef std::map<std::string, network::token_ptr>    dict_tokens;
         dict_tokens m_refresh_tokens;
@@ -76,7 +77,7 @@ namespace khorost {
     private:
         class cb_controller : public network::connection_controller {
         public:
-            virtual network::connection* CreateConnection(connection_controller* pThis_, int ID_, evutil_socket_t fd_, struct sockaddr* sa_, int socklen_) {
+            virtual network::connection* create_connection(connection_controller* pThis_, int ID_, evutil_socket_t fd_, struct sockaddr* sa_, int socklen_) {
                 return new cb_connection(pThis_, ID_, fd_, sa_, socklen_);
             }
         };
@@ -86,23 +87,23 @@ namespace khorost {
                 network::connection_controller(context) {
             }
 
-            virtual network::connection* CreateConnection(connection_controller* pThis_, int ID_, evutil_socket_t fd_, struct sockaddr* sa_, int socklen_) {
+            virtual network::connection* create_connection(connection_controller* pThis_, int ID_, evutil_socket_t fd_, struct sockaddr* sa_, int socklen_) {
                 return new http_connection(pThis_, ID_, fd_, sa_, socklen_);
             }
         };
 
-        network::cbDispatchT<server2_hb, cb_connection, network::s2bPacket::S2B_NP_SIGNATURE>    m_Dispatcher;
-        http_controller      m_Connections;
+        network::cbDispatchT<server2_hb, cb_connection, network::s2bPacket::S2B_NP_SIGNATURE>    m_dispatcher;
+        http_controller      m_connections;
 
         int			            m_nHTTPListenPort;
         std::string             m_doc_root;       // место хранения вебсервера
         std::string             m_storage_root;     // альтернативное место сервера
 
-        db::S2HBStorage         m_dbBase;
-        network::session_controller   m_Sessions;
+        db::S2HBStorage         m_db_base;
+        network::session_controller   m_sessions;
 
-        void    TimerSessionUpdate();
-        static void     stubTimerRun(server2_hb* pThis_);
+        void    timer_session_update();
+        static void     stub_timer_run(server2_hb* pThis_);
 
         bool                                m_bShutdownTimer;
         boost::shared_ptr<boost::thread>    m_TimerThread;
@@ -120,26 +121,26 @@ namespace khorost {
 
         virtual bool    process_http_file_server(const std::string& query_uri, http_connection& connection);
         
-        virtual const char* GetContextDefaultName() const {
+        virtual const char* get_context_default_name() const {
             return "s2h"; 
         }
         virtual const char* get_session_code() const {
             return "s2hsession";
         }
-        virtual const char* GetURLPrefixAction() const {
+        virtual const char* get_url_prefix_action() const {
             return "/api/";
         }
-        virtual const char* GetURLParamAction() const {
+        virtual const char* get_url_param_action() const {
             return "ppa";
         }
-        virtual const char* GetURLParamActionParam() const {
+        virtual const char* get_url_param_action_param() const {
             return "ap";
         }
         virtual const char* get_url_prefix_storage() const {
             return "/storage/";
         }
 
-        network::session_ptr processing_session(http_connection& connection);
+        network::session_ptr processing_session(http_connection& connect);
 
         network::token_ptr parse_token(khorost::network::http_text_protocol_header_ptr& http, bool is_access_token,
                                        const boost::posix_time::ptime& check);
@@ -161,100 +162,65 @@ namespace khorost {
         void remove_token(const std::string& access_token, const std::string& refresh_token);
 
         std::string     m_sConfigFileName;
+
+        std::shared_ptr<spdlog::logger> get_logger();
 #if defined(_WIN32) || defined(_WIN64)
-        bool                    m_bRunAsService;
-        std::string             m_sServiceName;
-        std::string             m_sServiceDisplayName;
-        SERVICE_STATUS          m_ss;
-        SERVICE_STATUS_HANDLE   m_ssHandle;
+        bool                    m_run_as_service;
+        std::string             m_service_name;
+        std::string             m_service_display_name;
+        SERVICE_STATUS          m_service_status;
+        SERVICE_STATUS_HANDLE   m_service_status_handle;
 
-        bool    CallServerConfigurator() const { return true; }
+        bool    call_server_configurator() const { return true; }
 
-        bool    ServiceInstall();
-        bool    ServiceUninstall();
+        bool    service_install();
+        bool    service_uninstall();
 
-        bool    ServiceStart();
-        bool    ServiceStop();
+        bool    service_start();
+        bool    service_stop();
     public:
-        void        ServiceReportEvent(LPTSTR szFunction);
-        void        ReportServiceStatus(DWORD dwCurrentState_, DWORD dwWin32ExitCode_, DWORD dwWaitHint_);
+        void        service_report_event(LPTSTR szFunction);
+        void        report_service_status(DWORD dwCurrentState_, DWORD dwWin32ExitCode_, DWORD dwWaitHint_);
 
-        void        SetSSCurrentState(DWORD dwCurrentState_) { m_ss.dwCurrentState = dwCurrentState_; }
-        DWORD       GetSSCurrentState() const { return m_ss.dwCurrentState; }
+        void        set_ss_current_state(DWORD dwCurrentState_) { m_service_status.dwCurrentState = dwCurrentState_; }
+        DWORD       get_ss_current_state() const { return m_service_status.dwCurrentState; }
 
-        void        SetSSHandle(SERVICE_STATUS_HANDLE ssHandle_) { 
-            m_ssHandle = ssHandle_; 
-            m_ss.dwServiceType = SERVICE_WIN32_OWN_PROCESS;
-            m_ss.dwServiceSpecificExitCode = 0;
+        void        set_ss_handle(SERVICE_STATUS_HANDLE ssHandle_) { 
+            m_service_status_handle = ssHandle_; 
+            m_service_status.dwServiceType = SERVICE_WIN32_OWN_PROCESS;
+            m_service_status.dwServiceSpecificExitCode = 0;
         }
-        const char* GetServiceName() const { return m_sServiceName.c_str(); }
+        const char* get_service_name() const { return m_service_name.c_str(); }
 #endif
     public:
         server2_hb ();
         virtual ~server2_hb () = default;
 
-        virtual bool    Shutdown();
-        virtual bool    CheckParams(int argc_, char* argv_[], int& nResult_, g3::LogWorker* logger_ = NULL);
-        virtual bool    PrepareToStart();
-        virtual bool    AutoExecute();
-        virtual bool    Startup();
-        virtual bool    Run();
-        virtual bool    Finish();
+        virtual bool    shutdown();
+        virtual bool    check_params(int argc, char* argv[], int& result);
+        virtual bool    prepare_to_start();
+        virtual bool    auto_execute();
+        virtual bool    startup();
+        virtual bool    run();
+        virtual bool    finish();
 
         static void parse_action(const std::string& query, std::string& action, std::string& params);
         static std::string json_string(const Json::Value& value, bool styled = false);
         static void json_fill_auth(network::s2h_session* session, bool full_info, Json::Value& value);
 
-        void    SetConnect(std::string sHost_, int nPort_, std::string sDatabase_, std::string sLogin_, std::string sPassword_) {
-            m_dbConnect.SetConnect(sHost_, nPort_, sDatabase_, sLogin_, sPassword_);
+        void    set_connect(std::string sHost_, int nPort_, std::string sDatabase_, std::string sLogin_, std::string sPassword_) {
+            m_db_connect.SetConnect(sHost_, nPort_, sDatabase_, sLogin_, sPassword_);
         }
-        void	SetListenPort(int nPort_) { m_nHTTPListenPort = nPort_; }
+        void	set_listen_port(int nPort_) { m_nHTTPListenPort = nPort_; }
         //        void    SetStorageFolder(const std::string& strFolder_);
-        void    SetHTTPDocRoot(const std::string& sDocRoot_, const std::string& sStorageRoot_) {
+        void    set_http_doc_root(const std::string& sDocRoot_, const std::string& sStorageRoot_) {
             m_doc_root = sDocRoot_;
             m_storage_root = sStorageRoot_;
         }
-        void    SetSessionDriver(const std::string& driver);
+        void    set_session_driver(const std::string& driver);
 
     private:
 
     };
     extern server2_hb* g_pS2HB;
 }
-
-#define S2H_PARAM_ACTION_AUTH               "auth"      // авторизация пользователя
-#define S2H_PARAM_ACTION_AUTH_CHECK         "ca"        // проверка авторизации
-#define S2H_PARAM_ACTION_AUTH_DO            "da"        // подтверждение авторизации
-#define S2H_PARAM_ACTION_AUTH_PRE           "ba"        // запрос авторизации
-#define S2H_PARAM_ACTION_AUTH_RESET         "ra"        // сброс авторизации
-#define S2H_PARAM_ACTION_AUTH_CHANGEPASS    "chpwd"     // изменить пароль
-
-#define S2H_JSON_PONG                       "pong"
-#define S2H_PARAM_ACTION_PING               "ping"
-
-#define S2H_PARAM_HUMMAN_JSON               "hjs"
-
-#define S2H_PARAM_QUESTION                  "q"
-#define S2H_PARAM_HASH                      "h"
-#define S2H_PARAM_ADMIN_PASSWORD            "admpwd"
-#define S2H_PARAM_LOGIN_PASSWORD            "loginpwd"
-#define S2H_PARAM_PASSWORD                  "pwd"
-
-#define S2H_JSON_AUTH                       "auth"
-#define S2H_JSON_NICKNAME                   "nickname"
-#define S2H_JSON_SALT                       "salt"
-#define S2H_JSON_REASON                     "reason"
-#define S2H_JSON_ROLES                      "roles"
-
-#define S2H_DEFAULT_TCP_PORT                7709
-
-#define KHL_HTTP_PARAM__AUTHORIZATION   "Authorization"
-#define KHL_JSON_PARAM__DURATION "0dur"
-
-#define KHL_SET_TIMESTAMP_MILLISECONDS(json_object, json_tag, json_value)       json_object[json_tag] = khorost::data::epoch_diff(json_value).total_milliseconds()
-#define KHL_SET_TIMESTAMP_MICROSECONDS(json_object, json_tag, json_value)       json_object[json_tag] = khorost::data::epoch_diff(json_value).total_microseconds()
-
-#define KHL_SET_CPU_DURATION(json_object, json_tag, now_value) \
-    json_object[json_tag] = (boost::posix_time::microsec_clock::universal_time() - now_value).total_microseconds()
-
-#endif // __SERVER_2HB__
