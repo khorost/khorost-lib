@@ -23,7 +23,7 @@
 using namespace khorost::network;
 using namespace khorost::db;
 
-static void session_ip_update(s2h_session* httpSession_, pqxx::work& txn_) {
+static void session_ip_update_impl(s2h_session* httpSession_, pqxx::work& txn_) {
     std::list<std::string>  lIPs;
     httpSession_->get_ip(lIPs, true);
     for (auto it : lIPs) {
@@ -35,7 +35,7 @@ static void session_ip_update(s2h_session* httpSession_, pqxx::work& txn_) {
     }
 }
 
-void khorost::db::S2HBStorage::SessionIPUpdate() {
+void khorost::db::S2HBStorage::session_ip_update() {
     db_connection            conn(m_rDB);
     pqxx::work              txn(conn.GetHandle());
 
@@ -108,7 +108,7 @@ bool S2HBStorage::SessionUpdate(khorost::network::list_session& rLS_) {
             } else {
                 txn.prepared("SessionUpdate_2")(sLastActivity)(sExpired)(pSession->get_session_id()).exec();
             }
-            session_ip_update(pSession, txn);
+            session_ip_update_impl(pSession, txn);
             pSession->ResetCountUse();
         }
 
@@ -169,7 +169,7 @@ bool S2HBStorage::SessionUpdate(s2h_session* pSession_) {
             " WHERE id = '" + pSession_->get_session_id() + "'");
     }
 
-    session_ip_update(pSession_, txn);
+    session_ip_update_impl(pSession_, txn);
 
     txn.commit();
 

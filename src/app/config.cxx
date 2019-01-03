@@ -6,25 +6,25 @@ using namespace khorost;
 
 bool config::load(const std::string& file_name) {
     Json::Reader reader;
-    System::FastFile ff;
+    system::fastfile ff;
     auto result = false;
 
-    if (ff.Open(file_name, -1, true)) {
-        const auto config_text = reinterpret_cast<char*>(ff.GetMemory());
-        if (reader.parse(config_text, config_text + ff.GetLength(), m_container)) {
+    if (ff.open(file_name, -1, true)) {
+        const auto config_text = reinterpret_cast<char*>(ff.get_memory());
+        if (reader.parse(config_text, config_text + ff.get_length(), m_container_)) {
             result = true;
         } else {
             auto em = reader.getFormattedErrorMessages();
 //            LOGF(WARNING, "Error parse config file - %s", em.c_str() );
         }
-        ff.Close();
+        ff.close();
     }
 
     return result;
 }
 
 config::iterator& config::operator[](const std::string& key) {
-    return m_container[key];
+    return m_container_[key];
 }
 
 int config::get_value(const std::string& super_key, int default_value, const std::string& div) const {
@@ -38,7 +38,7 @@ std::string config::get_value(const std::string& super_key, const std::string& d
 }
 
 config::iterator config::find_item(const std::string& super_key, const std::string& div) const {
-    auto item = m_container;
+    auto item = m_container_;
     auto key = super_key;
 
     while (true) {

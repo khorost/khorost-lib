@@ -173,7 +173,7 @@ bool session_controller::session_db::load_sessions(session_controller& session_c
     return true;
 }
 
-void session_controller::CheckAliveSessions() {
+void session_controller::check_alive_sessions() {
     using namespace boost::posix_time;
 
     const auto now = second_clock::universal_time();
@@ -188,7 +188,7 @@ void session_controller::CheckAliveSessions() {
     }
 }
 
-bool session_controller::GetActiveSessionsStats(list_session& rLS_) {
+bool session_controller::get_active_sessions_stats(list_session& rLS_) {
     for (auto s : m_SessionMemory) {
         if (s.second->IsStatsUpdate(true) != 0) {
             rLS_.push_back(s.second);

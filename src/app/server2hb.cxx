@@ -351,11 +351,11 @@ server2_hb::server2_hb() :
     , m_db_base(m_db_connect)
     , m_nHTTPListenPort(0)
     , m_dispatcher(this)
-    , m_bShutdownTimer(false) {
+    , m_shutdown_timer(false) {
 }
 
 bool server2_hb::shutdown() {
-    m_bShutdownTimer = true;
+    m_shutdown_timer = true;
     return m_connections.shutdown();
 }
 
@@ -609,41 +609,41 @@ bool server2_hb::process_http_file_server(const std::string& query_uri, http_con
 void server2_hb::timer_session_update() {
     network::list_session ls;
 
-    m_sessions.CheckAliveSessions();
+    m_sessions.check_alive_sessions();
 
-    if (m_sessions.GetActiveSessionsStats(ls)) {
+    if (m_sessions.get_active_sessions_stats(ls)) {
         m_db_base.SessionUpdate(ls);
     }
 }
 
-void server2_hb::stub_timer_run(server2_hb* pThis_) {
+void server2_hb::stub_timer_run(server2_hb* server) {
     using namespace boost;
     using namespace posix_time;
 
-    auto logger = pThis_->get_logger();
+    auto logger = server->get_logger();
 
-    ptime   ptSessionUpdate, ptSessionIPUpdate;
+    ptime session_update, session_ip_update;
 
-    ptSessionUpdate = ptSessionIPUpdate = second_clock::universal_time();
+    session_update = session_ip_update = second_clock::universal_time();
 
-    while (!pThis_->m_bShutdownTimer) {
+    while (!server->m_shutdown_timer) {
         const auto now = second_clock::universal_time();
 
-        if ((now - ptSessionUpdate).minutes() >= 10) {
-            logger->debug("[TIMER] Every 10 minutes check");
-            ptSessionUpdate = now;
-            pThis_->timer_session_update();
+        if ((now - session_update).minutes() >= 10) {
+            logger->debug("[TIMER] 10 minutes check");
+            session_update = now;
+            server->timer_session_update();
         }
-        if ((now - ptSessionIPUpdate).hours() >= 1) {
-            logger->debug("[TIMER] Every Hours check");
-            ptSessionIPUpdate = now;
-            pThis_->m_db_base.SessionIPUpdate();
+        if ((now - session_ip_update).hours() >= 1) {
+            logger->debug("[TIMER] Hours check");
+            session_ip_update = now;
+            server->m_db_base.session_ip_update();
         }
 
         this_thread::sleep_for(chrono::milliseconds(1000));
     }
     // сбросить кэш
-    pThis_->timer_session_update();
+    server->timer_session_update();
 }
 
 server2_hb::func_creator server2_hb::get_session_creator() {

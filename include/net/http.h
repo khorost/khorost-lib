@@ -252,7 +252,7 @@ namespace khorost {
                 m_Replay.m_sContentDisposition = sContentDisposition_;
             }
 
-            void    SetLastModify(boost::posix_time::ptime tLM_) { m_Replay.m_tLastModify = tLM_; }
+            void    set_last_modify(boost::posix_time::ptime tLM_) { m_Replay.m_tLastModify = tLM_; }
 
             void response(connection& connect, const char* response, size_t length);
 

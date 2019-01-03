@@ -1,4 +1,4 @@
-// FastFile.cpp: implementation of the CFastFile class.
+// fast_file.cpp: implementation of the CFastFile class.
 //
 //////////////////////////////////////////////////////////////////////
 
@@ -18,21 +18,21 @@
  #include <time.h>
 #endif
 
-using namespace khorost::System;
+using namespace khorost::system;
 
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
 
-FastFile::FastFile(size_ff nGranulate_):
+fastfile::fastfile(size_ff nGranulate_):
 	m_nGranulate(nGranulate_)
-	, m_pMemory(NULL)
+	, m_pMemory(nullptr)
     , m_nFileSize(0)
     , m_nOverFileSize(0)
 {
 #ifndef UNIX
 	m_hFile		= INVALID_HANDLE_VALUE;
-	m_hFileMap	= NULL;
+	m_hFileMap	= nullptr;
 
 	if(m_nGranulate==0) {
 		SYSTEM_INFO		SI;
@@ -46,12 +46,12 @@ FastFile::FastFile(size_ff nGranulate_):
 #endif
 }
 
-FastFile::~FastFile() {
-	Close();
+fastfile::~fastfile() {
+	close();
 }
 
-bool FastFile::Open(const std::string& sName_, size_ff nSize_, bool bOnlyRead_) {
-    Close();
+bool fastfile::open(const std::string& sName_, size_ff nSize_, bool bOnlyRead_) {
+    close();
 
     m_bOnlyRead = bOnlyRead_;
 
@@ -88,7 +88,7 @@ bool FastFile::Open(const std::string& sName_, size_ff nSize_, bool bOnlyRead_) 
 
     m_tUpdate = _mkgmtime(&_tm);
 
-    m_nFileSize = GetFileSize(m_hFile, NULL);
+    m_nFileSize = GetFileSize(m_hFile, nullptr);
     if (m_nFileSize==0) {
 	    m_nFileSize = nSize_;
     }
@@ -100,7 +100,7 @@ bool FastFile::Open(const std::string& sName_, size_ff nSize_, bool bOnlyRead_) 
     }
 
     m_hFileMap	= CreateFileMapping(m_hFile, NULL, m_bOnlyRead?PAGE_READONLY:PAGE_READWRITE, 0, m_nOverFileSize, NULL);
-    if (m_hFileMap==NULL) {
+    if (m_hFileMap==nullptr) {
 	    return false;
     }
 
@@ -143,7 +143,7 @@ bool FastFile::Open(const std::string& sName_, size_ff nSize_, bool bOnlyRead_) 
     return m_pMemory!=NULL;
 }
 
-void FastFile::SetLength(size_ff nNewSize_) {
+void fastfile::set_length(size_ff nNewSize_) {
     if (nNewSize_ <= m_nFileSize || nNewSize_<=m_nOverFileSize) {
 	    m_nFileSize = nNewSize_;
     } else {
@@ -181,7 +181,7 @@ void FastFile::SetLength(size_ff nNewSize_) {
     }
 }
 
-void FastFile::Close(size_ff nSize_) {
+void fastfile::close(size_ff nSize_) {
 #ifndef UNIX
     if (m_pMemory!=NULL) {
 	    UnmapViewOfFile(m_pMemory);

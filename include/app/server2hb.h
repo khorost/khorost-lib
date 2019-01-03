@@ -103,9 +103,9 @@ namespace khorost {
         network::session_controller   m_sessions;
 
         void    timer_session_update();
-        static void     stub_timer_run(server2_hb* pThis_);
+        static void     stub_timer_run(server2_hb* server);
 
-        bool                                m_bShutdownTimer;
+        bool                                m_shutdown_timer;
         boost::shared_ptr<boost::thread>    m_TimerThread;
         // ****************************************************************
         typedef bool (server2_hb::*funcActionS2H)(const std::string& uri_params, http_connection& connection, network::s2h_session* session);

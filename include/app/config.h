@@ -1,15 +1,11 @@
-#ifndef _CONFIG__H_
-#define _CONFIG__H_
+#pragma once
 
 #include <json/json.h>
 
 namespace khorost {
-    class config final {
-        Json::Value m_container;
+    class config {
+        Json::Value m_container_;
     public:
-        config() = default;
-        ~config() = default;
-
         bool load(const std::string& file_name);
 
         typedef Json::Value iterator;
@@ -22,5 +18,3 @@ namespace khorost {
     private:
     };
 };
-
-#endif // _CONFIG__H_

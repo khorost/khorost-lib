@@ -49,8 +49,8 @@ namespace khorost {
 			    void	BindValue(const char* strTag, uint32_t uiValue);
 			    void	BindValue64(const char* strTag,uint64_t uiValue);
 			    void	BindValueBLOB(const char* strTag,const data::AutoBufferT<uint8_t>& abBLOB_);
-    //			void	BindValue(const char* strTag,const System::DateTime& dtValue){BindValue(strTag,NULL,dtValue);}
-    //			void	BindValue(const char* strTag,const char* strTagMS,const System::DateTime& dtValue);
+    //			void	BindValue(const char* strTag,const system::DateTime& dtValue){BindValue(strTag,NULL,dtValue);}
+    //			void	BindValue(const char* strTag,const char* strTagMS,const system::DateTime& dtValue);
 
 			    void	Execute();
 
@@ -69,12 +69,12 @@ namespace khorost {
 			    int			GetInteger(int position);
 			    uint64_t	GetInteger64(int position);
 			    const char*	GetString(int position);
-    //			const System::DateTime	GetDateTime(int position, int positionMS = -1) const;
+    //			const system::DateTime	GetDateTime(int position, int positionMS = -1) const;
 		    };
 	    protected:
 		    MYSQL								m_mysql;		// 
 		    MYSQL*								m_Handle;		// 
-    //		System::SynchronizeCriticalSection	m_hLock;		// 
+    //		system::SynchronizeCriticalSection	m_hLock;		// 
     /************************************************************************/
     /* Параметры подключения                                                */
     /************************************************************************/

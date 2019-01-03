@@ -97,8 +97,8 @@ namespace khorost {
             void remove_session(session* sp_);
 
             int GetVersionMin() { return m_nVersionMin; }
-            bool GetActiveSessionsStats(list_session& rLS_);
-            void CheckAliveSessions();
+            bool get_active_sessions_stats(list_session& rLS_);
+            void check_alive_sessions();
         };
     }
 }

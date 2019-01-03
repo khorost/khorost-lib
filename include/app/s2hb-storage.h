@@ -20,7 +20,7 @@ namespace khorost {
             bool    SessionLogger(const network::s2h_session* pSession_, const Json::Value& jsStat_);
             bool    SessionUpdate(network::s2h_session* pSession_);
             bool    SessionUpdate(khorost::network::list_session& rLS_);
-            void    SessionIPUpdate();
+            void    session_ip_update();
 
             bool    CreateUser(Json::Value& jsUser_);
             bool    UpdatePassword(int nUserID_, const std::string& sPasswordHash_);

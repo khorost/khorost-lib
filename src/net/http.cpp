@@ -610,8 +610,8 @@ bool http_text_protocol_header::send_file(const std::string& query_uri, network:
         return false;
     }
 
-    System::FastFile    ff;
-    if (ff.Open(sCanonicFileName, -1, true)) {
+    system::fastfile    ff;
+    if (ff.open(sCanonicFileName, -1, true)) {
         static struct SECT {
             const char* m_Ext;
             const char* m_CT;
@@ -637,8 +637,8 @@ bool http_text_protocol_header::send_file(const std::string& query_uri, network:
 #else
             time_t tt = timegm(&t);
 #endif  // WIN32
-            if (tt >= ff.GetTimeUpdate()) {
-                logger->debug("[HTTP] Don't send file '{}' length = {:d}. Response 304 (If-Modified-Since: '{}')", query_uri.c_str(), ff.GetLength(), pIMS);
+            if (tt >= ff.get_time_update()) {
+                logger->debug("[HTTP] Don't send file '{}' length = {:d}. Response 304 (If-Modified-Since: '{}')", query_uri.c_str(), ff.get_length(), pIMS);
 
                 set_response_status(304, "Not Modified");
                 response(connect, nullptr, 0);
@@ -658,7 +658,7 @@ bool http_text_protocol_header::send_file(const std::string& query_uri, network:
             }
         }
 
-        logger->debug("[HTTP] Send file '{}' length = {:d}", query_uri.c_str(), ff.GetLength());
+        logger->debug("[HTTP] Send file '{}' length = {:d}", query_uri.c_str(), ff.get_length());
 
         if (nExt > 0) {
             pExt += nExt;
@@ -670,12 +670,12 @@ bool http_text_protocol_header::send_file(const std::string& query_uri, network:
             }
         }
 
-        SetLastModify(from_time_t(ff.GetTimeUpdate()));
-        response(connect, nullptr, ff.GetLength());
+        set_last_modify(from_time_t(ff.get_time_update()));
+        response(connect, nullptr, ff.get_length());
 
-        connect.send_data(reinterpret_cast<const boost::uint8_t*>(ff.GetMemory()), ff.GetLength());
+        connect.send_data(reinterpret_cast<const boost::uint8_t*>(ff.get_memory()), ff.get_length());
 
-        ff.Close();
+        ff.close();
     } else {
         logger->warn("[HTTP] File not found '{}'", sCanonicFileName.c_str());
 

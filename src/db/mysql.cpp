@@ -169,7 +169,7 @@ void khl_mysql::Query::BindValueBLOB(const char* psTag_, const AutoBufferT<uint8
 	m_abQuery.Replace(psTag_, strlen(psTag_), abTemp.GetPosition(0), abTemp.GetFillSize());
 }
 /*
-void MySQL::Query::BindValue(const char* strTag,const char* strTagMS,const System::DateTime& dtValue){
+void MySQL::Query::BindValue(const char* strTag,const char* strTagMS,const system::DateTime& dtValue){
 	BindValue(strTag,dtValue.GetFormatString("%Y-%m-%d %H:%M:%S"));
 	if(strTagMS!=NULL){
 		BindValue(strTagMS,dtValue.GetMilliSeconds());
@@ -256,7 +256,7 @@ uint32_t khl_mysql::Query::GetLastAutoIncrement(){
 	return (uint32_t)mysql_insert_id(m_Handle);
 }
 /*
-const System::DateTime MySQL::Query::GetDateTime(int position,int positionMS) const {
-	return IsNull(position)?System::DateTime():System::DateTime("YYYY-MM-DD hh:mm:ss",m_Row[position],positionMS!=-1?m_Row[positionMS]:"");
+const system::DateTime MySQL::Query::GetDateTime(int position,int positionMS) const {
+	return IsNull(position)?system::DateTime():system::DateTime("YYYY-MM-DD hh:mm:ss",m_Row[position],positionMS!=-1?m_Row[positionMS]:"");
 }
 */
