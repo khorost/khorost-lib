@@ -27,6 +27,10 @@ boost::posix_time::ptime khorost::data::epoch_microseconds2ptime(uint64_t ms) {
     return s_time_t_epoch + boost::posix_time::microseconds(ms);
 }
 
+boost::posix_time::ptime khorost::data::epoch_milliseconds2ptime(uint64_t ms) {
+    return s_time_t_epoch + boost::posix_time::milliseconds(ms);
+}
+
 // The trimming method comes from https://stackoverflow.com/a/1798170/1613961
 std::string trim(const std::string& str, const std::string& newline = "\r\n") {
     const auto strBegin = str.find_first_not_of(newline);
