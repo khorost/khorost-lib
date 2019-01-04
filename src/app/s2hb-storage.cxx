@@ -36,8 +36,8 @@ static void session_ip_update_impl(s2h_session* httpSession_, pqxx::work& txn_) 
 }
 
 void khorost::db::S2HBStorage::session_ip_update() {
-    db_connection            conn(m_rDB);
-    pqxx::work              txn(conn.GetHandle());
+    db_connection            conn(m_db_);
+    pqxx::work              txn(conn.get_handle());
 
     pqxx::result r = txn.exec(
         "SELECT DISTINCT ip "
@@ -79,8 +79,8 @@ void khorost::db::S2HBStorage::session_ip_update() {
 }
 
 bool S2HBStorage::SessionUpdate(khorost::network::list_session& rLS_) {
-    db_connection            conn(m_rDB);
-    pqxx::connection&       rcn = conn.GetHandle();
+    db_connection            conn(m_db_);
+    pqxx::connection&       rcn = conn.get_handle();
     pqxx::work              txn(rcn);
 
     try {
@@ -131,8 +131,8 @@ bool S2HBStorage::SessionUpdate(khorost::network::list_session& rLS_) {
 }
 
 bool S2HBStorage::SessionUpdate(s2h_session* pSession_) {
-    db_connection            conn(m_rDB);
-    pqxx::work              txn(conn.GetHandle());
+    db_connection            conn(m_db_);
+    pqxx::work              txn(conn.get_handle());
 
     std::string sLastActivity = to_iso_string(pSession_->get_last_activity());
     std::string sCreated = to_iso_string(pSession_->get_created());
@@ -177,8 +177,8 @@ bool S2HBStorage::SessionUpdate(s2h_session* pSession_) {
 }
 
 bool S2HBStorage::SessionLogger(const s2h_session* pSession_, const Json::Value& jsStat_) {
-    db_connection            conn(m_rDB);
-    pqxx::work              txn(conn.GetHandle());
+    db_connection            conn(m_db_);
+    pqxx::work              txn(conn.get_handle());
 
     txn.exec(
         "INSERT INTO admin.khl_sessions (id, dtFirst, dtLast, dtExpire, stats) "
@@ -190,8 +190,8 @@ bool S2HBStorage::SessionLogger(const s2h_session* pSession_, const Json::Value&
 }
 
 bool S2HBStorage::IsUserExist(const std::string& sLogin_) {
-    db_connection            conn(m_rDB);
-    pqxx::nontransaction    txn(conn.GetHandle());
+    db_connection            conn(m_db_);
+    pqxx::nontransaction    txn(conn.get_handle());
 
     pqxx::result r = txn.exec(
         "SELECT id "
@@ -202,8 +202,8 @@ bool S2HBStorage::IsUserExist(const std::string& sLogin_) {
 }
 
 bool S2HBStorage::GetUserRoles(int& nUserID_, s2h_session* ps_) {
-    db_connection            conn(m_rDB);
-    pqxx::read_transaction  txn(conn.GetHandle());
+    db_connection            conn(m_db_);
+    pqxx::read_transaction  txn(conn.get_handle());
 
     ps_->ResetRoles();
 
@@ -226,8 +226,8 @@ bool S2HBStorage::GetUserRoles(int& nUserID_, s2h_session* ps_) {
 }
 
 bool S2HBStorage::GetUserInfo(int nUserID_, std::string& sLogin_, std::string& sNickname_, std::string& sPWHash_, std::string& sSalt_) {
-    db_connection            conn(m_rDB);
-    pqxx::read_transaction  txn(conn.GetHandle());
+    db_connection            conn(m_db_);
+    pqxx::read_transaction  txn(conn.get_handle());
 
     pqxx::result r = txn.exec(
         "SELECT login, nickname, password, salt "
@@ -248,8 +248,8 @@ bool S2HBStorage::GetUserInfo(int nUserID_, std::string& sLogin_, std::string& s
 }
 
 bool S2HBStorage::get_user_info(const std::string& login, int& user_id, std::string& nickname, std::string& password_hash, std::string& salt) const {
-    db_connection            conn(m_rDB);
-    pqxx::read_transaction  txn(conn.GetHandle());
+    db_connection            conn(m_db_);
+    pqxx::read_transaction  txn(conn.get_handle());
 
     auto r = txn.exec(
         "SELECT id, nickname, password, salt "
@@ -272,8 +272,8 @@ bool S2HBStorage::get_user_info(const std::string& login, int& user_id, std::str
 void RecalcPasswordHash(std::string& sPwHash_, const std::string& sLogin_, const std::string& sPassword_, const std::string& sSalt_);
 
 bool S2HBStorage::CreateUser(Json::Value& jsUser_) {
-    db_connection            conn(m_rDB);
-    pqxx::connection&       rcn = conn.GetHandle();
+    db_connection            conn(m_db_);
+    pqxx::connection&       rcn = conn.get_handle();
     pqxx::work              txn(rcn);
 
     std::string sLogin = jsUser_["Login"].asString();
@@ -315,8 +315,8 @@ bool S2HBStorage::CreateUser(Json::Value& jsUser_) {
 }
 
 bool S2HBStorage::UpdatePassword(int nUserID_, const std::string& sPasswordHash_) {
-    db_connection            conn(m_rDB);
-    pqxx::work              txn(conn.GetHandle());
+    db_connection            conn(m_db_);
+    pqxx::work              txn(conn.get_handle());
 
     txn.exec(
         "UPDATE admin.khl_users "

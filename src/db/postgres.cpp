@@ -16,7 +16,7 @@
 
 using namespace khorost::db;
 
-void db_pool::Prepare(int nCount_, const std::string& sConnectParam_) {
+void db_pool::prepare(int nCount_, const std::string& sConnectParam_) {
     std::lock_guard<std::mutex> locker(m_mutex);
 
     for (auto n = 0; n < nCount_; ++n) {
@@ -24,7 +24,7 @@ void db_pool::Prepare(int nCount_, const std::string& sConnectParam_) {
     }
 }
 
-db_connection_pool_ptr db_pool::GetConnectionPool() {
+db_connection_pool_ptr db_pool::get_connection_pool() {
     std::unique_lock<std::mutex> locker(m_mutex);
 
     while (m_FreePool.empty()) {
@@ -42,7 +42,7 @@ db_connection_pool_ptr db_pool::GetConnectionPool() {
     return conn;
 }
 
-void db_pool::ReleaseConnectionPool(db_connection_pool_ptr pdbc_) {
+void db_pool::release_connection_pool(db_connection_pool_ptr pdbc_) {
     std::unique_lock<std::mutex> locker(m_mutex);
 
     m_FreePool.push(pdbc_);
@@ -55,7 +55,7 @@ void db_pool::ReleaseConnectionPool(db_connection_pool_ptr pdbc_) {
     }
 }
 
-std::string postgres::GetConnectParam() const {
+std::string postgres::get_connect_param() const {
     std::string sc;
     sc += " host = " + m_sHost;
     sc += " port = " + std::to_string(m_nPort);
@@ -66,7 +66,7 @@ std::string postgres::GetConnectParam() const {
     return sc;
 }
 
-bool db_connection_pool::CheckConnect() {
+bool db_connection_pool::check_connect() {
     static int times = 0;
     try {
         times++;
@@ -75,7 +75,7 @@ bool db_connection_pool::CheckConnect() {
         }
         times = 0;
         // hack
-        pqxx::nontransaction txn(GetHandle());
+        pqxx::nontransaction txn(get_handle());
 
         auto r = txn.exec(
             "SELECT app "
@@ -86,7 +86,7 @@ bool db_connection_pool::CheckConnect() {
             times = 0;
             return false;
         }
-        CheckConnect();
+        check_connect();
     }
     return true;
 }
@@ -136,10 +136,10 @@ void postgres::ExecuteCustomSQL(bool bReadOnly_, const std::string& sSQL_, Json:
     db_connection conn(*this);
 
     if (bReadOnly_) {
-        pqxx::read_transaction txn(conn.GetHandle());
+        pqxx::read_transaction txn(conn.get_handle());
         sExecuteCustomSQL(txn, sSQL_, jvResult_);
     } else {
-        pqxx::work txn(conn.GetHandle());
+        pqxx::work txn(conn.get_handle());
         sExecuteCustomSQL(txn, sSQL_, jvResult_);
         txn.commit();
     }
@@ -169,8 +169,8 @@ std::string linked_postgres::to_string(const pqxx::transaction_base& txn, const 
 }
 
 bool khl_postgres::refresh_token(khorost::network::token_ptr& token, int access_timeout, int refresh_timeout) const {
-    db_connection conn(m_rDB);
-    pqxx::work txn(conn.GetHandle());
+    db_connection conn(m_db_);
+    pqxx::work txn(conn.get_handle());
 
     std::string access_interval, refresh_interval;
 
@@ -218,8 +218,8 @@ bool khl_postgres::refresh_token(khorost::network::token_ptr& token, int access_
 
 khorost::network::token_ptr khl_postgres::create_token(const int access_timeout, const int refresh_timeout,
                                                        const Json::Value& payload) const {
-    db_connection conn(m_rDB);
-    pqxx::work txn(conn.GetHandle());
+    db_connection conn(m_db_);
+    pqxx::work txn(conn.get_handle());
 
     auto token_payload = payload;
     token_payload["delta_access_time"] = access_timeout;
@@ -247,8 +247,8 @@ khorost::network::token_ptr khl_postgres::create_token(const int access_timeout,
 }
 
 khorost::network::token_ptr khl_postgres::load_token(bool is_refresh_token, const std::string& token_id) const {
-    db_connection conn(m_rDB);
-    pqxx::read_transaction txn(conn.GetHandle());
+    db_connection conn(m_db_);
+    pqxx::read_transaction txn(conn.get_handle());
 
     const auto code_token = std::string(is_refresh_token ? "refresh_token" : "access_token");
 

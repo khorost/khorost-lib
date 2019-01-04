@@ -31,22 +31,21 @@ namespace khorost {
             boost::scoped_ptr<pqxx::connection>    m_spConnect;
         public:
             db_connection_pool(const std::string& sConnectParam_) {
-                Reconnect(sConnectParam_);
+                reconnect(sConnectParam_);
             }
-            virtual ~db_connection_pool() {
-            }
+            virtual ~db_connection_pool() = default;
 
-            pqxx::connection& GetHandle() {
+            pqxx::connection& get_handle() const {
                 return *m_spConnect;
             }
 
-            void    Reconnect(const std::string& sConnectParam_) {
+            void    reconnect(const std::string& sConnectParam_) {
                 m_spConnect.reset(new pqxx::connection(sConnectParam_));
             }
-            void    Disconnect() {
+            void    disconnect() {
                 m_spConnect.reset(nullptr);
             }
-            bool    CheckConnect();
+            bool    check_connect();
         };
 
         typedef	boost::shared_ptr<db_connection_pool>	db_connection_pool_ptr;
@@ -60,10 +59,10 @@ namespace khorost {
         public:
             db_pool() = default;
 
-            void Prepare(int nCount_, const std::string& sConnectParam_);
+            void prepare(int nCount_, const std::string& sConnectParam_);
 
-            db_connection_pool_ptr GetConnectionPool();
-            void    ReleaseConnectionPool(db_connection_pool_ptr pdbc_);
+            db_connection_pool_ptr get_connection_pool();
+            void    release_connection_pool(db_connection_pool_ptr pdbc_);
         };
 
         class db_connection {
@@ -71,19 +70,19 @@ namespace khorost {
             db_connection_pool_ptr m_pdbConnectionPool;
         public:
             db_connection(db_pool& dbp_) : m_dbPool(dbp_), m_pdbConnectionPool(nullptr) {
-                m_pdbConnectionPool = m_dbPool.GetConnectionPool();
+                m_pdbConnectionPool = m_dbPool.get_connection_pool();
             }
             virtual ~db_connection() {
-                ReleaseConnectionPool();
+                release_connection_pool();
             }
 
-            pqxx::connection& GetHandle() {
-                return m_pdbConnectionPool->GetHandle();
+            pqxx::connection& get_handle() const {
+                return m_pdbConnectionPool->get_handle();
             }
 
-            void    ReleaseConnectionPool() {
+            void    release_connection_pool() {
                 if (m_pdbConnectionPool != nullptr) {
-                    m_dbPool.ReleaseConnectionPool(m_pdbConnectionPool);
+                    m_dbPool.release_connection_pool(m_pdbConnectionPool);
                     m_pdbConnectionPool = nullptr;
                 }
             }
@@ -98,20 +97,19 @@ namespace khorost {
             std::string m_sPassword;
 
         public:
-            postgres() {
-            }
+            postgres() = default;
             virtual ~postgres() = default;
 
-            std::string GetConnectParam() const;
+            std::string get_connect_param() const;
 
-            void    SetConnect(std::string sHost_, int nPort_, std::string sDatabase_, std::string sLogin_, std::string sPassword_) {
+            void    set_connect(std::string sHost_, int nPort_, std::string sDatabase_, std::string sLogin_, std::string sPassword_) {
                 m_sHost = sHost_;
                 m_nPort = nPort_;
                 m_sDatabase = sDatabase_;
                 m_sLogin = sLogin_;
                 m_sPassword = sPassword_;
 
-                Prepare(5, GetConnectParam());
+                prepare(5, get_connect_param());
             }
 
             void    ExecuteCustomSQL(bool bReadOnly_, const std::string& sSQL_, Json::Value& jvResult_);
@@ -120,9 +118,9 @@ namespace khorost {
 
         class linked_postgres {
         protected:
-            postgres& m_rDB;
+            postgres& m_db_;
         public:
-            linked_postgres(postgres& rDB_) : m_rDB(rDB_) {}
+            linked_postgres(postgres& db) : m_db_(db) {}
             virtual ~linked_postgres() = default;
 
             static std::string to_string(const pqxx::transaction_base& txn, const boost::posix_time::ptime& timestamp, bool nullable_infinity = true);

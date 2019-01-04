@@ -209,7 +209,7 @@ namespace khorost {
         static void json_fill_auth(network::s2h_session* session, bool full_info, Json::Value& value);
 
         void    set_connect(std::string sHost_, int nPort_, std::string sDatabase_, std::string sLogin_, std::string sPassword_) {
-            m_db_connect.SetConnect(sHost_, nPort_, sDatabase_, sLogin_, sPassword_);
+            m_db_connect.set_connect(sHost_, nPort_, sDatabase_, sLogin_, sPassword_);
         }
         void	set_listen_port(int nPort_) { m_nHTTPListenPort = nPort_; }
         //        void    SetStorageFolder(const std::string& strFolder_);
