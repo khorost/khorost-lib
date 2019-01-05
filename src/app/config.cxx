@@ -9,7 +9,7 @@ bool config::load(const std::string& file_name) {
     system::fastfile ff;
     auto result = false;
 
-    if (ff.open(file_name, -1, true)) {
+    if (ff.open_file(file_name, -1, true)) {
         const auto config_text = reinterpret_cast<char*>(ff.get_memory());
         if (reader.parse(config_text, config_text + ff.get_length(), m_container_)) {
             result = true;
@@ -17,7 +17,7 @@ bool config::load(const std::string& file_name) {
             auto em = reader.getFormattedErrorMessages();
 //            LOGF(WARNING, "Error parse config file - %s", em.c_str() );
         }
-        ff.close();
+        ff.close_file();
     }
 
     return result;

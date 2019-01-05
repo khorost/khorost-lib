@@ -611,7 +611,7 @@ bool http_text_protocol_header::send_file(const std::string& query_uri, network:
     }
 
     system::fastfile    ff;
-    if (ff.open(sCanonicFileName, -1, true)) {
+    if (ff.open_file(sCanonicFileName, -1, true)) {
         static struct SECT {
             const char* m_Ext;
             const char* m_CT;
@@ -675,7 +675,7 @@ bool http_text_protocol_header::send_file(const std::string& query_uri, network:
 
         connect.send_data(reinterpret_cast<const boost::uint8_t*>(ff.get_memory()), ff.get_length());
 
-        ff.close();
+        ff.close_file();
     } else {
         logger->warn("[HTTP] File not found '{}'", sCanonicFileName.c_str());
 

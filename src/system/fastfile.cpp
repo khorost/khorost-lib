@@ -24,203 +24,201 @@ using namespace khorost::system;
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
 
-fastfile::fastfile(size_ff nGranulate_):
-	m_nGranulate(nGranulate_)
-	, m_pMemory(nullptr)
-    , m_nFileSize(0)
-    , m_nOverFileSize(0)
-{
+fastfile::fastfile(size_ff granulate):
+	m_granulate_(granulate)
+    , m_file_size_(0)
+    , m_over_file_size_(0){
 #ifndef UNIX
-	m_hFile		= INVALID_HANDLE_VALUE;
-	m_hFileMap	= nullptr;
+    m_file_ = INVALID_HANDLE_VALUE;
+    m_file_map_ = nullptr;
 
-	if(m_nGranulate==0) {
-		SYSTEM_INFO		SI;
-		GetSystemInfo(&SI);
-		m_nGranulate = SI.dwAllocationGranularity;
-	}
+    if (m_granulate_ == 0) {
+        SYSTEM_INFO si;
+        GetSystemInfo(&si);
+        m_granulate_ = si.dwAllocationGranularity;
+    }
 #else
-	m_hFile		= -1;
-	if(m_nGranulate==0)
-		m_nGranulate = sysconf(_SC_PAGESIZE);
+    m_file_ = -1;
+	if(m_granulate_==0) {
+        m_granulate_ = sysconf(_SC_PAGESIZE);
+    }
 #endif
 }
 
 fastfile::~fastfile() {
-	close();
+	close_file();
 }
 
-bool fastfile::open(const std::string& sName_, size_ff nSize_, bool bOnlyRead_) {
-    close();
+bool fastfile::open_file(const std::string& file_name, const size_ff file_size, const bool file_open_mode_only_read) {
+    close_file();
 
-    m_bOnlyRead = bOnlyRead_;
+    m_only_read_ = file_open_mode_only_read;
 
 #ifndef UNIX
-    if (bOnlyRead_ && GetFileAttributes(sName_.c_str())==-1) {
-	    return false;
+    if (file_open_mode_only_read && GetFileAttributes(file_name.c_str()) == -1) {
+        return false;
     }
 
-    m_hFile = CreateFile(sName_.c_str(), m_bOnlyRead?GENERIC_READ:GENERIC_WRITE|GENERIC_READ,
-	    0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    m_file_ = CreateFile(file_name.c_str(), m_only_read_ ? GENERIC_READ : GENERIC_WRITE | GENERIC_READ, 0, nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
 
-    if (m_hFile==INVALID_HANDLE_VALUE) {
-	    return false;
+    if (m_file_ == INVALID_HANDLE_VALUE) {
+        return false;
     }
 
-    FILETIME    ftCreate, ftAccess, ftWrite;
-    SYSTEMTIME stUTC;
+    FILETIME ft_create, ft_access, ft_write;
+    SYSTEMTIME st_utc;
 
-    GetFileTime(m_hFile, &ftCreate, &ftAccess, &ftWrite);
-    FileTimeToSystemTime(&ftWrite, &stUTC);
+    GetFileTime(m_file_, &ft_create, &ft_access, &ft_write);
+    FileTimeToSystemTime(&ft_write, &st_utc);
 
-    tm			_tm;
+    tm _tm;
 
-    memset(&_tm,0,sizeof(tm));
+    memset(&_tm, 0, sizeof(tm));
 
-    _tm.tm_year		= stUTC.wYear - 1900;
-    _tm.tm_mon		= stUTC.wMonth - 1;
-    _tm.tm_mday		= stUTC.wDay;
-    _tm.tm_hour		= stUTC.wHour;
-    _tm.tm_min		= stUTC.wMinute;
-    _tm.tm_sec		= stUTC.wSecond;
+    _tm.tm_year = st_utc.wYear - 1900;
+    _tm.tm_mon = st_utc.wMonth - 1;
+    _tm.tm_mday = st_utc.wDay;
+    _tm.tm_hour = st_utc.wHour;
+    _tm.tm_min = st_utc.wMinute;
+    _tm.tm_sec = st_utc.wSecond;
 
-    _tm.tm_isdst	= -1;
+    _tm.tm_isdst = -1;
 
-    m_tUpdate = _mkgmtime(&_tm);
+    m_update_ = _mkgmtime(&_tm);
 
-    m_nFileSize = GetFileSize(m_hFile, nullptr);
-    if (m_nFileSize==0) {
-	    m_nFileSize = nSize_;
+    m_file_size_ = GetFileSize(m_file_, nullptr);
+    if (m_file_size_ == 0) {
+        m_file_size_ = file_size;
     }
 
-    if (!m_bOnlyRead) {
-	    m_nOverFileSize = (m_nFileSize / m_nGranulate + 1) * m_nGranulate;
+    if (!m_only_read_) {
+        m_over_file_size_ = (m_file_size_ / m_granulate_ + 1) * m_granulate_;
     } else {
-	    m_nOverFileSize = m_nFileSize;
+        m_over_file_size_ = m_file_size_;
     }
 
-    m_hFileMap	= CreateFileMapping(m_hFile, NULL, m_bOnlyRead?PAGE_READONLY:PAGE_READWRITE, 0, m_nOverFileSize, NULL);
-    if (m_hFileMap==nullptr) {
-	    return false;
+    m_file_map_ = CreateFileMapping(m_file_, nullptr, m_only_read_ ? PAGE_READONLY : PAGE_READWRITE, 0, m_over_file_size_, nullptr);
+    if (m_file_map_ == nullptr) {
+        return false;
     }
 
-    m_pMemory = MapViewOfFile(m_hFileMap, m_bOnlyRead?FILE_MAP_READ:FILE_MAP_WRITE, 0, 0, 0);
+    m_memory_ = MapViewOfFile(m_file_map_, m_only_read_ ? FILE_MAP_READ : FILE_MAP_WRITE, 0, 0, 0);
 #else
-    if (m_bOnlyRead && access(sName_.c_str(), F_OK)==-1) {
+    if (m_only_read_ && access(file_name.c_str(), F_OK)==-1) {
 	    return false;
     }
 
-    m_hFile = open(sName_.c_str(), m_bOnlyRead?(O_RDONLY):(O_RDWR|O_CREAT), 0660);
-    if (m_hFile==-1) {
+    m_file_ = open(file_name.c_str(), m_only_read_?(O_RDONLY):(O_RDWR|O_CREAT), 0660);
+    if (m_file==-1) {
 	    return false;
     }
 
     struct stat	statv;
 
-    if (fstat(m_hFile,&statv)==-1) {
+    if (fstat(m_file_, &statv)==-1) {
 	    return false;
     }
 
-    m_tUpdate = statv.st_mtime;
-    m_nFileSize = statv.st_size;
-    if (m_nFileSize==0) {
-	    m_nFileSize = nSize_;
+    m_update_ = statv.st_mtime;
+    m_file_size_ = statv.st_size;
+    if (m_file_size_==0) {
+	    m_file_size_ = file_size;
     }
 
-    if (!m_bOnlyRead) {
-	    m_nOverFileSize = (m_nFileSize / m_nGranulate + 1) * m_nGranulate;
+    if (!m_only_read_) {
+	    m_over_file_size_ = (m_file_size_ / m_granulate_ + 1) * m_granulate_;
 
-        if (ftruncate(m_hFile, m_nOverFileSize)==-1) {
+        if (ftruncate(m_file_, m_over_file_size_)==-1) {
 		    return false;
         }
     } else {
-	    m_nOverFileSize = m_nFileSize;
+	    m_over_file_size_ = m_file_size_;
     }
 
-    m_pMemory = mmap(0, m_nOverFileSize, PROT_READ|(m_bOnlyRead?0:PROT_WRITE), MAP_SHARED, m_hFile, 0);
+    m_memory_ = mmap(0, m_over_file_size_, PROT_READ|(m_only_read_?0:PROT_WRITE), MAP_SHARED, m_file_, 0);
 #endif
 
-    return m_pMemory!=NULL;
+    return m_memory_ != nullptr;
 }
 
-void fastfile::set_length(size_ff nNewSize_) {
-    if (nNewSize_ <= m_nFileSize || nNewSize_<=m_nOverFileSize) {
-	    m_nFileSize = nNewSize_;
+void fastfile::set_length(const size_ff new_size) {
+    if (new_size <= m_file_size_ || new_size <= m_over_file_size_) {
+        m_file_size_ = new_size;
     } else {
 #ifndef UNIX
-	    if (m_pMemory!=NULL) {
-		    UnmapViewOfFile(m_pMemory);
-		    m_pMemory = NULL;
-	    }
-
-	    if (m_hFileMap!=NULL) {
-		    CloseHandle(m_hFileMap);
-		    m_hFileMap = NULL;
-	    }
-
-        m_nFileSize = nNewSize_;
-        m_nOverFileSize = (m_nFileSize / m_nGranulate + 1) * m_nGranulate;
-
-	    m_hFileMap	= CreateFileMapping(m_hFile, NULL, m_bOnlyRead?PAGE_READONLY:PAGE_READWRITE, 0, m_nOverFileSize, NULL);
-        if (m_hFileMap==NULL) {
-		    return;
+        if (m_memory_ != nullptr) {
+            UnmapViewOfFile(m_memory_);
+            m_memory_ = nullptr;
         }
 
-        m_pMemory = MapViewOfFile(m_hFileMap, m_bOnlyRead?FILE_MAP_READ:FILE_MAP_WRITE, 0, 0, 0);
+        if (m_file_map_ != nullptr) {
+            CloseHandle(m_file_map_);
+            m_file_map_ = nullptr;
+        }
+
+        m_file_size_ = new_size;
+        m_over_file_size_ = (m_file_size_ / m_granulate_ + 1) * m_granulate_;
+
+        m_file_map_ = CreateFileMapping(m_file_, nullptr, m_only_read_ ? PAGE_READONLY : PAGE_READWRITE, 0, m_over_file_size_, nullptr);
+        if (m_file_map_ == nullptr) {
+            return;
+        }
+
+        m_memory_ = MapViewOfFile(m_file_map_, m_only_read_ ? FILE_MAP_READ : FILE_MAP_WRITE, 0, 0, 0);
 #else
-        if (m_pMemory!=NULL) {
-		    munmap(m_pMemory, m_nOverFileSize);
-		    m_pMemory = NULL;
+        if (m_memory_!=NULL) {
+		    munmap(m_memory_, m_over_file_size_);
+		    m_memory_ = NULL;
 	    }
 
-        m_nFileSize = nNewSize_;
-        m_nOverFileSize = (m_nFileSize / m_nGranulate + 1) * m_nGranulate;
+        m_file_size_ = new_size;
+        m_over_file_size_ = (m_file_size_ / m_granulate_ + 1) * m_granulate_;
 
-	    m_pMemory = mmap(0, m_nOverFileSize, PROT_READ|(m_bOnlyRead?0:PROT_WRITE), MAP_SHARED, m_hFile, 0);
+	    m_memory_ = mmap(0, m_over_file_size_, PROT_READ|(m_only_read_?0:PROT_WRITE), MAP_SHARED, m_file_, 0);
 #endif
     }
 }
 
-void fastfile::close(size_ff nSize_) {
+void fastfile::close_file(size_ff size_on_close) {
 #ifndef UNIX
-    if (m_pMemory!=NULL) {
-	    UnmapViewOfFile(m_pMemory);
-	    m_pMemory = NULL;
+    if (m_memory_ != nullptr) {
+        UnmapViewOfFile(m_memory_);
+        m_memory_ = nullptr;
     }
 
-    if (m_hFileMap!=NULL) {
-	    CloseHandle(m_hFileMap);
-	    m_hFileMap = NULL;
+    if (m_file_map_ != nullptr) {
+        CloseHandle(m_file_map_);
+        m_file_map_ = nullptr;
     }
 
-    if (m_hFile!=INVALID_HANDLE_VALUE) {
-        if (nSize_==0) {
-		    nSize_ = m_nFileSize;
+    if (m_file_ != INVALID_HANDLE_VALUE) {
+        if (size_on_close == 0) {
+            size_on_close = m_file_size_;
         }
 
-	    SetFilePointer(m_hFile, nSize_, 0, FILE_BEGIN);
-	    SetEndOfFile(m_hFile);
+        SetFilePointer(m_file_, size_on_close, 0, FILE_BEGIN);
+        SetEndOfFile(m_file_);
 
-	    CloseHandle(m_hFile);
-	    m_hFile = INVALID_HANDLE_VALUE;
+        CloseHandle(m_file_);
+        m_file_ = INVALID_HANDLE_VALUE;
     }
 #else
-    if (m_pMemory!=NULL) {
-	    munmap(m_pMemory, m_nOverFileSize);
-	    m_pMemory = NULL;
+    if (m_memory_ != nullptr) {
+        munmap(m_memory_, m_over_file_size_);
+        m_memory_ = nullptr;
     }
 
-    if (m_hFile!=-1) {
-        if (nSize_==0) {
-		    nSize_ = m_nFileSize;
+    if (m_file_ != -1) {
+        if (size_on_close == 0) {
+            size_on_close = m_file_size_;
         }
 
-	    if (ftruncate(m_hFile, nSize_)==-1) {
+        if (ftruncate(m_file_, size_on_close) == -1) {
             // cout << errno;
-	    }
+        }
 
-	    close(m_hFile);
-	    m_hFile = -1;
+        close(m_file_);
+        m_file_ = -1;
     }
 #endif
 }
