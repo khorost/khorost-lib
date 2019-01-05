@@ -109,7 +109,7 @@ bool fastfile::open_file(const std::string& file_name, const size_ff file_size, 
     }
 
     m_file_ = open(file_name.c_str(), m_only_read_?(O_RDONLY):(O_RDWR|O_CREAT), 0660);
-    if (m_file==-1) {
+    if (m_file_==-1) {
 	    return false;
     }
 
