@@ -702,7 +702,7 @@ network::session_ptr server2_hb::processing_session(http_connection& connect) {
 
     http->set_cookie(get_session_code(), sp->get_session_id(), sp->get_expired(), http->get_host(), true);
 
-    logger->debug("{} = '{}' ClientIP = '{}' ConnectID = #{:d} InS = '{}' "
+    logger->debug("[OAUTH] {} = '{}' ClientIP = '{}' ConnectID = #{:d} InS = '{}' "
         , get_session_code(), sp->get_session_id().c_str(), s_ip, connect.get_id()
         , session_id != nullptr ? (strcmp(sp->get_session_id().c_str(), session_id) == 0 ? "+" : session_id) : "-"
     );
@@ -730,20 +730,24 @@ network::token_ptr server2_hb::parse_token(khorost::network::http_text_protocol_
     }
 
     auto token = is_access_token ? find_access_token(id) : find_refresh_token(id);
-    if (token != nullptr && check != boost::date_time::neg_infin && (is_access_token && !token->
-        is_no_expire_access(check) || !is_access_token && !token->is_no_expire_refresh(check))) {
-        logger->debug("[OAUTH] {} Token {} expire. timestamp = {}"
-            , is_access_token ? "Access" : "Refresh"
-            , id
-            , to_iso_extended_string(is_access_token ? token->get_access_expire() : token->get_refresh_expire()));
-        remove_token(token);
-        return nullptr;
+    if (token != nullptr) {
+        if (check != boost::date_time::neg_infin && (is_access_token && !token->is_no_expire_access(check) || !is_access_token && !token->is_no_expire_refresh(check))) {
+            logger->debug("[OAUTH] {} Token {} expire. timestamp = {}"
+                          , is_access_token ? "Access" : "Refresh"
+                          , id
+                          , to_iso_extended_string(is_access_token ? token->get_access_expire() : token->get_refresh_expire()));
+            remove_token(token);
+            return nullptr;
+        }
+
+        logger->debug("[OAUTH] {} Token {} expired after {}"
+                      , is_access_token ? "Access" : "Refresh"
+                      , id
+                      , to_iso_extended_string(is_access_token ? token->get_access_expire() : token->get_refresh_expire()));
+    } else {
+        logger->warn("[OAUTH] {} Token with id = '{}' not found", is_access_token ? "Access" : "Refresh", id);
     }
 
-    logger->debug("[OAUTH] {} Token {} expired after {}"
-        , is_access_token ? "Access" : "Refresh"
-        , id
-        , to_iso_extended_string(is_access_token?token->get_access_expire(): token->get_refresh_expire()));
     return token;
 }
 

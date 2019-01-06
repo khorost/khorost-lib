@@ -42,5 +42,5 @@ void khorost::log::prepare_logger(const config& configure, const std::string& lo
 
     spdlog::register_logger(logger);
 
-    logger->info("logger prepare successful. level = {}", level);
+    logger->info("Logger prepare successful. level = {}", level);
 }

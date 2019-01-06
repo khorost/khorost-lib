@@ -1,6 +1,7 @@
 #include "app/config.h"
 #include "system/fastfile.h"
 #include "util/logger.h"
+#include <app/khl-define.h>
 
 using namespace khorost;
 
@@ -15,7 +16,10 @@ bool config::load(const std::string& file_name) {
             result = true;
         } else {
             auto em = reader.getFormattedErrorMessages();
-//            LOGF(WARNING, "Error parse config file - %s", em.c_str() );
+            const auto logger = spdlog::get(KHL_LOGGER_CONSOLE);
+            if (logger != nullptr) {
+                logger->warn("Error parse config file - {}", em.c_str());
+            }
         }
         ff.close_file();
     }
