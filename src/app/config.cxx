@@ -31,7 +31,12 @@ config::iterator& config::operator[](const std::string& key) {
     return m_container_[key];
 }
 
-int config::get_value(const std::string& super_key, int default_value, const std::string& div) const {
+bool config::is_value(const std::string& super_key, const bool default_value, const std::string& div) const {
+    auto item = find_item(super_key, div);
+    return item.isNull() ? default_value : item.asBool();
+}
+
+int config::get_value(const std::string& super_key, const int default_value, const std::string& div) const {
     auto item = find_item(super_key, div);
     return item.isNull() ? default_value : item.asInt();
 }

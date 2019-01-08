@@ -361,7 +361,7 @@ bool server2_hb::shutdown() {
 
 bool server2_hb::prepare_to_start() {
     auto logger = get_logger();
-    logger->debug("prepare_to_start");
+    logger->debug("[SERVER] Prepare to start");
 
     network::init();
 
@@ -387,7 +387,7 @@ bool server2_hb::prepare_to_start() {
 
 bool server2_hb::auto_execute() {
     auto logger = get_logger();
-    logger->info("AutoExecute");
+    logger->info("[SERVER] AutoExecute");
 
     auto cfg_create_user = m_configure["autoexec"]["Create"]["User"];
     if (!cfg_create_user.isNull()) {

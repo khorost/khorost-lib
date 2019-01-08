@@ -22,25 +22,31 @@ void khorost::log::prepare_logger(const config& configure, const std::string& lo
     console_sink->set_pattern(pattern_console);
 
     std::vector<spdlog::sink_ptr> sinks = {console_sink, rotating_sink};
-    auto logger = std::make_shared<spdlog::async_logger>(logger_name, sinks.begin(), sinks.end(), spdlog::thread_pool(), spdlog::async_overflow_policy::block);
 
-    if (level == "DEBUG") {
-        logger->set_level(spdlog::level::debug);
-    } else if (level == "TRACE") {
-        logger->set_level(spdlog::level::trace);
-    } else if (level == "INFO") {
-        logger->set_level(spdlog::level::info);
-    } else if (level == "ERROR") {
-        logger->set_level(spdlog::level::err);
-    } else if (level == "CRITICAL") {
-        logger->set_level(spdlog::level::critical);
-    } else if (level == "OFF") {
-        logger->set_level(spdlog::level::off);
+    if (configure.is_value("log:async", true)) {
+        spdlog::register_logger(std::make_shared<spdlog::async_logger>(logger_name, sinks.begin(), sinks.end(), spdlog::thread_pool(), spdlog::async_overflow_policy::block));
     } else {
-        logger->set_level(spdlog::level::warn);
+        spdlog::register_logger(std::make_shared<spdlog::logger>(logger_name, sinks.begin(), sinks.end()));
     }
 
-    spdlog::register_logger(logger);
+    const auto logger = spdlog::get(logger_name);
+    if (logger!=nullptr) {
+        if (level == "DEBUG") {
+            logger->set_level(spdlog::level::debug);
+        } else if (level == "TRACE") {
+            logger->set_level(spdlog::level::trace);
+        } else if (level == "INFO") {
+            logger->set_level(spdlog::level::info);
+        } else if (level == "ERROR") {
+            logger->set_level(spdlog::level::err);
+        } else if (level == "CRITICAL") {
+            logger->set_level(spdlog::level::critical);
+        } else if (level == "OFF") {
+            logger->set_level(spdlog::level::off);
+        } else {
+            logger->set_level(spdlog::level::warn);
+        }
 
-    logger->info("Logger prepare successful. level = {}", level);
+        logger->info("Logger prepare successful. level = {}", level);
+    }
 }
