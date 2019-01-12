@@ -96,10 +96,10 @@ namespace khorost {
                 cbChunk::size_cbc   sizeValue(CHUNK_HTON_SIZE(sizeof(value_)));
                 cbChunk::type_cbc   typeValue(CHUNK_HTON_TYPE(tv_));
 
-                m_abPacket.Append(reinterpret_cast<const boost::uint8_t*>(&id_), sizeof(id_));
-                m_abPacket.Append(reinterpret_cast<const boost::uint8_t*>(&typeValue), sizeof(typeValue));
-                m_abPacket.Append(reinterpret_cast<const boost::uint8_t*>(&sizeValue), sizeof(sizeValue));
-                m_abPacket.Append(reinterpret_cast<const boost::uint8_t*>(&value_), sizeof(value_));
+                m_abPacket.append(reinterpret_cast<const boost::uint8_t*>(&id_), sizeof(id_));
+                m_abPacket.append(reinterpret_cast<const boost::uint8_t*>(&typeValue), sizeof(typeValue));
+                m_abPacket.append(reinterpret_cast<const boost::uint8_t*>(&sizeValue), sizeof(sizeValue));
+                m_abPacket.append(reinterpret_cast<const boost::uint8_t*>(&value_), sizeof(value_));
             }
 
 #define AppendChunkByte(i,v)     AppendChunkT<boost::uint8_t, cbChunk::CHUNK_TYPE_BYTE>(i,v)
@@ -109,8 +109,8 @@ namespace khorost {
             void    AppendChunkString(cbChunk::id_cbc id_, const std::string& value_);
             void    AppendChunkBuffer(cbChunk::id_cbc id_, const data::AutoBufferT<boost::uint8_t>& value_);
 
-            size_cbc    GetSize() const { return static_cast<size_cbc>(m_abPacket.GetFillSize()); }
-            boost::uint8_t* GetBuffer() const { return m_abPacket.GetPosition(0); }
+            size_cbc    GetSize() const { return static_cast<size_cbc>(m_abPacket.get_fill_size()); }
+            boost::uint8_t* GetBuffer() const { return m_abPacket.get_position(0); }
         };
 
         template<typename T>
@@ -137,7 +137,7 @@ namespace khorost {
         }
 
         inline void ReadBuffer(const boost::uint8_t*& pBuffer_, size_t& nBufferSize_, cbChunk::size_cbc nSizeValueChunk_, data::AutoBufferT<boost::uint8_t>& value_) {
-            value_.Append(pBuffer_, nSizeValueChunk_);
+            value_.append(pBuffer_, nSizeValueChunk_);
             pBuffer_ += nSizeValueChunk_;
             nBufferSize_ -= nSizeValueChunk_;
         }

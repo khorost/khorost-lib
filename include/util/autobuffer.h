@@ -1,5 +1,4 @@
-﻿#ifndef _AUTOBUFFER__H_
-#define _AUTOBUFFER__H_
+﻿#pragma once
 
 namespace khorost {
     namespace data {
@@ -40,19 +39,19 @@ namespace khorost {
             // Кол-во элементов буффера
             size_t  GetFullSize() const { return m_nFullSize; }
             // Размер заполненной области буффера
-            size_t  GetFillSize() const { return m_nReadyPosition; }
+            size_t  get_fill_size() const { return m_nReadyPosition; }
             // Размер свободной области, доступной для записи
             size_t  GetFreeSize() const { return m_nFullSize - m_nReadyPosition; }
             //	**********************************************************************
-            T*  GetHead() const { return m_pBuffer; }
-            T*  GetPosition(size_t nPosition_ = 0) const { return m_pBuffer + nPosition_; }
+            T*  get_head() const { return m_pBuffer; }
+            T*  get_position(size_t nPosition_ = 0) const { return m_pBuffer + nPosition_; }
             T*  get_free_position() { return m_pBuffer + m_nReadyPosition; }
             //	**********************************************************************
-            T   GetElement(size_t nPosition_){ return m_pBuffer[nPosition_]; }
+            T   get_element(size_t nPosition_){ return m_pBuffer[nPosition_]; }
             T   GetLastElement(){ return m_pBuffer[m_nReadyPosition - 1]; }
             T&  operator[](size_t nPosition_) { return m_pBuffer[nPosition_]; }
             //	**********************************************************************
-            void FlushFreeSize(){ m_nReadyPosition = 0; }
+            void flush_free_size(){ m_nReadyPosition = 0; }
 
             size_t  Find(size_t nFrom_, const T* pMatch_, size_t nMatchSize) {
                 auto pMax = m_nReadyPosition - nMatchSize;
@@ -80,7 +79,7 @@ namespace khorost {
                 return m_nReadyPosition;
             }
 
-            size_t IncrementFreeSize(size_t nSize_){
+            size_t increment_free_size(size_t nSize_){
                 if (m_nReadyPosition >= nSize_)
                     m_nReadyPosition -= nSize_;
                 else
@@ -88,9 +87,9 @@ namespace khorost {
                 return m_nReadyPosition;
             }
 
-            size_t Append(const T* pBuffer_, size_t nCount_, size_t nBufferGranulate_ = nDefaultBufferGranulate){
+            size_t append(const T* pBuffer_, size_t nCount_, size_t nBufferGranulate_ = nDefaultBufferGranulate){
                 if (nCount_ > GetFreeSize()) {
-                    check_size(GetFillSize() + nCount_, nBufferGranulate_);
+                    check_size(get_fill_size() + nCount_, nBufferGranulate_);
                 }
 
                 memcpy(get_free_position(), pBuffer_, nCount_*sizeof(T));
@@ -181,26 +180,26 @@ namespace khorost {
             }
         };
 
-        template <typename T, typename S, S SI>
+        template <typename T, typename S, S t_reference__>
         class AutoBufferChunkT{
-            AutoBufferT<T>&         m_rabParent;
-            S                       m_nReference;
+            AutoBufferT<T>&         m_parent_;
+            S                       m_reference_;
         public:
-            AutoBufferChunkT(AutoBufferT<T>& rabParent_) :
-                m_rabParent(rabParent_)
-                , m_nReference(SI)
+            AutoBufferChunkT(AutoBufferT<T>& parent) :
+                m_parent_(parent)
+                , m_reference_(t_reference__)
             {
             }
 
-            const T*    GetChunk() const {
-                return IsValid() ? m_rabParent.GetPosition(m_nReference) : NULL;
+            const T*    get_chunk() const {
+                return is_valid() ? m_parent_.get_position(m_reference_) : NULL;
             }
 
-            void    Reset() { m_nReference = SI; }
-            void    SetReference(size_t nReference_) { m_nReference = nReference_; }
-            S       GetReference() const { return m_nReference; }
+            void    clear_reference() { m_reference_ = t_reference__; }
+            void    set_reference(size_t reference) { m_reference_ = reference; }
+            S       get_reference() const { return m_reference_; }
 
-            bool    IsValid() const { return m_nReference != SI; }
+            bool    is_valid() const { return m_reference_ != t_reference__; }
         };
 
         typedef AutoBufferT<char>		AutoBufferChar;
@@ -210,4 +209,3 @@ namespace khorost {
     }
 }
 
-#endif  // _AUTOBUFFER__H_

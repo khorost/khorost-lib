@@ -133,7 +133,7 @@ khl_mysql::Query::Query(khl_mysql* pConnection,const std::string& strQuery):
 }
 
 void khl_mysql::Query::AppendQuery(const std::string& rsQuery_) {
-	m_abQuery.Append(rsQuery_.c_str(), rsQuery_.size());
+	m_abQuery.append(rsQuery_.c_str(), rsQuery_.size());
 }
 
 void khl_mysql::Query::ExpandValue(const char* psTag_, const std::string& rsValue_) {
@@ -161,12 +161,12 @@ void khl_mysql::Query::BindValue64(const char* psTag_, uint64_t nValue_) {
 
 void khl_mysql::Query::BindValueBLOB(const char* psTag_, const AutoBufferT<uint8_t>& abBLOB_) {
 	data::AutoBufferChar	abTemp;
-	abTemp.check_size(abBLOB_.GetFillSize()*2 + 1 + 2);
-	uint32_t uiReplaceSize = mysql_real_escape_string(m_Handle, abTemp.GetPosition(1), (char*)abBLOB_.GetPosition(0), abBLOB_.GetFillSize());
+	abTemp.check_size(abBLOB_.get_fill_size()*2 + 1 + 2);
+	uint32_t uiReplaceSize = mysql_real_escape_string(m_Handle, abTemp.get_position(1), (char*)abBLOB_.get_position(0), abBLOB_.get_fill_size());
 	abTemp.DecrementFreeSize(uiReplaceSize + 2);
-	*(abTemp.GetPosition(0)) = '\'';
-	*(abTemp.GetPosition(uiReplaceSize + 1)) = '\'';
-	m_abQuery.Replace(psTag_, strlen(psTag_), abTemp.GetPosition(0), abTemp.GetFillSize());
+	*(abTemp.get_position(0)) = '\'';
+	*(abTemp.get_position(uiReplaceSize + 1)) = '\'';
+	m_abQuery.Replace(psTag_, strlen(psTag_), abTemp.get_position(0), abTemp.get_fill_size());
 }
 /*
 void MySQL::Query::BindValue(const char* strTag,const char* strTagMS,const system::DateTime& dtValue){
@@ -182,9 +182,9 @@ void khl_mysql::Query::Execute(){
     auto logger = spdlog::get(KHL_LOGGER_COMMON);
 
     // нужна z-строка, а то ошибки ползут
-    *m_abQuery.GetPosition(m_abQuery.GetFillSize()) = '\0';
+    *m_abQuery.get_position(m_abQuery.get_fill_size()) = '\0';
 m1:
-	if(mysql_real_query(m_Handle, (const char*)m_abQuery.GetPosition(0), m_abQuery.GetFillSize())){
+	if(mysql_real_query(m_Handle, (const char*)m_abQuery.get_position(0), m_abQuery.get_fill_size())){
 		int iErrorCode = mysql_errno(m_Handle);
 
 		iTry--;

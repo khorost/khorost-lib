@@ -34,6 +34,7 @@ namespace khorost {
             boost::uuids::uuid  m_id_user{};
 
             network::http_text_protocol_header_ptr m_http;
+            size_t m_receive_bytes_prev_request, m_send_bytes_prev_request;
         protected:
             size_t	data_processing(const boost::uint8_t* buffer, const size_t buffer_size) override {
                 auto server = reinterpret_cast<server2_hb*>(get_controller()->get_context());
@@ -42,10 +43,26 @@ namespace khorost {
                 if (process_bytes != 0) {
                     if (m_http->is_ready()) {
                         server->process_http(*this);
+
+                        const auto& request = m_http->get_request();
+                        const auto& response = m_http->get_response();
+                        const auto logger = server->get_logger();
+                        logger->debug("[HTTP] processed traffic in [Head={:d}+Body={:d}], out [Head={:d}+Body={:d}] with status {:d} and connection {}"
+                                      , m_receive_bytes - m_receive_bytes_prev_request - request.m_content_length_
+                                      , request.m_content_length_
+                                      , m_send_bytes - m_send_bytes_prev_request - response.m_content_length_
+                                      , response.m_content_length_
+                                      , response.m_nCode
+                                      , m_http->is_auto_close() ? HTTP_ATTRIBUTE_CONNECTION__CLOSE : HTTP_ATTRIBUTE_CONNECTION__KEEP_ALIVE);
+
                         if (m_http->is_auto_close()) {
                             close_connection();
+                        } else {
+                            m_receive_bytes_prev_request = m_receive_bytes;
+                            m_send_bytes_prev_request = m_send_bytes;
                         }
-                        m_http.reset();
+
+                        m_http->clear();
                     }
                 }
                 return process_bytes;
@@ -53,17 +70,19 @@ namespace khorost {
         public:
             http_connection(network::connection_controller* pThis_, int ID_, evutil_socket_t fd_, struct sockaddr* sa_, int socklen_) :
                 network::connection(pThis_, ID_, fd_, sa_, socklen_)
-                , m_authenticate(false) {
+                , m_authenticate(false)
+                , m_receive_bytes_prev_request(0)
+                , m_send_bytes_prev_request(0) {
                 m_http = boost::make_shared<network::http_text_protocol_header>();
             }
 
             bool is_authenticate() const { return m_authenticate; }
-            void set_authenticate(bool value) { m_authenticate = value; }
+            void set_authenticate(const bool value) { m_authenticate = value; }
 
             const std::string& get_salt(bool Reset_ = false);
 
-            network::http_text_protocol_header_ptr   get_http() { return m_http; }
-            virtual void    get_client_ip(char* pBuffer_, size_t nBufferSize_);
+            const network::http_text_protocol_header_ptr&   get_http() const { return m_http; }
+            virtual void    get_client_ip(char* buffer, size_t buffer_size);
         };
 
         db::postgres m_db_connect;

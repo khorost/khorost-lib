@@ -517,7 +517,7 @@ bool server2_hb::check_params(int argc, char* argv[], int& result) {
 
 bool server2_hb::startup() {
     m_TimerThread.reset(new boost::thread(boost::bind(&stub_timer_run, this)));
-    return m_connections.StartListen(m_nHTTPListenPort, 5);
+    return m_connections.start_listen(m_nHTTPListenPort, 5);
 }
 
 bool server2_hb::run() {
@@ -535,12 +535,12 @@ bool server2_hb::finish() {
     return true;
 }
 
-void server2_hb::http_connection::get_client_ip(char* pBuffer_, size_t nBufferSize_) {
+void server2_hb::http_connection::get_client_ip(char* pBuffer_, size_t buffer_size) {
     const char* pPIP = m_http->get_client_proxy_ip();
     if (pPIP != nullptr) {
-        strncpy(pBuffer_, pPIP, nBufferSize_);
+        strncpy(pBuffer_, pPIP, buffer_size);
     } else {
-        connection::get_client_ip(pBuffer_, nBufferSize_);
+        connection::get_client_ip(pBuffer_, buffer_size);
     }
 }
 
@@ -587,7 +587,7 @@ bool server2_hb::process_http(http_connection& connection) {
         logger->debug("[HTTP_PROCESS] worker pQueryAction not found");
 
         http->set_response_status(HTTP_RESPONSE_STATUS_NOT_FOUND, "Not found");
-        http->response(connection, "File not found");
+        http->send_response(connection, "File not found");
 
         return false;
     }
@@ -787,7 +787,7 @@ bool server2_hb::action_refresh_token(const std::string& params_uri, http_connec
         KHL_SET_CPU_DURATION(json_root, KHL_JSON_PARAM__DURATION, now);
 
         http->set_content_type(HTTP_ATTRIBUTE_CONTENT_TYPE__APP_JSON);
-        http->response(connection, json_string(json_root));
+        http->send_response(connection, json_string(json_root));
     } else {
         http->set_response_status(HTTP_RESPONSE_STATUS_UNAUTHORIZED, "Unauthorized");
         http->end_of_response(connection);
@@ -872,7 +872,7 @@ bool server2_hb::action_auth(const std::string& uri_params, http_connection& con
     }
 
     http->set_content_type(HTTP_ATTRIBUTE_CONTENT_TYPE__APP_JS);
-    http->response(connection, json_string(root));
+    http->send_response(connection, json_string(root));
 
     return true;
 }

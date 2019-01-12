@@ -57,8 +57,8 @@ bool connection::send_number(unsigned int number) {
 bool connection::compile_buffer_data() {
     size_t s, processed_bytes = 0;
 
-    for (s = 0; m_socket_buffer.GetFillSize() > s; s += processed_bytes) {
-        processed_bytes = data_processing(m_socket_buffer.GetPosition(s), m_socket_buffer.GetFillSize() - s);
+    for (s = 0; m_socket_buffer.get_fill_size() > s; s += processed_bytes) {
+        processed_bytes = data_processing(m_socket_buffer.get_position(s), m_socket_buffer.get_fill_size() - s);
         if (processed_bytes == 0)
             break;
     }
@@ -121,7 +121,7 @@ void connection::stub_conn_event(bufferevent* bev, short events, void* ctx) {
 }
 
 bool connection::open_connection(){
-    event_base* base = m_controller->GetBaseListen();
+    const auto base = m_controller->get_base_listen();
 
     m_bev = bufferevent_socket_new(base, m_fd, BEV_OPT_CLOSE_ON_FREE | BEV_OPT_THREADSAFE );
     bufferevent_setcb(m_bev, stub_conn_read, nullptr, stub_conn_event, this);
@@ -156,16 +156,16 @@ bool connection::close_connection() {
     return true;
 }
 
-connection_controller::connection_controller(connection_context* pContext_){
-    m_nUniqID = 0;
-    m_context = pContext_;
-    m_ptListen = nullptr;
-    m_ptgWorkers = nullptr;
+connection_controller::connection_controller(connection_context* context){
+    m_uniq_id_ = 0;
+    m_context_ = context;
+    m_listen_thread_ = nullptr;
+    m_worker_groups_ = nullptr;
 }
 
 connection_controller::~connection_controller(){
-    delete m_ptListen;
-    delete m_ptgWorkers;
+    delete m_listen_thread_;
+    delete m_worker_groups_;
 }
 
 connection* connection_controller::create_connection(connection_controller* pThis_, int ID_, evutil_socket_t fd_, struct sockaddr* sa_, int socklen_){
@@ -176,7 +176,7 @@ bool connection_controller::shutdown(){
     auto logger = spdlog::get(KHL_LOGGER_COMMON);
 
     logger->info(LOGGER_PREFIX"shutdown listner");
-    event_base_loopexit(m_pebBaseListen, nullptr);
+    event_base_loopexit(m_base_listen_, nullptr);
 
     logger->info(LOGGER_PREFIX"shutdown workers");
     for (std::deque<event_base*>::const_iterator cit=m_vWorkersBase.begin();cit!=m_vWorkersBase.end();++cit) {
@@ -189,14 +189,14 @@ bool connection_controller::shutdown(){
 }
 
 bool connection_controller::wait_listen() const {
-    m_ptListen->join();
-    m_ptgWorkers->join_all();
+    m_listen_thread_->join();
+    m_worker_groups_->join_all();
 
     return true;
 }
 
 bool connection_controller::remove_connection(connection* connect){
-    boost::mutex::scoped_lock lock(m_mutex);
+    boost::mutex::scoped_lock lock(m_mutex_);
 
     auto logger = spdlog::get(KHL_LOGGER_COMMON);
     logger->debug(LOGGER_PREFIX"Close connect #{:d}. Receive {:d} bytes, send {:d} bytes"
@@ -208,10 +208,10 @@ bool connection_controller::remove_connection(connection* connect){
 extern "C" const char * evutil_format_sockaddr_port_(const struct sockaddr *sa, char *out, size_t outlen);
 
 connection* connection_controller::add_connection(evutil_socket_t fd_, struct sockaddr* sa_, int socklen_){
-    boost::mutex::scoped_lock lock(m_mutex);
+    boost::mutex::scoped_lock lock(m_mutex_);
 
     auto logger = spdlog::get(KHL_LOGGER_COMMON);
-    auto pConnection = create_connection(this, GetUniqID(), fd_, sa_, socklen_);
+    auto pConnection = create_connection(this, get_uniq_id(), fd_, sa_, socklen_);
 
     char    buf[1024];
     logger->debug(LOGGER_PREFIX"Detect incoming connect #{:d} from {}. Accepted on socket #{:X}"
@@ -246,7 +246,7 @@ static void stubSignal(
 }
 #endif
 
-void connection_controller::stubAccept(
+void connection_controller::stub_accept(
                         struct evconnlistener *listener
                         , evutil_socket_t fd
                         , struct sockaddr *sa
@@ -267,7 +267,7 @@ static void stubAcceptError(struct evconnlistener *listener, void *ctx) {
     pThis->shutdown();
 }
 
-void connection_controller::stubListenRun(connection_controller* pThis_, int iListenPort_){
+void connection_controller::stub_listen_run(connection_controller* pThis_, int iListenPort_){
     auto logger = spdlog::get(KHL_LOGGER_COMMON);
     event_config*           cfg = event_config_new();
     evconnlistener*         pelListener;
@@ -284,10 +284,10 @@ void connection_controller::stubListenRun(connection_controller* pThis_, int iLi
     evthread_use_pthreads();
 #endif
 
-    pThis_->m_pebBaseListen = event_base_new_with_config(cfg);
-    logger->debug(LOGGER_PREFIX"LibEvent Method {}" ,event_base_get_method(pThis_->m_pebBaseListen));
+    pThis_->m_base_listen_ = event_base_new_with_config(cfg);
+    logger->debug(LOGGER_PREFIX"LibEvent Method {}" ,event_base_get_method(pThis_->m_base_listen_));
 
-    if (!pThis_->m_pebBaseListen) {
+    if (!pThis_->m_base_listen_) {
         // fprintf(stderr, "Could not initialize libevent!\n");
         return;
     }
@@ -299,8 +299,8 @@ void connection_controller::stubListenRun(connection_controller* pThis_, int iLi
     sin.sin_port = htons(iListenPort_);
 
     pelListener = evconnlistener_new_bind(
-        pThis_->m_pebBaseListen
-        , stubAccept
+        pThis_->m_base_listen_
+        , stub_accept
         , static_cast<void*>(pThis_)
         , LEV_OPT_REUSEABLE|LEV_OPT_CLOSE_ON_FREE
         , -1
@@ -316,7 +316,7 @@ void connection_controller::stubListenRun(connection_controller* pThis_, int iLi
 
 #ifndef WIN32
     event*                  peSignalEvent = evsignal_new(
-        pThis_->m_pebBaseListen
+        pThis_->m_base_listen_
         , SIGINT
         , stubSignal
         , (void *)pThis_);
@@ -327,19 +327,19 @@ void connection_controller::stubListenRun(connection_controller* pThis_, int iLi
     }
 #endif
     // цикл ожидания и обработки событий
-    event_base_dispatch(pThis_->m_pebBaseListen);
+    event_base_dispatch(pThis_->m_base_listen_);
 
     evconnlistener_free(pelListener);
 #ifndef WIN32
     event_free(peSignalEvent);
 #endif
-    event_base_free(pThis_->m_pebBaseListen);
+    event_base_free(pThis_->m_base_listen_);
     event_config_free(cfg);
 
     logger->info(LOGGER_PREFIX"Listen stopped");
 }
 
-void connection_controller::stubWorker(connection_controller* pThis_){
+void connection_controller::stub_worker(connection_controller* pThis_){
     auto logger = spdlog::get(KHL_LOGGER_COMMON);
     logger->info(LOGGER_PREFIX"Start worker");
     event_base* base = event_base_new();
@@ -352,15 +352,15 @@ void connection_controller::stubWorker(connection_controller* pThis_){
     logger->info(LOGGER_PREFIX"Stop worker");
 }
 
-bool connection_controller::StartListen(int iListenPort_, int iPollSize_){
+bool connection_controller::start_listen(int listen_port, int poll_size){
     auto logger = spdlog::get(KHL_LOGGER_COMMON);
-    logger->info(LOGGER_PREFIX"Start listen on port {:d}", iListenPort_);
-    m_ptgWorkers = new boost::thread_group();
-    for (int k=0; k<iPollSize_; ++k) {
-//        m_ptgWorkers->create_thread(boost::bind(&stubWorker,this));
+    logger->info(LOGGER_PREFIX"Start listen on port {:d}", listen_port);
+    m_worker_groups_ = new boost::thread_group();
+    for (int k=0; k<poll_size; ++k) {
+//        m_worker_groups_->create_thread(boost::bind(&stubWorker,this));
     }
 
-    m_ptListen = new boost::thread(boost::bind(&stubListenRun,this, iListenPort_));
+    m_listen_thread_ = new boost::thread(boost::bind(&stub_listen_run,this, listen_port));
 
     logger->info(LOGGER_PREFIX"Starting listen");
     return true;

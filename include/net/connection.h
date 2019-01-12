@@ -1,5 +1,4 @@
-#ifndef __CONNECTION_H__
-#define __CONNECTION_H__
+#pragma once
 
 #if defined(_WIN32) || defined(_WIN64)
 # include <windows.h>
@@ -37,8 +36,6 @@
 #include <deque>
 
 #include "util/autobuffer.h"
-
-#define LOG_CTX_NETWORK			"network"
 
 namespace khorost {
     namespace network {
@@ -101,38 +98,38 @@ namespace khorost {
         };
 
         class connection_controller {
-            int						m_nUniqID;
-            connection_context*      m_context;
+            int						m_uniq_id_;
+            connection_context*      m_context_;
         protected:
-            boost::mutex            m_mutex;
+            boost::mutex            m_mutex_;
             // основной слушающий поток 
-            boost::thread*          m_ptListen;
-            event_base*             m_pebBaseListen;
+            boost::thread*          m_listen_thread_;
+            event_base*             m_base_listen_;
 
             // рабочие потоки
-            boost::thread_group*    m_ptgWorkers;
+            boost::thread_group*    m_worker_groups_;
             std::deque<event_base*> m_vWorkersBase;
 
-            static void     stubListenRun(connection_controller* pThis_, int iListenPort_);
-            static void     stubWorker(connection_controller* pThis_);
-            static void     stubAccept(struct evconnlistener *listener, evutil_socket_t fd, struct sockaddr *sa, int socklen, void *user_data);
+            static void     stub_listen_run(connection_controller* pThis_, int iListenPort_);
+            static void     stub_worker(connection_controller* pThis_);
+            static void     stub_accept(struct evconnlistener *listener, evutil_socket_t fd, struct sockaddr *sa, int socklen, void *user_data);
 
-            int     	GetUniqID(){ return ++m_nUniqID; }
+            int     	get_uniq_id(){ return ++m_uniq_id_; }
 
             virtual connection* create_connection(connection_controller* pThis_, int ID_, evutil_socket_t fd_, struct sockaddr* sa_, int socklen_);
         public:
-            connection_controller(connection_context* pContext_);
+            connection_controller(connection_context* context);
             virtual ~connection_controller();
 
             // «апуск слушащего сокета. ”правление возвращаетс€ сразу
-            bool	StartListen(int iListenPort_, int iPollSize_ = 0);
+            bool	start_listen(int listen_port, int poll_size = 0);
             bool    wait_listen() const;
             bool    shutdown();
 
-            event_base* GetBaseListen() { return m_pebBaseListen; }
+            event_base* get_base_listen() const { return m_base_listen_; }
 
-            connection_context*  get_context() const { return m_context; }
-            void                set_context(connection_context* context) { m_context = context; }
+            connection_context*  get_context() const { return m_context_; }
+            void                set_context(connection_context* context) { m_context_ = context; }
 
             connection* add_connection(evutil_socket_t fd_, struct sockaddr* sa_, int socklen_);
             bool        remove_connection(connection* connect);
@@ -140,4 +137,3 @@ namespace khorost {
     }
 }
 
-#endif // __CONNECTION_H__
