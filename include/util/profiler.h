@@ -47,7 +47,11 @@ namespace khorost {
 #define STRINGIFY(x) #x
 #define TOSTRING(x) STRINGIFY(x)
 
-#define PROFILER_FUNCTION(LOGGER, ...)   khorost::profiler::cpu __cpu_profiler__(LOGGER, TOSTRING(__FUNCTION__) " (" TOSTRING(__FILE__) ":" TOSTRING(__LINE__) ")", ## __VA_ARGS__)
+#if !(defined(__PRETTY_FUNCTION__))
+#define __PRETTY_FUNCTION__   __FUNCTION__
+#endif
+
+#define PROFILER_FUNCTION(LOGGER, ...)   khorost::profiler::cpu __cpu_profiler__(LOGGER, __FUNCTION__ + std::string(" (" __FILE__ ":") + std::string(TOSTRING(__LINE__) ")"), ## __VA_ARGS__)
 #define PROFILER_TAG(LOGGER, TAG, ...)   khorost::profiler::cpu __cpu_profiler__##TAG(LOGGER, #TAG, ## __VA_ARGS__)
     }
 }

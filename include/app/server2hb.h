@@ -9,8 +9,7 @@
 #include "app/s2h-session.h"
 #include "app/s2hb-storage.h"
 #include "app/config.h"
-#include "net/geoip.h"
-#include "util//utils.h"
+#include "util/utils.h"
 
 namespace khorost {
     class server2_hb : public network::connection_context {
@@ -85,28 +84,29 @@ namespace khorost {
             virtual void    get_client_ip(char* buffer, size_t buffer_size);
         };
 
-        db::postgres m_db_connect;
-        config m_configure;
-        network::geo_ip_database m_db_geo_ip;
-        std::shared_ptr<spdlog::logger> m_logger;
+        db::postgres m_db_connect_;
+        config m_configure_;
+        std::string m_geoip_city_path_;
+        std::string m_geoip_asn_path_;
+        std::shared_ptr<spdlog::logger> m_logger_;
 
         typedef std::map<std::string, network::token_ptr>    dict_tokens;
         dict_tokens m_refresh_tokens;
         dict_tokens m_access_tokens;
     private:
-        class cb_controller : public network::connection_controller {
+        class cb_controller final : public network::connection_controller {
         public:
-            virtual network::connection* create_connection(connection_controller* pThis_, int ID_, evutil_socket_t fd_, struct sockaddr* sa_, int socklen_) {
+            network::connection* create_connection(connection_controller* pThis_, int ID_, evutil_socket_t fd_, struct sockaddr* sa_, int socklen_) override {
                 return new cb_connection(pThis_, ID_, fd_, sa_, socklen_);
             }
         };
-        class http_controller : public network::connection_controller{
+        class http_controller final : public network::connection_controller{
         public:
             http_controller(connection_context* context) :
                 network::connection_controller(context) {
             }
 
-            virtual network::connection* create_connection(connection_controller* pThis_, int ID_, evutil_socket_t fd_, struct sockaddr* sa_, int socklen_) {
+            network::connection* create_connection(connection_controller* pThis_, int ID_, evutil_socket_t fd_, struct sockaddr* sa_, int socklen_) override {
                 return new http_connection(pThis_, ID_, fd_, sa_, socklen_);
             }
         };
@@ -228,7 +228,7 @@ namespace khorost {
         static void json_fill_auth(network::s2h_session* session, bool full_info, Json::Value& value);
 
         void    set_connect(std::string sHost_, int nPort_, std::string sDatabase_, std::string sLogin_, std::string sPassword_) {
-            m_db_connect.set_connect(sHost_, nPort_, sDatabase_, sLogin_, sPassword_);
+            m_db_connect_.set_connect(sHost_, nPort_, sDatabase_, sLogin_, sPassword_);
         }
         void	set_listen_port(int nPort_) { m_nHTTPListenPort = nPort_; }
         //        void    SetStorageFolder(const std::string& strFolder_);

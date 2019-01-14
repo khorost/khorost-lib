@@ -3,50 +3,55 @@
 #include <app/khl-define.h>
 
 #ifdef WIN32
-#pragma comment(lib, "GeoIP")
+#pragma comment(lib, "libmaxminddbd")
 #endif // WIN32
 
 using namespace khorost::network;
 
-bool geo_ip_database::open_database(const std::string& sGeoiIPDatFile) {
-    if (m_gi == nullptr) {
-        auto logger = spdlog::get(KHL_LOGGER_COMMON);
+bool geo_ip_database::open_database(const std::string& path_name) {
+    auto logger = spdlog::get(KHL_LOGGER_COMMON);
 
-        logger->info("Open geoip database '{}'", sGeoiIPDatFile);
+    const auto status = MMDB_open(path_name.c_str(), MMDB_MODE_MMAP, &m_mmdb_);
 
-        m_gi = GeoIP_open(sGeoiIPDatFile.c_str(), GEOIP_STANDARD | GEOIP_SILENCE);
-        if (m_gi == nullptr) {
-            logger->warn("Error open geoip database '{}'", sGeoiIPDatFile);
-            return false;
-        }
-
-        const auto db_info = GeoIP_database_info(m_gi);
-        if (db_info != nullptr) {
-            logger->info("Geoip database info - {}", db_info);
-        } else {
-            logger->warn("Error reading geoip database info");
-        }
+    if (status != MMDB_SUCCESS) {
+        logger->warn("[GEOIP] Error open geoip database '{}'", path_name);
+        return false;
     }
+
     return true;
 }
 
 void geo_ip_database::close_database() {
-    if (m_gi != nullptr) {
-        GeoIP_delete(m_gi);
-        m_gi = nullptr;
-    }
+    MMDB_close(&m_mmdb_);
 }
 
 std::string geo_ip_database::get_country_code_by_ip(const std::string& ip) const {
     std::string country_code = "--";
 
-    if (m_gi != nullptr) {
-        auto logger = spdlog::get(KHL_LOGGER_COMMON);
-        auto idx = GeoIP_database_edition(m_gi);
-        const auto country_id = GeoIP_id_by_addr(m_gi, ip.c_str());
-        country_code = GeoIP_country_code[country_id];
+    int gai_error = 0; // get_address_info() error
+    int mmdb_error = 0;
 
-        logger->debug("GetCountryCodeByIP('{}') = '{}'", ip, country_code);
+    MMDB_lookup_result_s result = MMDB_lookup_string(const_cast<MMDB_s *const>(&m_mmdb_), ip.c_str(), &gai_error, &mmdb_error);
+    if (gai_error) {
+    }
+    if (mmdb_error) {
+    }
+    if (result.found_entry) {
+        const std::vector<const char*> lookup_path = {"country", "iso_code", nullptr};
+
+        MMDB_entry_s* entry = &result.entry;
+        /*        MMDB_entry_data_list_s* as;
+                MMDB_get_entry_data_list(entry, &as);
+                MMDB_dump_entry_data_list(stdout, as, 2);
+                MMDB_free_entry_data_list(as);
+        */
+        MMDB_entry_data_s result2;
+        auto r = MMDB_aget_value(entry, &result2, lookup_path.data());
+        if (result2.has_data) {
+            if (result2.type == MMDB_DATA_TYPE_UTF8_STRING) {
+                country_code = std::string(result2.utf8_string, result2.data_size);
+            }
+        }
     }
 
     return country_code;

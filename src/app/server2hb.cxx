@@ -5,6 +5,7 @@
 #endif
 
 #include "app/server2hb.h"
+#include "net/geoip.h"
 
 #include <openssl/md5.h>
 #include <boost/algorithm/hex.hpp>
@@ -348,7 +349,7 @@ void server2_hb::service_report_event(LPTSTR szFunction) {
 
 server2_hb::server2_hb() :
     m_connections(reinterpret_cast<connection_context*>(this))
-    , m_db_base(m_db_connect)
+    , m_db_base(m_db_connect_)
     , m_nHTTPListenPort(0)
     , m_dispatcher(this)
     , m_shutdown_timer(false) {
@@ -368,19 +369,38 @@ bool server2_hb::prepare_to_start() {
     m_dictActionS2H.insert(std::pair<std::string, funcActionS2H>(S2H_PARAM_ACTION_AUTH, &server2_hb::action_auth));
     m_dictActionS2H.insert(std::pair<std::string, funcActionS2H>("refresh_token", &server2_hb::action_refresh_token));
 
-    set_listen_port(m_configure.get_value("http:port", S2H_DEFAULT_TCP_PORT));
-    set_http_doc_root(m_configure.get_value("http:docroot", "./"), m_configure.get_value("http:storageroot", "./"));
-    set_session_driver(m_configure.get_value("http:session", "./session.db"));
+    set_listen_port(m_configure_.get_value("http:port", S2H_DEFAULT_TCP_PORT));
+    set_http_doc_root(m_configure_.get_value("http:docroot", "./"), m_configure_.get_value("http:storageroot", "./"));
+    set_session_driver(m_configure_.get_value("http:session", "./session.db"));
 
     set_connect(
-        m_configure.get_value("storage:host", "localhost")
-        , m_configure.get_value("storage:port", 5432)
-        , m_configure.get_value("storage:db", "")
-        , m_configure.get_value("storage:user", "")
-        , m_configure.get_value("storage:password", "")
+        m_configure_.get_value("storage:host", "localhost")
+        , m_configure_.get_value("storage:port", 5432)
+        , m_configure_.get_value("storage:db", "")
+        , m_configure_.get_value("storage:user", "")
+        , m_configure_.get_value("storage:password", "")
     );
 
-    m_db_geo_ip.open_database(m_configure.get_value("geoip:db", ""));
+    logger->debug("[GEOIP] MMDB version: {}", khorost::network::geo_ip_database::get_lib_version_mmdb());
+
+    khorost::network::geo_ip_database db;
+
+    const auto geoip_city_path = m_configure_.get_value("geoip:city", "");
+    if (db.open_database(geoip_city_path)) {
+//        logger->debug("[GEOIP] meta city info \"{}\"", db.get_metadata());
+        m_geoip_city_path_ = geoip_city_path;
+    } else {
+        logger->warn("[GEOIP] Error init MMDB City by path {}", geoip_city_path);
+    }
+    db.close_database();
+
+    const auto geoip_asn_path = m_configure_.get_value("geoip:asn", "");
+    if (db.open_database(geoip_asn_path)){
+//        logger->debug("[GEOIP] meta asn info \"{}\"", db.get_metadata());
+        m_geoip_asn_path_ = geoip_asn_path;
+    } else {
+        logger->warn("[GEOIP] Error init MMDB ASN by path {}", geoip_asn_path);
+    }
 
     return true;
 }
@@ -389,7 +409,7 @@ bool server2_hb::auto_execute() {
     auto logger = get_logger();
     logger->info("[SERVER] AutoExecute");
 
-    auto cfg_create_user = m_configure["autoexec"]["Create"]["User"];
+    auto cfg_create_user = m_configure_["autoexec"]["Create"]["User"];
     if (!cfg_create_user.isNull()) {
         for (auto cfg_user : cfg_create_user) {
             if (!m_db_base.IsUserExist(cfg_user["Login"].asString())) {
@@ -434,9 +454,9 @@ bool server2_hb::check_params(int argc, char* argv[], int& result) {
     }
 
     auto console = spdlog::get(KHL_LOGGER_CONSOLE);
-    if (m_configure.load(m_sConfigFileName)) {
+    if (m_configure_.load(m_sConfigFileName)) {
         console->debug("Config file parsed");
-        khorost::log::prepare_logger(m_configure, KHL_LOGGER_COMMON);
+        khorost::log::prepare_logger(m_configure_, KHL_LOGGER_COMMON);
     } else {
         console->warn("Config file not parsed");
         return false;
@@ -444,8 +464,8 @@ bool server2_hb::check_params(int argc, char* argv[], int& result) {
 
     auto logger = get_logger();
 #if defined(_WIN32) || defined(_WIN64)
-    m_service_name = vm.count("name")?vm["name"].as<std::string>(): m_configure.get_value("service:name", std::string("khlsrv_") + get_context_default_name());
-    m_service_display_name = m_configure.get_value("service:displayName", std::string("Khorost Service (") + get_context_default_name() + ")");
+    m_service_name = vm.count("name")?vm["name"].as<std::string>(): m_configure_.get_value("service:name", std::string("khlsrv_") + get_context_default_name());
+    m_service_display_name = m_configure_.get_value("service:displayName", std::string("Khorost Service (") + get_context_default_name() + ")");
 
     if (vm.count("service")) {
         m_run_as_service = true;
@@ -526,10 +546,9 @@ bool server2_hb::run() {
 }
 
 bool server2_hb::finish() {
-    m_db_geo_ip.close_database();
     khorost::network::destroy();
 
-    m_logger = nullptr;
+    m_logger_ = nullptr;
     spdlog::shutdown();
 
     return true;
@@ -941,8 +960,8 @@ network::token_ptr server2_hb::find_access_token(const std::string& access_token
 }
 
 std::shared_ptr<spdlog::logger> server2_hb::get_logger() {
-    if (m_logger == nullptr) {
-        m_logger = spdlog::get(KHL_LOGGER_COMMON);
+    if (m_logger_ == nullptr) {
+        m_logger_ = spdlog::get(KHL_LOGGER_COMMON);
     }
-    return m_logger;
+    return m_logger_;
 }

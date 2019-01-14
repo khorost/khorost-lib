@@ -9,10 +9,10 @@ KHL_OBJECTS = net/connection.o system/fastfile.o net/http.o db/sqlite3.o db/post
 
 KHL_INC =  -I/usr/include/mysql 
 
-KHL_LIB = -L/usr/local/lib -lmysqlclient -lGeoIP \
+KHL_LIB = -L/usr/local/lib -lmysqlclient \
 	-lz -levent -levent_pthreads -lboost_thread -lboost_filesystem \
 	-lboost_system -llog4cxx -lsqlite3 -lcurl -lboost_regex -lpthread \
-	-lstdc++ -lcrypto -lpqxx -lpq  -lboost_program_options -lboost_date_time -lm
+	-lstdc++ -lcrypto -lpqxx -lpq  -lboost_program_options -lboost_date_time -lm -lmaxminddb
 
 
 KHL_EXT_SRC = json/jsoncpp.cpp 
