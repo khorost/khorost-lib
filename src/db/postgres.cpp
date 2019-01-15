@@ -168,22 +168,23 @@ std::string linked_postgres::to_string(const pqxx::transaction_base& txn, const 
     return std::to_string(value);
 }
 
-bool khl_postgres::refresh_token(khorost::network::token_ptr& token, int access_timeout, int refresh_timeout) const {
+bool khl_postgres::refresh_token(khorost::network::token_ptr& token, int access_timeout, int refresh_timeout, int append_time) const {
     db_connection conn(m_db_);
     pqxx::work txn(conn.get_handle());
 
     std::string access_interval, refresh_interval;
+    const auto s_append_time = std::to_string(append_time);
 
     if (access_timeout != 0) {
-        access_interval = "'" + std::to_string(access_timeout) + " SECONDS'";
+        access_interval = "'" + std::to_string(access_timeout + append_time) + " SECONDS'";
     } else {
-        access_interval = "'1 SECONDS' * (kt.payload#>>'{delta_access_time}')::int";
+        access_interval = "'1 SECONDS' * ((kt.payload#>>'{delta_access_time}')::int + " + s_append_time + ")";
     }
 
     if (refresh_timeout != 0) {
-        refresh_interval = "'" + std::to_string(refresh_timeout) + " SECONDS'";
+        refresh_interval = "'" + std::to_string(refresh_timeout + append_time) + " SECONDS'";
     } else {
-        refresh_interval = "'1 SECONDS' * (kt.payload#>>'{delta_refresh_time}')::int";
+        refresh_interval = "'1 SECONDS' * ((kt.payload#>>'{delta_refresh_time}')::int + " + s_append_time + ")";
     }
 
     const auto pre_refresh_token = token->get_refresh_token();
@@ -216,7 +217,7 @@ bool khl_postgres::refresh_token(khorost::network::token_ptr& token, int access_
     return true;
 }
 
-khorost::network::token_ptr khl_postgres::create_token(const int access_timeout, const int refresh_timeout,
+khorost::network::token_ptr khl_postgres::create_token(const int access_timeout, const int refresh_timeout, int append_time,
                                                        const Json::Value& payload) const {
     db_connection conn(m_db_);
     pqxx::work txn(conn.get_handle());
@@ -228,8 +229,8 @@ khorost::network::token_ptr khl_postgres::create_token(const int access_timeout,
     const auto r = txn.exec(
         "INSERT INTO admin.khl_tokens "
         " (access_token, access_time, refresh_token, refresh_time, payload) "
-        " VALUES( uuid_generate_v4(), NOW() + INTERVAL '" + std::to_string(access_timeout) +
-        " SECONDS', uuid_generate_v4(), NOW() + INTERVAL '" + std::to_string(refresh_timeout) + " SECONDS', " +
+        " VALUES( uuid_generate_v4(), NOW() + INTERVAL '" + std::to_string(access_timeout + append_time) +
+        " SECONDS', uuid_generate_v4(), NOW() + INTERVAL '" + std::to_string(refresh_timeout + append_time) + " SECONDS', " +
         to_string(txn, token_payload) + ") "
         " RETURNING replace(access_token::text,'-',''), access_time AT TIME ZONE 'UTC', replace(refresh_token::text,'-',''), refresh_time AT TIME ZONE 'UTC'"
     );

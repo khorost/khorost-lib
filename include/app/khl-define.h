@@ -6,6 +6,14 @@
 #define KHL_HTTP_PARAM__AUTHORIZATION   "Authorization"
 #define KHL_JSON_PARAM__DURATION "0dur"
 
+#define TIME_SECONDS_IN_MINUTE      (60)
+#define TIME_MINUTES_IN_HOUR        (60*TIME_SECONDS_IN_MINUTE)
+#define TIME_HOURS_IN_DAY           (24*TIME_MINUTES_IN_HOUR)
+#define TIME_DAY_IN_WEEK            (7*TIME_HOURS_IN_DAY)
+
+#define KHL_TOKEN_TYPE "token"
+#define KHL_TOKEN_APPEND_TIME       (2*TIME_SECONDS_IN_MINUTE)
+
 #define KHL_SET_TIMESTAMP_MILLISECONDS(json_object, json_tag, json_value)       json_object[json_tag] = khorost::data::epoch_diff(json_value).total_milliseconds()
 #define KHL_SET_TIMESTAMP_MICROSECONDS(json_object, json_tag, json_value)       json_object[json_tag] = khorost::data::epoch_diff(json_value).total_microseconds()
 

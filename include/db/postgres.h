@@ -136,9 +136,9 @@ namespace khorost {
             khl_postgres(postgres& db) : linked_postgres(db) {}
             virtual ~khl_postgres() = default;
 
-            network::token_ptr create_token(int access_timeout, int refresh_timeout, const Json::Value& payload) const;
+            network::token_ptr create_token(int access_timeout, int refresh_timeout, int append_time, const Json::Value& payload) const;
             network::token_ptr load_token(bool is_refresh_token, const std::string& token_id) const;
-            bool refresh_token(network::token_ptr& token, int access_timeout, int refresh_timeout) const;
+            bool refresh_token(network::token_ptr& token, int access_timeout, int refresh_timeout, int append_time) const;
         };
     }
 }

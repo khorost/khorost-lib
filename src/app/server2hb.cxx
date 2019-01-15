@@ -729,8 +729,8 @@ network::session_ptr server2_hb::processing_session(http_connection& connect) {
 }
 
 network::token_ptr server2_hb::parse_token(khorost::network::http_text_protocol_header_ptr& http, const bool is_access_token, const boost::posix_time::ptime& check) {
-    static const std::string token_mask = "token ";
-    auto logger = get_logger();
+    static const std::string token_mask = KHL_TOKEN_TYPE " ";
+    const auto logger = get_logger();
     std::string id;
 
     const auto header_authorization = http->get_header_parameter(KHL_HTTP_PARAM__AUTHORIZATION);
@@ -771,11 +771,13 @@ network::token_ptr server2_hb::parse_token(khorost::network::http_text_protocol_
 }
 
 void server2_hb::fill_json_token(const network::token_ptr& token, Json::Value& value) {
+    value["token_type"] = KHL_TOKEN_TYPE;
+
     value["access_token"] = token->get_access_token();
     value["refresh_token"] = token->get_refresh_token();
 
-    KHL_SET_TIMESTAMP_MILLISECONDS(value, "access_expire", token->get_access_expire());
-    KHL_SET_TIMESTAMP_MILLISECONDS(value, "refresh_expire", token->get_refresh_expire());
+    value["access_expires_in"] = token->get_access_duration();
+    value["refresh_expires_in"] = token->get_refresh_duration();
 }
 
 bool server2_hb::action_refresh_token(const std::string& params_uri, http_connection& connection, khorost::network::s2h_session* session) {
@@ -792,7 +794,7 @@ bool server2_hb::action_refresh_token(const std::string& params_uri, http_connec
             const auto access_token = token->get_access_token();
             const auto refresh_token = token->get_refresh_token();
 
-            if (m_db_base.refresh_token(token, time_access, time_refresh)) {
+            if (m_db_base.refresh_token(token, time_access, time_refresh, KHL_TOKEN_APPEND_TIME)) {
                 update_tokens(token, access_token, refresh_token);
 
                 fill_json_token(token, json_root);

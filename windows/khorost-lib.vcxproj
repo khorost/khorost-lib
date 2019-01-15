@@ -163,6 +163,7 @@
   <ItemGroup>
     <ClInclude Include="..\include\app\config.h" />
     <ClInclude Include="..\include\app\framework.h" />
+    <ClInclude Include="..\include\app\khl-define.h" />
     <ClInclude Include="..\include\app\server2hb.h" />
     <ClInclude Include="..\include\db\mysql.h" />
     <ClInclude Include="..\include\db\postgres.h" />
