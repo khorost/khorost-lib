@@ -244,7 +244,7 @@ khorost::network::token_ptr khl_postgres::create_token(const int access_timeout,
     return boost::make_shared<network::token>(row0[0].as<std::string>(),
                                               boost::posix_time::time_from_string(row0[1].as<std::string>()),
                                               row0[2].as<std::string>(),
-                                              boost::posix_time::time_from_string(row0[3].as<std::string>()), payload);
+                                              boost::posix_time::time_from_string(row0[3].as<std::string>()), token_payload);
 }
 
 khorost::network::token_ptr khl_postgres::load_token(bool is_refresh_token, const std::string& token_id) const {

@@ -518,7 +518,7 @@ void http_text_protocol_header::send_response(network::connection& connect, cons
         connect.send_string(HTTP_ATTRIBUTE_ENDL, sizeof(HTTP_ATTRIBUTE_ENDL)-1);
     }
     connect.send_string(HTTP_ATTRIBUTE_ENDL, sizeof(HTTP_ATTRIBUTE_ENDL)-1);
-    if (response!= nullptr) {
+    if (response != nullptr && strcmp(get_query_method(), "HEAD") != 0) {
         connect.send_string(response, m_response_.m_content_length_);
     }
 }
