@@ -45,12 +45,13 @@ namespace khorost {
 
                         const auto& request = m_http->get_request();
                         const auto& response = m_http->get_response();
+                        const auto response_real_length = m_http->is_send_data() ? response.m_content_length_ : 0;
                         const auto logger = server->get_logger();
                         logger->debug("[HTTP] processed traffic in [Head={:d}+Body={:d}], out [Head={:d}+Body={:d}] with status {:d} and connection {}"
                                       , m_receive_bytes - m_receive_bytes_prev_request - request.m_content_length_
                                       , request.m_content_length_
-                                      , m_send_bytes - m_send_bytes_prev_request - response.m_content_length_
-                                      , response.m_content_length_
+                                      , m_send_bytes - m_send_bytes_prev_request - response_real_length
+                                      , response_real_length
                                       , response.m_nCode
                                       , m_http->is_auto_close() ? HTTP_ATTRIBUTE_CONNECTION__CLOSE : HTTP_ATTRIBUTE_CONNECTION__KEEP_ALIVE);
 

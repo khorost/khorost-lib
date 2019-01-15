@@ -445,6 +445,10 @@ const char* http_text_protocol_header::get_header_parameter(const std::string& p
     return default_value;
 }
 
+bool http_text_protocol_header::is_send_data() const {
+    return strcmp(get_query_method(), "HEAD") != 0;
+}
+
 void http_text_protocol_header::send_response(network::connection& connect, const char* response, const size_t length) {
     using namespace boost::posix_time;
 
@@ -518,7 +522,7 @@ void http_text_protocol_header::send_response(network::connection& connect, cons
         connect.send_string(HTTP_ATTRIBUTE_ENDL, sizeof(HTTP_ATTRIBUTE_ENDL)-1);
     }
     connect.send_string(HTTP_ATTRIBUTE_ENDL, sizeof(HTTP_ATTRIBUTE_ENDL)-1);
-    if (response != nullptr && strcmp(get_query_method(), "HEAD") != 0) {
+    if (is_send_data() && response != nullptr) {
         connect.send_string(response, m_response_.m_content_length_);
     }
 }
@@ -671,7 +675,10 @@ bool http_text_protocol_header::send_file(const std::string& query_uri, network:
         set_last_modify(from_time_t(ff.get_time_update()));
         send_response(connect, nullptr, ff.get_length());
 
-        connect.send_data(reinterpret_cast<const boost::uint8_t*>(ff.get_memory()), ff.get_length());
+        if (is_send_data()) {
+            // TODO добавить вариант отправки чанками
+            connect.send_data(reinterpret_cast<const boost::uint8_t*>(ff.get_memory()), ff.get_length());
+        }
 
         ff.close_file();
     } else {

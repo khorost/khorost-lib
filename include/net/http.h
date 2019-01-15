@@ -260,6 +260,7 @@ namespace khorost {
 
             void    set_last_modify(boost::posix_time::ptime tLM_) { m_response_.m_tLastModify = tLM_; }
 
+            bool is_send_data() const;
             void send_response(connection& connect, const char* response, size_t length);
 
             void send_response(connection& connect, const std::string& body) {
