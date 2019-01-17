@@ -169,7 +169,7 @@ namespace khorost {
         bool action_refresh_token(const std::string& params_uri, http_connection& connection, khorost::network::s2h_session* session);
         bool action_auth(const std::string& uri_params, http_connection& connection, network::s2h_session* session);
 
-        network::token_ptr find_token(bool is_refresh_token, const std::string& refresh_token);
+        network::token_ptr find_token(bool is_access_token, const std::string& refresh_token);
         void update_tokens(const network::token_ptr& token, const std::string& access_token,
                            const std::string& refresh_token);
         void append_token(const khorost::network::token_ptr& token);

@@ -933,24 +933,24 @@ void server2_hb::update_tokens(const network::token_ptr& token, const std::strin
     append_token(token);
 }
 
-network::token_ptr server2_hb::find_token(bool is_refresh_token, const std::string& token_id) {
+network::token_ptr server2_hb::find_token(bool is_access_token, const std::string& token_id) {
     if (token_id.empty()) {
         return nullptr;
     }
 
-    if (is_refresh_token) {
-        const auto it = m_refresh_tokens.find(token_id);
-        if (it != m_refresh_tokens.end()) {
-            return it->second;
-        }
-    } else {
+    if (is_access_token) {
         const auto it = m_access_tokens.find(token_id);
         if (it != m_access_tokens.end()) {
             return it->second;
         }
+    } else {
+        const auto it = m_refresh_tokens.find(token_id);
+        if (it != m_refresh_tokens.end()) {
+            return it->second;
+        }
     }
 
-    auto token = m_db_base.load_token(is_refresh_token, token_id);
+    auto token = m_db_base.load_token(is_access_token, token_id);
     if (token!=nullptr) {
         append_token(token);
     }

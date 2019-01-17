@@ -247,11 +247,11 @@ khorost::network::token_ptr khl_postgres::create_token(const int access_timeout,
                                               boost::posix_time::time_from_string(row0[3].as<std::string>()), token_payload);
 }
 
-khorost::network::token_ptr khl_postgres::load_token(bool is_refresh_token, const std::string& token_id) const {
+khorost::network::token_ptr khl_postgres::load_token(bool is_access_token, const std::string& token_id) const {
     db_connection conn(m_db_);
     pqxx::read_transaction txn(conn.get_handle());
 
-    const auto code_token = std::string(is_refresh_token ? "refresh_token" : "access_token");
+    const auto code_token = std::string(is_access_token ? "access_token" : "refresh_token");
 
     auto r = txn.exec(
         "SELECT "
