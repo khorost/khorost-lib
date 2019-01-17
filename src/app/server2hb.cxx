@@ -748,7 +748,7 @@ network::token_ptr server2_hb::parse_token(khorost::network::http_text_protocol_
         id = data::escape_string(http->get_parameter("token", ""));
     }
 
-    auto token = is_access_token ? find_access_token(id) : find_refresh_token(id);
+    auto token = find_token(is_access_token, id);
     if (token != nullptr) {
         if (check != boost::date_time::neg_infin && (is_access_token && !token->is_no_expire_access(check) || !is_access_token && !token->is_no_expire_refresh(check))) {
             logger->debug("[OAUTH] {} Token {} expire. timestamp = {}"
@@ -933,28 +933,25 @@ void server2_hb::update_tokens(const network::token_ptr& token, const std::strin
     append_token(token);
 }
 
-network::token_ptr server2_hb::find_refresh_token(const std::string& refresh_token) {
-    const auto it = m_refresh_tokens.find(refresh_token);
-    if (it!=m_refresh_tokens.end()) {
-        return it->second;
+network::token_ptr server2_hb::find_token(bool is_refresh_token, const std::string& token_id) {
+    if (token_id.empty()) {
+        return nullptr;
     }
 
-    auto token = m_db_base.load_token(true, refresh_token);
+    if (is_refresh_token) {
+        const auto it = m_refresh_tokens.find(token_id);
+        if (it != m_refresh_tokens.end()) {
+            return it->second;
+        }
+    } else {
+        const auto it = m_access_tokens.find(token_id);
+        if (it != m_access_tokens.end()) {
+            return it->second;
+        }
+    }
+
+    auto token = m_db_base.load_token(is_refresh_token, token_id);
     if (token!=nullptr) {
-        append_token(token);
-    }
-
-    return token;
-}
-
-network::token_ptr server2_hb::find_access_token(const std::string& access_token) {
-    const auto it = m_access_tokens.find(access_token);
-    if (it != m_access_tokens.end()) {
-        return it->second;
-    }
-
-    auto token = m_db_base.load_token(false, access_token);
-    if (token != nullptr) {
         append_token(token);
     }
 
