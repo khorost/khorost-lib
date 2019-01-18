@@ -4,6 +4,7 @@
 #include <boost/lexical_cast.hpp>
 
 #include <json/json.h>
+#include <util/utils.h>
 
 #include "app/s2h-session.h"
 
@@ -19,7 +20,6 @@ void s2h_session::get_expire_shift(boost::posix_time::time_duration& value) {
 
 bool s2h_session::export_data(std::string& data) {
     Json::Value root, roles;
-    Json::FastWriter writer;
 
     root["bAuthenticate"] = m_bAuthenticate;
     root["sNickname"] = m_sNickname;
@@ -29,7 +29,7 @@ bool s2h_session::export_data(std::string& data) {
     fill_roles(roles);
 
     root["Roles"] = roles;
-    data = writer.write(root);
+    data = data::json_string(root);
 
     return session::export_data(data);
 }
@@ -52,9 +52,8 @@ void s2h_session::reset() {
 
 bool s2h_session::import_data(const std::string& data) {
     Json::Value root;
-    Json::Reader reader;
 
-    if (!reader.parse(data, root)) {
+    if (!data::parse_json_string(data, root)) {
         return false;
     }
 

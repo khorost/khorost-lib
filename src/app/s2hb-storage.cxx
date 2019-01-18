@@ -182,7 +182,7 @@ bool S2HBStorage::SessionLogger(const s2h_session* pSession_, const Json::Value&
 
     txn.exec(
         "INSERT INTO admin.khl_sessions (id, dtFirst, dtLast, dtExpire, stats) "
-        " VALUES ('" + pSession_->get_session_id() + "', TIMESTAMP '" + to_iso_string(pSession_->get_created()) + "' , TIMESTAMP '" + to_iso_string(pSession_->get_last_activity()) + "' , TIMESTAMP '" + to_iso_string(pSession_->get_expired()) + "' , " + txn.quote(Json::FastWriter().write(jsStat_)) + ")");
+        " VALUES ('" + pSession_->get_session_id() + "', TIMESTAMP '" + to_iso_string(pSession_->get_created()) + "' , TIMESTAMP '" + to_iso_string(pSession_->get_last_activity()) + "' , TIMESTAMP '" + to_iso_string(pSession_->get_expired()) + "' , " + to_string(txn,jsStat_) + ")");
 
     txn.commit();
 
@@ -198,7 +198,7 @@ bool S2HBStorage::IsUserExist(const std::string& sLogin_) {
         "FROM admin.khl_users "
         "WHERE login = " + txn.quote(sLogin_)
     );
-    return r.size() > 0;
+    return !r.empty();
 }
 
 bool S2HBStorage::GetUserRoles(int& nUserID_, s2h_session* ps_) {
@@ -215,7 +215,7 @@ bool S2HBStorage::GetUserRoles(int& nUserID_, s2h_session* ps_) {
 
     pqxx::result r = txn.exec(sSQL);
 
-    if (r.size() != 0) {
+    if (!r.empty()) {
         for (auto row : r) {
             ps_->AppendRole(row[0].as<std::string>());
         }

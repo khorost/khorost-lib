@@ -14,7 +14,7 @@ namespace po = boost::program_options;
 #include <boost/filesystem.hpp>
 namespace fs = boost::filesystem;
 
-khorost::server2_hb* khorost::g_pS2HB = NULL;
+khorost::server2_hb* khorost::g_pS2HB = nullptr;
 
 using namespace khorost;
 
@@ -823,7 +823,6 @@ bool server2_hb::action_auth(const std::string& uri_params, http_connection& con
     auto http = connection.get_http();
 
     Json::Value root;
-    Json::Reader reader;
     std::string action, params;
     std::string nickname, hash, salt;
     int user_id;
@@ -834,7 +833,7 @@ bool server2_hb::action_auth(const std::string& uri_params, http_connection& con
         Json::Value auth;
         const auto body = reinterpret_cast<const char*>(http->get_body());
 
-        if (reader.parse(body, body + http->get_body_length(), auth)) {
+        if (data::parse_json(body, body + http->get_body_length(), auth)) {
             const auto login = auth["login"].asString();
             const auto password = auth["password"].asString();
 

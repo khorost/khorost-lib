@@ -18,5 +18,9 @@ namespace khorost {
         typedef boost::date_time::local_adjustor<boost::posix_time::ptime, +3, boost::posix_time::no_dst> tz_msk;
 
         std::string json_string(const Json::Value& value);
+        bool parse_json(char const* begin_doc, char const* end_doc, Json::Value& value);
+        inline bool parse_json_string(const std::string& source, Json::Value& value) {
+            return parse_json(source.c_str(), source.c_str() + source.size(), value);
+        }
     }
 }

@@ -270,13 +270,12 @@ khorost::network::token_ptr khl_postgres::load_token(bool is_access_token, const
         return nullptr;
     }
 
-    Json::Reader reader;
     Json::Value payload;
 
     const auto& row0 = r[0];
 
     if (!row0[4].is_null()) {
-        reader.parse(row0[4].as<std::string>(), payload);
+        data::parse_json_string(row0[4].as<std::string>(), payload);
     }
 
     return boost::make_shared<network::token>(row0[0].as<std::string>(),
