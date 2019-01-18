@@ -13,6 +13,7 @@
 
 #include "util/logger.h"
 #include "app/khl-define.h"
+#include "../../../server/sig_server.h"
 
 using namespace khorost::db;
 
@@ -51,7 +52,7 @@ void db_pool::release_connection_pool(db_connection_pool_ptr pdbc_) {
 
     if (m_FreePool.size() < 4) {
         auto logger = spdlog::get(KHL_LOGGER_COMMON);
-        logger->debug("[return to pool] size = {:d}",m_FreePool.size());
+        logger->debug("[return to pool] size = {:d}", m_FreePool.size());
     }
 }
 
@@ -146,7 +147,7 @@ void postgres::ExecuteCustomSQL(bool bReadOnly_, const std::string& sSQL_, Json:
 }
 
 std::string linked_postgres::to_string(const pqxx::transaction_base& txn,
-                                      const boost::posix_time::ptime& timestamp, const bool nullable_infinity) {
+                                       const boost::posix_time::ptime& timestamp, const bool nullable_infinity) {
     if (timestamp.is_pos_infinity()) {
         return nullable_infinity ? "null" : "'infinity'::timestamp";
     } else if (timestamp.is_neg_infinity()) {
@@ -157,7 +158,7 @@ std::string linked_postgres::to_string(const pqxx::transaction_base& txn,
 }
 
 std::string linked_postgres::to_string(const pqxx::transaction_base& txn, const Json::Value& info) {
-    return info.isNull() ? "null" : (txn.quote(Json::FastWriter().write(info)) + "::jsonb");
+    return info.isNull() ? "null" : (txn.quote(data::json_string(info)) + "::jsonb");
 }
 
 std::string linked_postgres::to_string(const pqxx::transaction_base& txn, const bool value) {

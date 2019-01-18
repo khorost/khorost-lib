@@ -1,6 +1,12 @@
 #include "util/utils.h"
 #include <regex>
 
+Json::StreamWriterBuilder g_builder;
+
+std::string khorost::data::json_string(const Json::Value& value) {
+    return writeString(g_builder, value);
+}
+
 std::string khorost::data::escape_string(const std::string& s_) {
     std::string r;
 

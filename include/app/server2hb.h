@@ -224,7 +224,6 @@ namespace khorost {
         virtual bool    finish();
 
         static void parse_action(const std::string& query, std::string& action, std::string& params);
-        static std::string json_string(const Json::Value& value, bool styled = false);
         static void json_fill_auth(network::s2h_session* session, bool full_info, Json::Value& value);
 
         void    set_connect(std::string sHost_, int nPort_, std::string sDatabase_, std::string sLogin_, std::string sPassword_) {

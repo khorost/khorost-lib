@@ -140,7 +140,9 @@
   <ItemGroup>
     <ClCompile Include="..\external\src\ini\dictionary.c" />
     <ClCompile Include="..\external\src\ini\iniparser.c" />
-    <ClCompile Include="..\external\src\json\jsoncpp.cpp" />
+    <ClCompile Include="..\external\src\json\json_reader.cpp" />
+    <ClCompile Include="..\external\src\json\json_value.cpp" />
+    <ClCompile Include="..\external\src\json\json_writer.cpp" />
     <ClCompile Include="..\external\src\win\strptime.c" />
     <ClCompile Include="..\src\app\config.cxx" />
     <ClCompile Include="..\src\app\s2h-session.cxx" />

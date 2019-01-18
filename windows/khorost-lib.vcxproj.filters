@@ -19,9 +19,6 @@
     <ClCompile Include="..\external\src\ini\iniparser.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\external\src\json\jsoncpp.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\util\logger.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -62,6 +59,15 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\src\system\fastfile.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\external\src\json\json_reader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\external\src\json\json_value.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\external\src\json\json_writer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

@@ -808,7 +808,7 @@ bool server2_hb::action_refresh_token(const std::string& params_uri, http_connec
         KHL_SET_CPU_DURATION(json_root, KHL_JSON_PARAM__DURATION, now);
 
         http->set_content_type(HTTP_ATTRIBUTE_CONTENT_TYPE__APP_JSON);
-        http->send_response(connection, json_string(json_root));
+        http->send_response(connection, data::json_string(json_root));
     } else {
         http->set_response_status(HTTP_RESPONSE_STATUS_UNAUTHORIZED, "Unauthorized");
         http->end_of_response(connection);
@@ -893,16 +893,9 @@ bool server2_hb::action_auth(const std::string& uri_params, http_connection& con
     }
 
     http->set_content_type(HTTP_ATTRIBUTE_CONTENT_TYPE__APP_JS);
-    http->send_response(connection, json_string(root));
+    http->send_response(connection, data::json_string(root));
 
     return true;
-}
-
-std::string server2_hb::json_string(const Json::Value& value, const bool styled) {
-    if (styled) {
-        return Json::StyledWriter().write(value);
-    }
-    return Json::FastWriter().write(value);
 }
 
 void server2_hb::json_fill_auth(network::s2h_session* session, bool full_info, Json::Value& value) {
