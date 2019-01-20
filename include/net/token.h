@@ -34,10 +34,10 @@ namespace khorost {
 
             bool is_no_expire_refresh(const boost::posix_time::ptime& check) const { return check < m_refresh_expire_; }
 
-            Json::Value get_payload() const { return m_payload_; }
+            const Json::Value& get_payload() const { return m_payload_; }
 
-            boost::posix_time::ptime get_access_expire() const { return m_access_expire_; }
-            boost::posix_time::ptime get_refresh_expire() const { return m_refresh_expire_; }
+            const boost::posix_time::ptime& get_access_expire() const { return m_access_expire_; }
+            const boost::posix_time::ptime& get_refresh_expire() const { return m_refresh_expire_; }
 
             int get_access_duration() const ;
             int get_refresh_duration() const ;

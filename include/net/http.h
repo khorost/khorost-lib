@@ -120,7 +120,9 @@ namespace khorost {
             } m_request_;
 
             // ****************************************************************
-            struct response final {
+            class response final {
+                std::map<std::string, std::string> m_header_params_;
+            public:
                 struct cookie final {
                     std::string m_sCookie;
                     std::string m_sValue;
@@ -166,8 +168,6 @@ namespace khorost {
                 size_t m_content_length_;
 
                 void    clear() {
-                    using namespace boost::posix_time;
-
                     m_cookies_.clear();
                     m_auto_close = true;
                     m_nCode = HTTP_RESPONSE_STATUS_OK;
@@ -175,9 +175,15 @@ namespace khorost {
                     m_sContentType = HTTP_ATTRIBUTE_CONTENT_TYPE__TEXT_HTML;
                     m_sContentTypeCP = "UTF-8";
                     m_sContentDisposition = "";
-                    m_tLastModify = ptime(not_a_date_time);
+                    m_tLastModify = boost::posix_time::ptime(boost::posix_time::not_a_date_time);
                     m_content_length_ = 0;
+
+                    m_header_params_.clear();
                 }
+
+                void set_header_param(const std::string& key, const std::string& value) ;
+                void send_header_data(connection& connect);
+
             }   m_response_;
 
             bool    get_chunk(const char*& rpBuffer_, size_t& rnBufferSize_, char cPrefix_, const char* pDiv_, data::AutoBufferChar& abTarget_, data::AutoBufferChunkChar& rabcQueryValue_, size_t& rnChunkSize_);
@@ -277,7 +283,7 @@ namespace khorost {
 
             bool    send_file(const std::string& query_uri, connection& connect, const std::string& doc_root, const std::string& file_name = "");
 
-            const response& get_response() const { return m_response_; }
+            response& get_response() { return m_response_; }
             const request& get_request() const { return m_request_; }
         };
         typedef	boost::shared_ptr<http_text_protocol_header>	http_text_protocol_header_ptr;

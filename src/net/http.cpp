@@ -98,6 +98,19 @@ bool find_sub_value(const char* pSource_, size_t nSourceSize_, const char* pMatc
     return false;
 }
 
+void http_text_protocol_header::response::set_header_param(const std::string& key, const std::string& value) {
+    m_header_params_.insert(std::pair<std::string, std::string>(key, value));
+}
+
+void http_text_protocol_header::response::send_header_data(connection& connect) {
+    for (const auto& it : m_header_params_) {
+        connect.send_string(it.first);
+        connect.send_string(": ");
+        connect.send_string(it.second);
+        connect.send_string(HTTP_ATTRIBUTE_ENDL, sizeof(HTTP_ATTRIBUTE_ENDL) - 1);
+    }
+}
+
 bool http_text_protocol_header::get_chunk(const char*& rpBuffer_, size_t& rnBufferSize_, char cPrefix_, const char* pDiv_, data::AutoBufferChar& abTarget_, data::AutoBufferChunkChar& rabcQueryValue_, size_t& rnChunkSize_) {
     size_t s;
     // зачишаем префикс от white символов
@@ -521,6 +534,9 @@ void http_text_protocol_header::send_response(network::connection& connect, cons
         connect.send_string(st);
         connect.send_string(HTTP_ATTRIBUTE_ENDL, sizeof(HTTP_ATTRIBUTE_ENDL)-1);
     }
+
+    m_response_.send_header_data(connect);
+
     connect.send_string(HTTP_ATTRIBUTE_ENDL, sizeof(HTTP_ATTRIBUTE_ENDL)-1);
     if (is_send_data() && response != nullptr) {
         connect.send_string(response, m_response_.m_content_length_);

@@ -248,7 +248,7 @@ khorost::network::token_ptr khl_postgres::create_token(const int access_timeout,
                                               boost::posix_time::time_from_string(row0[3].as<std::string>()), token_payload);
 }
 
-khorost::network::token_ptr khl_postgres::load_token(bool is_access_token, const std::string& token_id) const {
+khorost::network::token_ptr khl_postgres::load_token(const bool is_access_token, const std::string& token_id) const {
     db_connection conn(m_db_);
     pqxx::read_transaction txn(conn.get_handle());
 
@@ -256,9 +256,9 @@ khorost::network::token_ptr khl_postgres::load_token(bool is_access_token, const
 
     auto r = txn.exec(
         "SELECT "
-        "  kt.access_token, " // [0]
+        "  replace(kt.access_token::text,'-','') , " // [0]
         "  kt.access_time AT TIME ZONE 'UTC' , " // [1]
-        "  kt.refresh_token , " // [2]
+        "  replace(kt.refresh_token::text,'-','') , " // [2]
         "  kt.refresh_time AT TIME ZONE 'UTC', " // [3]
         "  kt.payload " // [4]
         " FROM "

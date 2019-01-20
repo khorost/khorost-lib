@@ -728,7 +728,7 @@ network::session_ptr server2_hb::processing_session(http_connection& connect) {
     return sp;
 }
 
-network::token_ptr server2_hb::parse_token(khorost::network::http_text_protocol_header_ptr& http, const bool is_access_token, const boost::posix_time::ptime& check) {
+network::token_ptr server2_hb::parse_token(const khorost::network::http_text_protocol_header_ptr& http, const bool is_access_token, const boost::posix_time::ptime& check) {
     static const std::string token_mask = KHL_TOKEN_TYPE " ";
     const auto logger = get_logger();
     std::string id;
@@ -781,7 +781,8 @@ void server2_hb::fill_json_token(const network::token_ptr& token, Json::Value& v
 }
 
 bool server2_hb::action_refresh_token(const std::string& params_uri, http_connection& connection, khorost::network::s2h_session* session) {
-    auto http = connection.get_http();
+    const auto& logger = get_logger();
+    const auto& http = connection.get_http();
     Json::Value json_root;
     const auto now = boost::posix_time::microsec_clock::universal_time();
 
@@ -795,6 +796,14 @@ bool server2_hb::action_refresh_token(const std::string& params_uri, http_connec
             const auto refresh_token = token->get_refresh_token();
 
             if (m_db_base.refresh_token(token, time_access, time_refresh, KHL_TOKEN_APPEND_TIME)) {
+                logger->debug("[OAUTH] Remove token Access='{}', Refresh='{}' and append token Access='{}'@{}, Refresh='{}'@{}"
+                              , access_token
+                              , refresh_token
+                              , token->get_access_token()
+                              , to_iso_extended_string(token->get_access_expire())
+                              , token->get_refresh_token()
+                              , to_iso_extended_string(token->get_refresh_expire())
+                );
                 update_tokens(token, access_token, refresh_token);
 
                 fill_json_token(token, json_root);
@@ -925,7 +934,7 @@ void server2_hb::update_tokens(const network::token_ptr& token, const std::strin
     append_token(token);
 }
 
-network::token_ptr server2_hb::find_token(bool is_access_token, const std::string& token_id) {
+network::token_ptr server2_hb::find_token(const bool is_access_token, const std::string& token_id) {
     if (token_id.empty()) {
         return nullptr;
     }

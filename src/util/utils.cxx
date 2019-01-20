@@ -1,9 +1,17 @@
 #include "util/utils.h"
 #include <regex>
 
+class compact_json_writer final : public Json::StreamWriterBuilder {
+public:
+    compact_json_writer() {
+        settings_["indentation"] = "";
+    }
+};
+
+static compact_json_writer g_write_builder;
+
 std::string khorost::data::json_string(const Json::Value& value) {
-    const Json::StreamWriterBuilder write_builder;
-    return writeString(write_builder, value);
+    return writeString(g_write_builder, value);
 }
 
 bool khorost::data::parse_json(char const* begin_doc, char const* end_doc, Json::Value& value) {
