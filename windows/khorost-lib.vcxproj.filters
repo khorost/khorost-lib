@@ -129,6 +129,9 @@
     <ClInclude Include="..\include\app\khl-define.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\include\util\i18n.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Header Files">

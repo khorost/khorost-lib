@@ -10,6 +10,7 @@
 #include "app/s2hb-storage.h"
 #include "app/config.h"
 #include "util/utils.h"
+#include "util/i18n.h"
 
 namespace khorost {
     class server2_hb : public network::connection_context {
@@ -91,7 +92,7 @@ namespace khorost {
         std::string m_geoip_asn_path_;
         std::shared_ptr<spdlog::logger> m_logger_;
 
-        typedef std::map<std::string, network::token_ptr>    dict_tokens;
+        typedef std::map<std::string, network::token_ptr> dict_tokens;
         dict_tokens m_refresh_tokens;
         dict_tokens m_access_tokens;
     private:

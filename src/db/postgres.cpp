@@ -218,6 +218,33 @@ bool khl_postgres::refresh_token(khorost::network::token_ptr& token, int access_
     return true;
 }
 
+std::string khl_postgres::load_value_by_tag(const std::string& lang, const std::string& tag) {
+    db_connection conn(m_db_);
+    pqxx::read_transaction txn(conn.get_handle());
+
+    auto r = txn.exec(
+        "SELECT kt.content " // [0]
+        " FROM i18n.khl_translate AS kt "
+        "  INNER JOIN i18n.khl_code AS kc ON (kt.code_id = kc.id) "
+        "  INNER JOIN i18n.khl_language AS kl ON (kt.language_id = kl.id) "
+        " WHERE kc.tag = '" + tag + "' AND kl.description = '" + lang + "'"
+    );
+
+    if (r.empty() || r[0][0].is_null()) {
+        return "";
+    }
+
+    return r[0][0].as<std::string>();
+}
+
+khorost::internalization::func_append_value khl_postgres::load_tag() {
+    return [this](const std::string& lang, const std::string& tag) {
+        const auto value = load_value_by_tag(lang, tag);
+        m_internalization_.append_value(lang, tag, value);
+        return value;
+    };
+}
+
 khorost::network::token_ptr khl_postgres::create_token(const int access_timeout, const int refresh_timeout, int append_time,
                                                        const Json::Value& payload) const {
     db_connection conn(m_db_);

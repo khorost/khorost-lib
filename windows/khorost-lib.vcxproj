@@ -179,6 +179,7 @@
     <ClInclude Include="..\include\net\token.h" />
     <ClInclude Include="..\include\system\fastfile.h" />
     <ClInclude Include="..\include\util\autobuffer.h" />
+    <ClInclude Include="..\include\util\i18n.h" />
     <ClInclude Include="..\include\util\logger.h" />
     <ClInclude Include="..\include\util\profiler.h" />
     <ClInclude Include="..\include\util\utils.h" />

@@ -881,7 +881,7 @@ bool server2_hb::action_auth(const std::string& uri_params, http_connection& con
             && IsPasswordHashEqual3(hash, login, current_password, salt)) {
 
             const auto new_password = http->get_parameter("newpwd");
-            if (http->IsParameterExist("loginpwd")) {
+            if (http->is_parameter_exist("loginpwd")) {
                 login = http->get_parameter("loginpwd");
 
                 if (m_db_base.get_user_info(login, user_id, nickname, hash, salt)) {

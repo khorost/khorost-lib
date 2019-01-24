@@ -395,7 +395,7 @@ const char* http_text_protocol_header::get_cookie(const std::string& sKey_, bool
     return nullptr;
 }
 
-bool http_text_protocol_header::IsParameterExist(const std::string& sKey_) const {
+bool http_text_protocol_header::is_parameter_exist(const std::string& sKey_) const {
     for (const auto& cit : m_params_value_) {
         if (strcmp(sKey_.c_str(), m_abParams.get_position(cit.first)) == 0) {
             return true;

@@ -242,7 +242,7 @@ namespace khorost {
             const char*     get_parameter(const std::string& key, const char* default_value) const;
             size_t          GetParameterIndex(const std::string& sKey_) const;
             size_t          GetHeaderIndex(const std::string& sKey_) const;
-            bool            IsParameterExist(const std::string& sKey_) const;
+            bool            is_parameter_exist(const std::string& sKey_) const;
 
             void    set_cookie(const std::string& cookie, const std::string& value, boost::posix_time::ptime expire, const std::string&
                                domain, bool http_only);
