@@ -684,9 +684,8 @@ network::session_ptr server2_hb::processing_session(http_connection& connect) {
     auto http = connect.get_http();
 
     auto created = false;
-    const auto session_id = http->get_cookie(get_session_code());
-    network::session_ptr sp = m_sessions.get_session(session_id != nullptr ? session_id : "", created,
-                                                    get_session_creator());
+    const auto session_id = http->get_cookie(get_session_code(), nullptr);
+    auto sp = m_sessions.get_session(session_id != nullptr ? session_id : "", created, get_session_creator());
     auto* s2_h_session = reinterpret_cast<network::s2h_session*>(sp.get());
 
     char s_ip[255];
@@ -697,25 +696,25 @@ network::session_ptr server2_hb::processing_session(http_connection& connect) {
         s2_h_session->set_ip(s_ip);
 
         if (created) {
-            Json::Value    jvStats;
+            Json::Value    stats;
 
-            const char* pHP = http->get_header_parameter(HTTP_ATTRIBUTE_USER_AGENT);
-            if (pHP != nullptr) {
-                jvStats["UserAgent"] = pHP;
+            auto hp = http->get_header_parameter(HTTP_ATTRIBUTE_USER_AGENT, nullptr);
+            if (hp != nullptr) {
+                stats["UserAgent"] = hp;
             }
-            pHP = http->get_header_parameter(HTTP_ATTRIBUTE_ACCEPT_ENCODING);
-            if (pHP != nullptr) {
-                jvStats["AcceptEncoding"] = pHP;
+            hp = http->get_header_parameter(HTTP_ATTRIBUTE_ACCEPT_ENCODING, nullptr);
+            if (hp != nullptr) {
+                stats["AcceptEncoding"] = hp;
             }
-            pHP = http->get_header_parameter(HTTP_ATTRIBUTE_ACCEPT_LANGUAGE);
-            if (pHP != nullptr) {
-                jvStats["AcceptLanguage"] = pHP;
+            hp = http->get_header_parameter(HTTP_ATTRIBUTE_ACCEPT_LANGUAGE, nullptr);
+            if (hp != nullptr) {
+                stats["AcceptLanguage"] = hp;
             }
-            pHP = http->get_header_parameter(HTTP_ATTRIBUTE_REFERER);
-            if (pHP != nullptr) {
-                jvStats["Referer"] = pHP;
+            hp = http->get_header_parameter(HTTP_ATTRIBUTE_REFERER, nullptr);
+            if (hp != nullptr) {
+                stats["Referer"] = hp;
             }
-            m_db_base.SessionLogger(s2_h_session, jvStats);
+            m_db_base.SessionLogger(s2_h_session, stats);
         }
     }
 
@@ -733,7 +732,7 @@ network::token_ptr server2_hb::parse_token(const khorost::network::http_text_pro
     const auto logger = get_logger();
     std::string id;
 
-    const auto header_authorization = http->get_header_parameter(KHL_HTTP_PARAM__AUTHORIZATION);
+    const auto header_authorization = http->get_header_parameter(KHL_HTTP_PARAM__AUTHORIZATION, nullptr);
     if (header_authorization != nullptr) {
         const auto token_id = data::escape_string(header_authorization);
         const auto token_pos = token_mask.size();
@@ -874,15 +873,15 @@ bool server2_hb::action_auth(const std::string& uri_params, http_connection& con
         m_sessions.remove_session(session);
     } else if (action == "change") {
         std::string login;
-        const auto current_password = http->get_parameter("curpwd");
+        const auto current_password = http->get_parameter("curpwd", nullptr);
 
         if (current_password != nullptr
             && m_db_base.GetUserInfo(session->GetUserID(), login, nickname, hash, salt)
             && IsPasswordHashEqual3(hash, login, current_password, salt)) {
 
-            const auto new_password = http->get_parameter("newpwd");
+            const auto new_password = http->get_parameter("newpwd", nullptr);
             if (http->is_parameter_exist("loginpwd")) {
-                login = http->get_parameter("loginpwd");
+                login = http->get_parameter("loginpwd", nullptr);
 
                 if (m_db_base.get_user_info(login, user_id, nickname, hash, salt)) {
                     RecalcPasswordHash(hash, login, new_password, salt);

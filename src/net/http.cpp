@@ -229,7 +229,7 @@ size_t  http_text_protocol_header::process_data(network::connection& rConnect_, 
 
     if (m_eBodyProcess==eProcessingFirst || m_eBodyProcess==eProcessingNext) {
         nChunkSize = std::min(nBufferSize_, m_request_.m_content_length_);
-        if (m_request_.m_content_length_==-1 || (nBufferSize_==0 && m_request_.m_content_length_==0)) {
+        if (m_request_.m_content_length_ == std::string::npos || (nBufferSize_ == 0 && m_request_.m_content_length_ == 0)) {
             m_eBodyProcess = eSuccessful;
             m_request_.m_content_length_ = 0;
         } else if(nChunkSize!=0) {
@@ -239,8 +239,8 @@ size_t  http_text_protocol_header::process_data(network::connection& rConnect_, 
             if (m_abBody.get_fill_size() >= m_request_.m_content_length_) {
                 m_eBodyProcess = eSuccessful;
 
-                const char *pszContentType = get_header_parameter(HTTP_ATTRIBUTE_CONTENT_TYPE);
-                if (pszContentType!= nullptr && find_sub_value(pszContentType, -1, HTTP_ATTRIBUTE_CONTENT_TYPE__FORM, sizeof(HTTP_ATTRIBUTE_CONTENT_TYPE__FORM) - 1, '=', ';')) {
+                const char *content_type = get_header_parameter(HTTP_ATTRIBUTE_CONTENT_TYPE, nullptr);
+                if (content_type!= nullptr && find_sub_value(content_type, -1, HTTP_ATTRIBUTE_CONTENT_TYPE__FORM, sizeof(HTTP_ATTRIBUTE_CONTENT_TYPE__FORM) - 1, '=', ';')) {
 //                if (strcmp(HTTP_ATTRIBUTE_CONTENT_TYPE__FORM, pszContentType) == 0) {
                     size_t k = m_abParams.get_fill_size();
                     if (k != 0) {
@@ -272,16 +272,17 @@ size_t  http_text_protocol_header::process_data(network::connection& rConnect_, 
 }
 
 bool http_text_protocol_header::get_multi_part(size_t& rszIterator_, std::string& rsName_, std::string& rsContentType_, const char*& rpBuffer_, size_t& rszBuffer) {
-    const char *pszContentType = get_header_parameter(HTTP_ATTRIBUTE_CONTENT_TYPE);
-    if (pszContentType == nullptr) {
+    const char *content_type = get_header_parameter(HTTP_ATTRIBUTE_CONTENT_TYPE, nullptr);
+    if (content_type == nullptr) {
         return false;
     }
     
     const char *pszBoundary = nullptr;
-    size_t szCT = strlen(pszContentType), szBoundary = 0;
+    const size_t szCT = strlen(content_type);
+    size_t szBoundary = 0;
 
-    if (find_sub_value(pszContentType, szCT, HTTP_ATTRIBUTE_CONTENT_TYPE__MULTIPART_FORM_DATA, sizeof(HTTP_ATTRIBUTE_CONTENT_TYPE__MULTIPART_FORM_DATA) - 1, '=', ';')) {
-        if (find_sub_value(pszContentType, szCT, HTTP_ATTRIBUTE_CONTENT_TYPE__BOUNDARY, sizeof(HTTP_ATTRIBUTE_CONTENT_TYPE__BOUNDARY) - 1, '=', ';', &pszBoundary, &szBoundary)) {
+    if (find_sub_value(content_type, szCT, HTTP_ATTRIBUTE_CONTENT_TYPE__MULTIPART_FORM_DATA, sizeof(HTTP_ATTRIBUTE_CONTENT_TYPE__MULTIPART_FORM_DATA) - 1, '=', ';')) {
+        if (find_sub_value(content_type, szCT, HTTP_ATTRIBUTE_CONTENT_TYPE__BOUNDARY, sizeof(HTTP_ATTRIBUTE_CONTENT_TYPE__BOUNDARY) - 1, '=', ';', &pszBoundary, &szBoundary)) {
             std::string sBoundary = HTTP_ATTRIBUTE_LABEL_CD;
             sBoundary.append(pszBoundary, szBoundary);
             // проверить что контрольная метка правильная
@@ -369,53 +370,44 @@ bool http_text_protocol_header::parse_string(char* pBuffer_, size_t nBufferSize_
     return true;
 }
 
-const char* http_text_protocol_header::get_cookie_parameter(const std::string& sKey_, const char* sDefault_) const {
-    const char* psValue = get_cookie(sKey_);
-
-    if (psValue == nullptr) {
-        psValue = get_parameter(sKey_, sDefault_);
+const char* http_text_protocol_header::get_cookie_parameter(const std::string& key, const char* default_value) const {
+    auto value = get_cookie(key,nullptr);
+    if (value == nullptr) {
+        value = get_parameter(key, default_value);
     }
-    return psValue;
+    return value;
 }
 
-const char* http_text_protocol_header::get_cookie(const std::string& sKey_, bool* pbExist_) const {
-    if (pbExist_!= nullptr) {
-        *pbExist_ = false;
-    }
-
+const char* http_text_protocol_header::get_cookie(const std::string& key, const char* default_value) const {
     for (const auto& cit : m_cookies_) {
-        if (strcmp(sKey_.c_str(), m_abHeader.get_position(cit.first)) == 0) {
-            if (pbExist_ != nullptr) {
-                *pbExist_ = true;
-            }
-            return cit.second != -1 ? m_abHeader.get_position(cit.second) : nullptr;
+        if (strcmp(key.c_str(), m_abHeader.get_position(cit.first)) == 0) {
+            return cit.second != std::string::npos ? m_abHeader.get_position(cit.second) : default_value;
         }
     }
-
-    return nullptr;
+    return default_value;
 }
 
-bool http_text_protocol_header::is_parameter_exist(const std::string& sKey_) const {
+bool http_text_protocol_header::is_parameter_exist(const std::string& key) const {
     for (const auto& cit : m_params_value_) {
-        if (strcmp(sKey_.c_str(), m_abParams.get_position(cit.first)) == 0) {
+        if (strcmp(key.c_str(), m_abParams.get_position(cit.first)) == 0) {
             return true;
         }
     }
     return false;
 }
 
-size_t http_text_protocol_header::GetParameterIndex(const std::string& sKey_) const {
+size_t http_text_protocol_header::get_parameter_index(const std::string& key) const {
     for (const auto& cit : m_params_value_) {
-        if (strcmp(sKey_.c_str(), m_abParams.get_position(cit.first)) == 0) {
+        if (strcmp(key.c_str(), m_abParams.get_position(cit.first)) == 0) {
             return cit.second;
         }
     }
     return -1;
 }
 
-size_t http_text_protocol_header::GetHeaderIndex(const std::string& sKey_) const {
+size_t http_text_protocol_header::get_header_index(const std::string& key) const {
     for (const auto& cit : m_header_values) {
-        if (strcmp(sKey_.c_str(), m_abHeader.get_position(cit.first)) == 0) {
+        if (strcmp(key.c_str(), m_abHeader.get_position(cit.first)) == 0) {
             return cit.second;
         }
     }
@@ -431,21 +423,13 @@ void http_text_protocol_header::FillParameter2Array(const std::string& sKey_, st
     }
 }
 
-const char* http_text_protocol_header::get_parameter(const std::string& key, bool* exist_flag) const {
-    if (exist_flag!= nullptr) {
-        *exist_flag = false;
-    }
-
+const char* http_text_protocol_header::get_parameter(const std::string& key, const char* default_value) const {
     for (const auto& cit : m_params_value_) {
         if (strcmp(key.c_str(), m_abParams.get_position(cit.first)) == 0) {
-            if (exist_flag != nullptr) {
-                *exist_flag = true;
-            }
-            return cit.second != -1 ? m_abParams.get_position(cit.second) : nullptr;
+            return cit.second != std::string::npos ? m_abParams.get_position(cit.second) : default_value;
         }
     }
-
-    return nullptr;
+    return default_value;
 }
 
 const char* http_text_protocol_header::get_header_parameter(const std::string& param, const char* default_value) const {
@@ -496,7 +480,7 @@ void http_text_protocol_header::send_response(network::connection& connect, cons
     connect.send_string(std::string("Connection: ") + std::string(connection_keep_alive) + std::string(HTTP_ATTRIBUTE_ENDL));
 
     // CORS
-    const auto origin = get_header_parameter(HTTP_ATTRIBUTE__ORIGIN);
+    const auto origin = get_header_parameter(HTTP_ATTRIBUTE__ORIGIN, nullptr);
     if (origin != nullptr) {
         connect.send_string(HTTP_ATTRIBUTE__ACCESS_CONTROL_ALLOW_ORIGIN ": " + std::string(origin) + std::string(HTTP_ATTRIBUTE_ENDL));
         connect.send_string(HTTP_ATTRIBUTE__ACCESS_CONTROL_ALLOW_CREDENTIALS ": true" HTTP_ATTRIBUTE_ENDL);
@@ -646,17 +630,17 @@ bool http_text_protocol_header::send_file(const std::string& query_uri, network:
             , { nullptr, nullptr, nullptr }
         };
 
-        const char* pIMS = get_header_parameter("If-Modified-Since");
-        if (pIMS != nullptr) {
+        const char* ims = get_header_parameter("If-Modified-Since", nullptr);
+        if (ims != nullptr) {
             tm t;
-            strptime(pIMS, "%a, %d-%b-%Y %H:%M:%S GMT", &t);
+            strptime(ims, "%a, %d-%b-%Y %H:%M:%S GMT", &t);
 #ifdef WIN32
             time_t tt = _mkgmtime(&t);
 #else
             time_t tt = timegm(&t);
 #endif  // WIN32
             if (tt >= ff.get_time_update()) {
-                logger->debug("[HTTP] Don't send file '{}' length = {:d}. Response 304 (If-Modified-Since: '{}')", query_uri.c_str(), ff.get_length(), pIMS);
+                logger->debug("[HTTP] Don't send file '{}' length = {:d}. Response 304 (If-Modified-Since: '{}')", query_uri.c_str(), ff.get_length(), ims);
 
                 set_response_status(304, "Not Modified");
                 send_response(connect, nullptr, 0);
@@ -708,43 +692,38 @@ bool http_text_protocol_header::send_file(const std::string& query_uri, network:
     return true;
 }
 
-bool http_text_protocol_header::get_parameter(const std::string& key, bool default_value) const {
-    bool exist_flag;
-    const auto value = get_parameter(key, &exist_flag);
-    return exist_flag ? strcmp(value, "true") == 0 : default_value;
+bool http_text_protocol_header::get_parameter(const std::string& key, const bool default_value) const {
+    const auto value = get_parameter(key, nullptr);
+    return value != nullptr ? strcmp(value, "true") == 0 : default_value;
 }
 
-int http_text_protocol_header::get_parameter(const std::string& key, int default_value) const {
-    bool exist_flag;
-    const auto value = get_parameter(key, &exist_flag);
-    return exist_flag ? atoi(value) : default_value;
+int http_text_protocol_header::get_parameter(const std::string& key, const int default_value) const {
+    const auto value = get_parameter(key, nullptr);
+    return value != nullptr ? atoi(value) : default_value;
 }
 
-int64_t http_text_protocol_header::get_parameter64(const std::string& key, int64_t default_value) const {
-    bool exist_flag;
-    const auto value = get_parameter(key, &exist_flag);
-    return exist_flag ? atoll(value) : default_value;
-}
-
-const char* http_text_protocol_header::get_parameter(const std::string& key, const char* default_value) const {
-    bool exist_flag;
-    auto value = get_parameter(key, &exist_flag);
-    return exist_flag ? value : default_value;
+int64_t http_text_protocol_header::get_parameter64(const std::string& key, const int64_t default_value) const {
+    const auto value = get_parameter(key, nullptr);
+    return value != nullptr ? atoll(value) : default_value;
 }
 
 void http_text_protocol_header::calculate_host_port() {
-    size_t idx = GetHeaderIndex(HTTP_ATTRIBUTE_HOST);
-    if (idx==-1) {
+    auto idx = get_header_index(HTTP_ATTRIBUTE_HOST);
+    if (idx==std::string::npos) {
         return;
     }
+
     m_nHost = idx;
 
     for (;;++idx) {
-        char ch = *m_abHeader.get_position(idx);
+        const auto ch = *m_abHeader.get_position(idx);
+
         if (ch=='\0') {
-            break;
             m_nPort = 0;
-        } else if (ch==':') {
+            break;
+        }
+       
+        if (ch==':') {
             m_abHeader[idx] = '\0';
             m_nPort = idx + 1;
             break;
@@ -753,24 +732,24 @@ void http_text_protocol_header::calculate_host_port() {
 }
 
 const char* http_text_protocol_header::get_host() {
-    if (m_nHost==-1) {
+    if (m_nHost == std::string::npos) {
         calculate_host_port();
     }
-    return m_nHost==-1?"":m_abHeader.get_position(m_nHost);
+    return m_nHost == std::string::npos ? "" : m_abHeader.get_position(m_nHost);
 }
 
 const char* http_text_protocol_header::get_port() {
-    if (m_nHost==-1) {
+    if (m_nHost == std::string::npos) {
         calculate_host_port();
     }
-    return (m_nPort==-1 || m_nPort==0)?"":m_abHeader.get_position(m_nPort);
+    return (m_nPort == std::string::npos || m_nPort == 0) ? "" : m_abHeader.get_position(m_nPort);
 }
 
 const char* http_text_protocol_header::get_client_proxy_ip() {
-    size_t idx = GetHeaderIndex(HTTP_ATTRIBUTE_X_FORWARDED_FOR);
-    if (idx==-1) {
-        idx = GetHeaderIndex(HTTP_ATTRIBUTE_X_REAL_IP);
-        if (idx==-1) {
+    auto idx = get_header_index(HTTP_ATTRIBUTE_X_FORWARDED_FOR);
+    if (idx == std::string::npos) {
+        idx = get_header_index(HTTP_ATTRIBUTE_X_REAL_IP);
+        if (idx == std::string::npos) {
             return nullptr;
         }
     }

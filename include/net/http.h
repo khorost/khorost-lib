@@ -225,10 +225,9 @@ namespace khorost {
 
             const char*    get_query_method() const { return m_query_method_.get_chunk(); }
             const char*    get_query_uri() const { return m_query_uri_.get_chunk(); }
-            const char*    get_header_parameter(const std::string& param, const char* default_value = nullptr) const;
-            const char*    get_parameter(const std::string& key, bool* exist_flag = nullptr) const;
-            const char*    get_cookie(const std::string& sKey_, bool* pbExist_ = nullptr) const;
-            const char*    get_cookie_parameter(const std::string& sKey_, const char* sDefault_ = nullptr) const;
+            const char*    get_header_parameter(const std::string& param, const char* default_value) const;
+            const char*    get_cookie_parameter(const std::string& key, const char* default_value) const;
+            const char*    get_cookie(const std::string& sKey_, const char* default_value) const;
             const boost::uint8_t*  get_body() const { return reinterpret_cast<boost::uint8_t*>(m_abBody.get_head()); }
             size_t          get_body_length() const { return m_abBody.get_fill_size(); }
             const char*     get_host();
@@ -240,9 +239,9 @@ namespace khorost {
             int             get_parameter(const std::string& key, int default_value) const;
             int64_t         get_parameter64(const std::string& key, int64_t default_value) const;
             const char*     get_parameter(const std::string& key, const char* default_value) const;
-            size_t          GetParameterIndex(const std::string& sKey_) const;
-            size_t          GetHeaderIndex(const std::string& sKey_) const;
-            bool            is_parameter_exist(const std::string& sKey_) const;
+            size_t          get_parameter_index(const std::string& key) const;
+            size_t          get_header_index(const std::string& key) const;
+            bool            is_parameter_exist(const std::string& key) const;
 
             void    set_cookie(const std::string& cookie, const std::string& value, boost::posix_time::ptime expire, const std::string&
                                domain, bool http_only);
