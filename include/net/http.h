@@ -85,7 +85,7 @@
 
 namespace khorost {
     namespace network {
-        class http_text_protocol_header {
+        class http_text_protocol_header final {
             // Быстрый доступ к атрибутам HTTP
             data::AutoBufferChunkChar   m_query_method_;
             data::AutoBufferChunkChar   m_query_uri_;
@@ -219,7 +219,7 @@ namespace khorost {
                 m_response_.clear();
             }
 
-            size_t  process_data(network::connection& rConnect_, const boost::uint8_t* pBuffer_, size_t nBufferSize_);
+            size_t  process_data(const boost::uint8_t* buffer, size_t buffer_size);
             bool    is_ready() const { return m_eHeaderProcess == eSuccessful && m_eBodyProcess == eSuccessful; }
             bool    is_auto_close() const { return m_response_.m_auto_close; }
 

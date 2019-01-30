@@ -38,7 +38,7 @@ namespace khorost {
         protected:
             size_t	data_processing(const boost::uint8_t* buffer, const size_t buffer_size) override {
                 auto server = reinterpret_cast<server2_hb*>(get_controller()->get_context());
-                const auto process_bytes = m_http->process_data(*this, buffer, buffer_size);
+                const auto process_bytes = m_http->process_data(buffer, buffer_size);
 
                 if (process_bytes != 0) {
                     if (m_http->is_ready()) {

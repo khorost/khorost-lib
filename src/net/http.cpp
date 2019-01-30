@@ -138,13 +138,13 @@ bool http_text_protocol_header::get_chunk(const char*& rpBuffer_, size_t& rnBuff
     return false;
 }
 
-size_t  http_text_protocol_header::process_data(network::connection& rConnect_, const boost::uint8_t *pBuffer_, size_t nBufferSize_) {
+size_t  http_text_protocol_header::process_data(const boost::uint8_t *buffer, size_t buffer_size) {
     size_t nProcessByte = 0, nChunkSize, nChunkSizeV;
     switch (m_eHeaderProcess) {
     case eProcessingFirst:
         //  GET / POST ****************************************************
         if (!m_query_method_.is_valid()) {
-            if (!get_chunk(reinterpret_cast<const char*&>(pBuffer_), nBufferSize_, ' ', " ", m_abHeader, m_query_method_, nChunkSize)) {
+            if (!get_chunk(reinterpret_cast<const char*&>(buffer), buffer_size, ' ', " ", m_abHeader, m_query_method_, nChunkSize)) {
                 return nProcessByte;
             } else {
                 nProcessByte    += nChunkSize;
@@ -152,23 +152,23 @@ size_t  http_text_protocol_header::process_data(network::connection& rConnect_, 
         }
         //  /index.html ***************************************************
         if (!m_query_uri_.is_valid()) {
-            if (!get_chunk(reinterpret_cast<const char*&>(pBuffer_), nBufferSize_, ' ', "? ", m_abHeader, m_query_uri_, nChunkSize)) {
+            if (!get_chunk(reinterpret_cast<const char*&>(buffer), buffer_size, ' ', "? ", m_abHeader, m_query_uri_, nChunkSize)) {
                 return nProcessByte;
             } else {
-                if (*(pBuffer_ - sizeof(char))=='?') {
+                if (*(buffer - sizeof(char))=='?') {
                     --nChunkSize;
-                    pBuffer_        -= sizeof(char);
-                    nBufferSize_    += sizeof(char);
+                    buffer        -= sizeof(char);
+                    buffer_size    += sizeof(char);
                 }
                 nProcessByte    += nChunkSize;
             }
         }
         //  ?key=val& ***************************************************
-        if (m_abParams.get_fill_size()==0 && pBuffer_[0]=='?') {
+        if (m_abParams.get_fill_size()==0 && buffer[0]=='?') {
             data::AutoBufferChunkChar   abcParam(m_abParams);
-            pBuffer_ += sizeof(char);
-            nBufferSize_ -= sizeof(char);
-            if (!get_chunk(reinterpret_cast<const char*&>(pBuffer_), nBufferSize_, '?', " ", m_abParams, abcParam, nChunkSize)) {
+            buffer += sizeof(char);
+            buffer_size -= sizeof(char);
+            if (!get_chunk(reinterpret_cast<const char*&>(buffer), buffer_size, '?', " ", m_abParams, abcParam, nChunkSize)) {
                 return nProcessByte;
             } else {
                 nProcessByte    += nChunkSize + sizeof(char);
@@ -176,13 +176,13 @@ size_t  http_text_protocol_header::process_data(network::connection& rConnect_, 
         }
         //  HTTP/1.1   ****************************************************
         if (!m_query_version_.is_valid()) {
-            if (!get_chunk(reinterpret_cast<const char*&>(pBuffer_), nBufferSize_, ' ', "\r\n", m_abHeader, m_query_version_, nChunkSize)) {
+            if (!get_chunk(reinterpret_cast<const char*&>(buffer), buffer_size, ' ', "\r\n", m_abHeader, m_query_version_, nChunkSize)) {
                 return nProcessByte;
             } else {
-                if (0<nBufferSize_ && (pBuffer_[0]=='\r' || pBuffer_[0]=='\n')) {
+                if (0<buffer_size && (buffer[0]=='\r' || buffer[0]=='\n')) {
                     ++nChunkSize;
-                    pBuffer_        += sizeof(char);
-                    nBufferSize_    -= sizeof(char);
+                    buffer        += sizeof(char);
+                    buffer_size    -= sizeof(char);
                 }
                 nProcessByte    += nChunkSize;
 
@@ -190,13 +190,13 @@ size_t  http_text_protocol_header::process_data(network::connection& rConnect_, 
             }
         }
     case eProcessingNext:
-        while (nBufferSize_>=2*sizeof(char)) {
-            if (pBuffer_[0]=='\r' && pBuffer_[1]=='\n') {
+        while (buffer_size>=2*sizeof(char)) {
+            if (buffer[0]=='\r' && buffer[1]=='\n') {
                 m_eHeaderProcess = eSuccessful;
                 m_eBodyProcess = eProcessingFirst;
 
-                pBuffer_        += 2*sizeof(char);
-                nBufferSize_    -= 2*sizeof(char);
+                buffer        += 2*sizeof(char);
+                buffer_size    -= 2*sizeof(char);
                 nProcessByte    += 2*sizeof(char);
                 break;
             }
@@ -204,12 +204,12 @@ size_t  http_text_protocol_header::process_data(network::connection& rConnect_, 
             data::AutoBufferChunkChar   abcHeaderKey(m_abHeader);
             data::AutoBufferChunkChar   abcHeaderValue(m_abHeader);
 
-            if (get_chunk(reinterpret_cast<const char*&>(pBuffer_), nBufferSize_, ' ', ":", m_abHeader, abcHeaderKey, nChunkSize) 
-                && get_chunk(reinterpret_cast<const char*&>(pBuffer_), nBufferSize_, ' ', "\r\n", m_abHeader, abcHeaderValue, nChunkSizeV)) {
-                if (0<nBufferSize_ && (pBuffer_[0]=='\r' || pBuffer_[0]=='\n')) {
+            if (get_chunk(reinterpret_cast<const char*&>(buffer), buffer_size, ' ', ":", m_abHeader, abcHeaderKey, nChunkSize) 
+                && get_chunk(reinterpret_cast<const char*&>(buffer), buffer_size, ' ', "\r\n", m_abHeader, abcHeaderValue, nChunkSizeV)) {
+                if (0<buffer_size && (buffer[0]=='\r' || buffer[0]=='\n')) {
                     ++nChunkSize;
-                    pBuffer_        += sizeof(char);
-                    nBufferSize_    -= sizeof(char);
+                    buffer        += sizeof(char);
+                    buffer_size    -= sizeof(char);
                 }
                 nProcessByte    += nChunkSize + nChunkSizeV;
 
@@ -228,12 +228,12 @@ size_t  http_text_protocol_header::process_data(network::connection& rConnect_, 
     }
 
     if (m_eBodyProcess==eProcessingFirst || m_eBodyProcess==eProcessingNext) {
-        nChunkSize = std::min(nBufferSize_, m_request_.m_content_length_);
-        if (m_request_.m_content_length_ == std::string::npos || (nBufferSize_ == 0 && m_request_.m_content_length_ == 0)) {
+        nChunkSize = std::min(buffer_size, m_request_.m_content_length_);
+        if (m_request_.m_content_length_ == std::string::npos || (buffer_size == 0 && m_request_.m_content_length_ == 0)) {
             m_eBodyProcess = eSuccessful;
             m_request_.m_content_length_ = 0;
         } else if(nChunkSize!=0) {
-            m_abBody.append(reinterpret_cast<const char*>(pBuffer_), nChunkSize);
+            m_abBody.append(reinterpret_cast<const char*>(buffer), nChunkSize);
             nProcessByte += nChunkSize;
 
             if (m_abBody.get_fill_size() >= m_request_.m_content_length_) {

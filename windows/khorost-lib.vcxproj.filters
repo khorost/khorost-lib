@@ -132,6 +132,9 @@
     <ClInclude Include="..\include\util\i18n.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\include\net\stomp.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Header Files">

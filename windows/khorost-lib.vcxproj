@@ -176,6 +176,7 @@
     <ClInclude Include="..\include\net\http.h" />
     <ClInclude Include="..\include\net\mail.h" />
     <ClInclude Include="..\include\net\session.h" />
+    <ClInclude Include="..\include\net\stomp.h" />
     <ClInclude Include="..\include\net\token.h" />
     <ClInclude Include="..\include\system\fastfile.h" />
     <ClInclude Include="..\include\util\autobuffer.h" />
