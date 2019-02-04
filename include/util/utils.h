@@ -19,8 +19,13 @@ namespace khorost {
 
         std::string json_string(const Json::Value& value);
         bool parse_json(char const* begin_doc, char const* end_doc, Json::Value& value);
+
         inline bool parse_json_string(const std::string& source, Json::Value& value) {
             return parse_json(source.c_str(), source.c_str() + source.size(), value);
+        }
+
+        inline void compact_uuid_to_string(std::string& uuid) {
+            uuid.erase(std::remove(uuid.begin(), uuid.end(), '-'), uuid.end());
         }
     }
 }
