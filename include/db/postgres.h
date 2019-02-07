@@ -49,7 +49,7 @@ namespace khorost {
                 m_spConnect.reset(nullptr);
             }
 
-            bool check_connect();
+            bool check_connect() const;
         };
 
         typedef boost::shared_ptr<db_connection_pool> db_connection_pool_ptr;
@@ -69,26 +69,26 @@ namespace khorost {
             void release_connection_pool(db_connection_pool_ptr pdbc_);
         };
 
-        class db_connection {
-            db_pool& m_dbPool;
-            db_connection_pool_ptr m_pdbConnectionPool;
+        class db_connection final {
+            db_pool& m_db_pool_;
+            db_connection_pool_ptr m_pdb_connection_pool_;
         public:
-            db_connection(db_pool& dbp_) : m_dbPool(dbp_), m_pdbConnectionPool(nullptr) {
-                m_pdbConnectionPool = m_dbPool.get_connection_pool();
+            explicit db_connection(db_pool& dbp) : m_db_pool_(dbp), m_pdb_connection_pool_(nullptr) {
+                m_pdb_connection_pool_ = m_db_pool_.get_connection_pool();
             }
 
-            virtual ~db_connection() {
+            ~db_connection() {
                 release_connection_pool();
             }
 
             pqxx::connection& get_handle() const {
-                return m_pdbConnectionPool->get_handle();
+                return m_pdb_connection_pool_->get_handle();
             }
 
             void release_connection_pool() {
-                if (m_pdbConnectionPool != nullptr) {
-                    m_dbPool.release_connection_pool(m_pdbConnectionPool);
-                    m_pdbConnectionPool = nullptr;
+                if (m_pdb_connection_pool_ != nullptr) {
+                    m_db_pool_.release_connection_pool(m_pdb_connection_pool_);
+                    m_pdb_connection_pool_ = nullptr;
                 }
             }
         };
@@ -117,7 +117,7 @@ namespace khorost {
                 prepare(5, get_connect_param());
             }
 
-            void ExecuteCustomSQL(bool bReadOnly_, const std::string& sSQL_, Json::Value& jvResult_);
+            void execute_custom_sql(bool bReadOnly_, const std::string& sSQL_, Json::Value& jvResult_);
 
         };
 
@@ -125,7 +125,7 @@ namespace khorost {
         protected:
             postgres& m_db_;
         public:
-            linked_postgres(postgres& db) : m_db_(db) {
+            explicit linked_postgres(postgres& db) : m_db_(db) {
             }
 
             virtual ~linked_postgres() = default;
@@ -153,7 +153,7 @@ namespace khorost {
 
             internalization::func_append_value load_tag();
 
-            std::string load_value_by_tag(const std::string& lang, const std::string& tag);
+            std::string load_value_by_tag(const std::string& lang, const std::string& tag) const;
 
         };
     }

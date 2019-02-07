@@ -183,7 +183,6 @@ namespace khorost {
 
         std::string     m_sConfigFileName;
 
-        std::shared_ptr<spdlog::logger> get_logger();
 #if defined(_WIN32) || defined(_WIN64)
         bool                    m_run_as_service;
         std::string             m_service_name;
@@ -237,6 +236,7 @@ namespace khorost {
             m_storage_root = sStorageRoot_;
         }
         void    set_session_driver(const std::string& driver);
+        std::shared_ptr<spdlog::logger> get_logger();
 
     private:
 

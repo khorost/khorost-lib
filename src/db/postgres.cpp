@@ -67,7 +67,7 @@ std::string postgres::get_connect_param() const {
     return sc;
 }
 
-bool db_connection_pool::check_connect() {
+bool db_connection_pool::check_connect() const {
     static int times = 0;
     try {
         times++;
@@ -92,7 +92,7 @@ bool db_connection_pool::check_connect() {
     return true;
 }
 
-static void sExecuteCustomSQL(pqxx::transaction_base& txn_, const std::string& sSQL_, Json::Value& jvResult_) {
+static void s_execute_custom_sql(pqxx::transaction_base& txn_, const std::string& sSQL_, Json::Value& jvResult_) {
     try {
         auto r = txn_.exec(sSQL_);
 
@@ -133,15 +133,15 @@ static void sExecuteCustomSQL(pqxx::transaction_base& txn_, const std::string& s
     }
 }
 
-void postgres::ExecuteCustomSQL(bool bReadOnly_, const std::string& sSQL_, Json::Value& jvResult_) {
+void postgres::execute_custom_sql(bool bReadOnly_, const std::string& sSQL_, Json::Value& jvResult_) {
     db_connection conn(*this);
 
     if (bReadOnly_) {
         pqxx::read_transaction txn(conn.get_handle());
-        sExecuteCustomSQL(txn, sSQL_, jvResult_);
+        s_execute_custom_sql(txn, sSQL_, jvResult_);
     } else {
         pqxx::work txn(conn.get_handle());
-        sExecuteCustomSQL(txn, sSQL_, jvResult_);
+        s_execute_custom_sql(txn, sSQL_, jvResult_);
         txn.commit();
     }
 }
@@ -218,7 +218,7 @@ bool khl_postgres::refresh_token(khorost::network::token_ptr& token, int access_
     return true;
 }
 
-std::string khl_postgres::load_value_by_tag(const std::string& lang, const std::string& tag) {
+std::string khl_postgres::load_value_by_tag(const std::string& lang, const std::string& tag) const {
     db_connection conn(m_db_);
     pqxx::read_transaction txn(conn.get_handle());
 
