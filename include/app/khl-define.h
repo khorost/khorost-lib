@@ -2,6 +2,7 @@
 
 #define KHL_LOGGER_CONSOLE                              "console"
 #define KHL_LOGGER_COMMON                               "core"
+#define KHL_LOGGER_PROFILER                             "profiler"
 
 #define KHL_HTTP_PARAM__AUTHORIZATION   "Authorization"
 #define KHL_JSON_PARAM__DURATION "0dur"

@@ -457,6 +457,7 @@ bool server2_hb::check_params(int argc, char* argv[], int& result) {
     if (m_configure_.load(m_sConfigFileName)) {
         console->debug("Config file parsed");
         khorost::log::prepare_logger(m_configure_, KHL_LOGGER_COMMON);
+        khorost::log::prepare_logger(m_configure_, KHL_LOGGER_PROFILER);
     } else {
         console->warn("Config file not parsed");
         return false;
@@ -641,9 +642,9 @@ void server2_hb::stub_timer_run(server2_hb* server) {
 
     auto logger = server->get_logger();
 
-    ptime session_update, session_ip_update;
+    ptime session_ip_update;
 
-    session_update = session_ip_update = second_clock::universal_time();
+    auto session_update = session_ip_update = second_clock::universal_time();
 
     while (!server->m_shutdown_timer) {
         const auto now = second_clock::universal_time();
@@ -963,4 +964,11 @@ std::shared_ptr<spdlog::logger> server2_hb::get_logger() {
         m_logger_ = spdlog::get(KHL_LOGGER_COMMON);
     }
     return m_logger_;
+}
+
+std::shared_ptr<spdlog::logger> server2_hb::get_logger_profiler() {
+    if (m_logger_profiler_ == nullptr) {
+        m_logger_profiler_ = spdlog::get(KHL_LOGGER_PROFILER);
+    }
+    return m_logger_profiler_;
 }

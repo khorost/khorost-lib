@@ -91,6 +91,7 @@ namespace khorost {
         std::string m_geoip_city_path_;
         std::string m_geoip_asn_path_;
         std::shared_ptr<spdlog::logger> m_logger_;
+        std::shared_ptr<spdlog::logger> m_logger_profiler_;
 
         typedef std::map<std::string, network::token_ptr> dict_tokens;
         dict_tokens m_refresh_tokens;
@@ -237,6 +238,7 @@ namespace khorost {
         }
         void    set_session_driver(const std::string& driver);
         std::shared_ptr<spdlog::logger> get_logger();
+        std::shared_ptr<spdlog::logger> get_logger_profiler();
 
     private:
 

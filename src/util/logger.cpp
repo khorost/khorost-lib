@@ -10,12 +10,16 @@ void khorost::log::prepare_logger(const config& configure, const std::string& lo
     spdlog::init_thread_pool(8192, 1);
     spdlog::flush_every(std::chrono::seconds(10));
 
-    const auto pattern_file = configure.get_value("log:pattern", "[%Y-%m-%d %T.%F] [%n] [thread %t] [%l] %v");
-    const auto pattern_console = configure.get_value("log:pattern", "[%Y-%m-%d %T.%F] [%n] [thread %t] [%^%l%$] %v");
-    const auto level = configure.get_value("log:level", "WARNING");
-    auto rotating_sink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(configure.get_value("log:file_name", "./log")
-                                                                                , configure.get_value("log:max_file_size", 1048576 * 5)
-                                                                                , configure.get_value("log:max_files", 3));
+    const auto prefix_key = "log:" + logger_name;
+
+    const auto pattern_file = configure.get_value(prefix_key + ":pattern", "[%Y-%m-%d %T.%F] [%n] [thread %t] [%l] %v");
+    const auto pattern_console = configure.get_value(prefix_key + ":pattern",
+                                                     "[%Y-%m-%d %T.%F] [%n] [thread %t] [%^%l%$] %v");
+    const auto level = configure.get_value(prefix_key + ":level", "WARNING");
+    auto rotating_sink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
+        configure.get_value(prefix_key + ":file_name", "./log")
+        , configure.get_value(prefix_key + ":max_file_size", 1048576 * 5)
+        , configure.get_value(prefix_key + ":max_files", 3));
     rotating_sink->set_pattern(pattern_file);
 
     auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
@@ -23,14 +27,16 @@ void khorost::log::prepare_logger(const config& configure, const std::string& lo
 
     std::vector<spdlog::sink_ptr> sinks = {console_sink, rotating_sink};
 
-    if (configure.is_value("log:async", true)) {
-        spdlog::register_logger(std::make_shared<spdlog::async_logger>(logger_name, sinks.begin(), sinks.end(), spdlog::thread_pool(), spdlog::async_overflow_policy::block));
+    if (configure.is_value(prefix_key + ":async", true)) {
+        spdlog::register_logger(std::make_shared<spdlog::async_logger>(logger_name, sinks.begin(), sinks.end(),
+                                                                       spdlog::thread_pool(),
+                                                                       spdlog::async_overflow_policy::block));
     } else {
         spdlog::register_logger(std::make_shared<spdlog::logger>(logger_name, sinks.begin(), sinks.end()));
     }
 
     const auto logger = spdlog::get(logger_name);
-    if (logger!=nullptr) {
+    if (logger != nullptr) {
         if (level == "DEBUG") {
             logger->set_level(spdlog::level::debug);
         } else if (level == "TRACE") {
