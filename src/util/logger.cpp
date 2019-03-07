@@ -18,8 +18,8 @@ void khorost::log::prepare_logger(const config& configure, const std::string& lo
     const auto level = configure.get_value(prefix_key + ":level", "WARNING");
     auto rotating_sink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
         configure.get_value(prefix_key + ":file_name", "./log")
-        , configure.get_value(prefix_key + ":max_file_size", 1048576 * 5)
-        , configure.get_value(prefix_key + ":max_files", 3));
+        , configure.get_value(prefix_key + ":max_file_size", 1048576 * 10)
+        , configure.get_value(prefix_key + ":max_files", 5));
     rotating_sink->set_pattern(pattern_file);
 
     auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
@@ -28,11 +28,12 @@ void khorost::log::prepare_logger(const config& configure, const std::string& lo
     std::vector<spdlog::sink_ptr> sinks = {console_sink, rotating_sink};
 
     if (configure.is_value(prefix_key + ":async", true)) {
-        spdlog::register_logger(std::make_shared<spdlog::async_logger>(logger_name, sinks.begin(), sinks.end(),
-                                                                       spdlog::thread_pool(),
+        static auto tp = std::make_shared<spdlog::details::thread_pool>(8192, 2); // TODO залепуха, исправить
+        register_logger(std::make_shared<spdlog::async_logger>(logger_name, sinks.begin(), sinks.end(),
+                                                                       tp,
                                                                        spdlog::async_overflow_policy::block));
     } else {
-        spdlog::register_logger(std::make_shared<spdlog::logger>(logger_name, sinks.begin(), sinks.end()));
+        register_logger(std::make_shared<spdlog::logger>(logger_name, sinks.begin(), sinks.end()));
     }
 
     const auto logger = spdlog::get(logger_name);
