@@ -90,8 +90,8 @@ namespace khorost {
         config m_configure_;
         std::string m_geoip_city_path_;
         std::string m_geoip_asn_path_;
-        std::shared_ptr<spdlog::logger> m_logger_;
-        std::shared_ptr<spdlog::logger> m_logger_profiler_;
+        std::shared_ptr<spdlog::logger> m_logger_ = nullptr;
+        std::shared_ptr<spdlog::logger> m_logger_profiler_ = nullptr;
 
         typedef std::map<std::string, network::token_ptr> dict_tokens;
         dict_tokens m_refresh_tokens;
