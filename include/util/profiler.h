@@ -28,17 +28,17 @@ namespace khorost {
                     const auto dt = boost::posix_time::microsec_clock::universal_time() - m_start_;
                     switch (m_precision_) {
                     case nanoseconds:
-                        m_logger_->debug("[PROFILER] {:>8} nanoseconds - {}", dt.total_nanoseconds(), m_tag_);
+                        m_logger_->debug("[PROFILER] {:>8} nanoseconds {}", dt.total_nanoseconds(), m_tag_);
                         break;
                     case microseconds:
-                        m_logger_->debug("[PROFILER] {:>8} microseconds - {}", dt.total_microseconds(), m_tag_);
+                        m_logger_->debug("[PROFILER] {:>8} microseconds {}", dt.total_microseconds(), m_tag_);
                         break;
                     case milliseconds:
-                        m_logger_->debug("[PROFILER] {:>8} milliseconds - {}", dt.total_milliseconds(), m_tag_);
+                        m_logger_->debug("[PROFILER] {:>8} milliseconds {}", dt.total_milliseconds(), m_tag_);
                         break;
                     case seconds:
                     default:
-                        m_logger_->debug("[PROFILER] {:>8} seconds - {}", dt.total_seconds(), m_tag_);
+                        m_logger_->debug("[PROFILER] {:>8} seconds {}", dt.total_seconds(), m_tag_);
                         break;
                     }
                 }
@@ -52,8 +52,8 @@ namespace khorost {
 #define __PRETTY_FUNCTION__   __FUNCTION__
 #endif
 
-#define PROFILER_FUNCTION_TAG(LOGGER, TAG, ...)   khorost::profiler::cpu __cpu_profiler__(LOGGER, TAG + " " + __FUNCTION__ + std::string(" (" __FILE__ ":") + std::string(TOSTRING(__LINE__) ")"), ## __VA_ARGS__)
-#define PROFILER_FUNCTION(LOGGER, ...)   khorost::profiler::cpu __cpu_profiler__(LOGGER, __FUNCTION__ + std::string(" (" __FILE__ ":") + std::string(TOSTRING(__LINE__) ")"), ## __VA_ARGS__)
+#define PROFILER_FUNCTION_TAG(LOGGER, TAG, ...)   khorost::profiler::cpu __cpu_profiler__(LOGGER, TAG + " " + __PRETTY_FUNCTION__ + std::string(" (" __FILE__ ":") + std::string(TOSTRING(__LINE__) ")"), ## __VA_ARGS__)
+#define PROFILER_FUNCTION(LOGGER, ...)   khorost::profiler::cpu __cpu_profiler__(LOGGER, __PRETTY_FUNCTION__ + std::string(" (" __FILE__ ":") + std::string(TOSTRING(__LINE__) ")"), ## __VA_ARGS__)
 #define PROFILER_TAG(LOGGER, TAG, ...)   khorost::profiler::cpu __cpu_profiler__##TAG(LOGGER, #TAG, ## __VA_ARGS__)
     }
 }
