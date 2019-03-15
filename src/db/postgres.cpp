@@ -17,52 +17,52 @@
 
 using namespace khorost::db;
 
-void db_pool::prepare(int nCount_, const std::string& sConnectParam_) {
-    std::lock_guard<std::mutex> locker(m_mutex);
+void db_pool::prepare(int count, const std::string& connect_param) {
+    std::lock_guard<std::mutex> locker(m_mutex_);
 
-    for (auto n = 0; n < nCount_; ++n) {
-        m_FreePool.emplace(boost::make_shared<db_connection_pool>(sConnectParam_));
+    for (auto n = 0; n < count; ++n) {
+        m_free_pool_.emplace(boost::make_shared<db_connection_pool>(connect_param));
     }
 }
 
 db_connection_pool_ptr db_pool::get_connection_pool() {
-    std::unique_lock<std::mutex> locker(m_mutex);
+    std::unique_lock<std::mutex> locker(m_mutex_);
 
-    while (m_FreePool.empty()) {
-        m_condition.wait(locker);
+    while (m_free_pool_.empty()) {
+        m_condition_.wait(locker);
     }
 
-    auto conn = m_FreePool.front();
-    m_FreePool.pop();
+    auto conn = m_free_pool_.front();
+    m_free_pool_.pop();
 
-    if (m_FreePool.size() < 3) {
+    if (m_free_pool_.size() < 3) {
         auto logger = spdlog::get(KHL_LOGGER_COMMON);
-        logger->debug("[get from pool] size = {:d}", m_FreePool.size());
+        logger->debug("[get from pool] size = {:d}", m_free_pool_.size());
     }
 
     return conn;
 }
 
-void db_pool::release_connection_pool(db_connection_pool_ptr pdbc_) {
-    std::unique_lock<std::mutex> locker(m_mutex);
+void db_pool::release_connection_pool(db_connection_pool_ptr pdbc) {
+    std::unique_lock<std::mutex> locker(m_mutex_);
 
-    m_FreePool.push(pdbc_);
+    m_free_pool_.push(pdbc);
     locker.unlock();
-    m_condition.notify_one();
+    m_condition_.notify_one();
 
-    if (m_FreePool.size() < 4) {
+    if (m_free_pool_.size() < 4) {
         auto logger = spdlog::get(KHL_LOGGER_COMMON);
-        logger->debug("[return to pool] size = {:d}", m_FreePool.size());
+        logger->debug("[return to pool] size = {:d}", m_free_pool_.size());
     }
 }
 
 std::string postgres::get_connect_param() const {
     std::string sc;
-    sc += " host = " + m_sHost;
-    sc += " port = " + std::to_string(m_nPort);
-    sc += " dbname = " + m_sDatabase;
-    sc += " user = " + m_sLogin;
-    sc += " password = " + m_sPassword;
+    sc += " host = " + m_host_;
+    sc += " port = " + std::to_string(m_port_);
+    sc += " dbname = " + m_database_;
+    sc += " user = " + m_login_;
+    sc += " password = " + m_password_;
 
     return sc;
 }
@@ -71,8 +71,8 @@ bool db_connection_pool::check_connect() const {
     static int times = 0;
     try {
         times++;
-        if (!m_spConnect->is_open()) {
-            m_spConnect->activate();
+        if (!m_connect_->is_open()) {
+            m_connect_->activate();
         }
         times = 0;
         // hack
@@ -133,15 +133,15 @@ static void s_execute_custom_sql(pqxx::transaction_base& txn_, const std::string
     }
 }
 
-void postgres::execute_custom_sql(bool bReadOnly_, const std::string& sSQL_, Json::Value& jvResult_) {
+void postgres::execute_custom_sql(bool b_read_only, const std::string& sql, Json::Value& json_result) {
     db_connection conn(*this);
 
-    if (bReadOnly_) {
+    if (b_read_only) {
         pqxx::read_transaction txn(conn.get_handle());
-        s_execute_custom_sql(txn, sSQL_, jvResult_);
+        s_execute_custom_sql(txn, sql, json_result);
     } else {
         pqxx::work txn(conn.get_handle());
-        s_execute_custom_sql(txn, sSQL_, jvResult_);
+        s_execute_custom_sql(txn, sql, json_result);
         txn.commit();
     }
 }

@@ -25,28 +25,29 @@
 
 #include "net/token.h"
 #include "util/i18n.h"
+#include <spdlog/spdlog.h>
 
 namespace khorost {
     namespace db {
-        class db_connection_pool {
-            boost::scoped_ptr<pqxx::connection> m_spConnect;
+        class db_connection_pool final {
+            boost::scoped_ptr<pqxx::connection> m_connect_;
         public:
-            db_connection_pool(const std::string& sConnectParam_) {
-                reconnect(sConnectParam_);
+            explicit db_connection_pool(const std::string& connect_param) {
+                reconnect(connect_param);
             }
 
-            virtual ~db_connection_pool() = default;
+            ~db_connection_pool() = default;
 
             pqxx::connection& get_handle() const {
-                return *m_spConnect;
+                return *m_connect_;
             }
 
-            void reconnect(const std::string& sConnectParam_) {
-                m_spConnect.reset(new pqxx::connection(sConnectParam_));
+            void reconnect(const std::string& connect_param) {
+                m_connect_.reset(new pqxx::connection(connect_param));
             }
 
             void disconnect() {
-                m_spConnect.reset(nullptr);
+                m_connect_.reset(nullptr);
             }
 
             bool check_connect() const;
@@ -55,18 +56,18 @@ namespace khorost {
         typedef boost::shared_ptr<db_connection_pool> db_connection_pool_ptr;
 
         class db_pool {
-            std::queue<db_connection_pool_ptr> m_FreePool;
+            std::queue<db_connection_pool_ptr> m_free_pool_;
 
-            std::mutex m_mutex;
-            std::condition_variable m_condition;
+            std::mutex m_mutex_;
+            std::condition_variable m_condition_;
 
         public:
             db_pool() = default;
 
-            void prepare(int nCount_, const std::string& sConnectParam_);
+            void prepare(int count, const std::string& connect_param);
 
             db_connection_pool_ptr get_connection_pool();
-            void release_connection_pool(db_connection_pool_ptr pdbc_);
+            void release_connection_pool(db_connection_pool_ptr pdbc);
         };
 
         class db_connection final {
@@ -94,30 +95,30 @@ namespace khorost {
         };
 
 
-        class postgres : public db_pool {
-            int m_nPort;
-            std::string m_sHost;
-            std::string m_sDatabase;
-            std::string m_sLogin;
-            std::string m_sPassword;
+        class postgres final : public db_pool {
+            int m_port_;
+            std::string m_host_;
+            std::string m_database_;
+            std::string m_login_;
+            std::string m_password_;
 
         public:
             postgres() = default;
-            virtual ~postgres() = default;
+            ~postgres() = default;
 
             std::string get_connect_param() const;
 
-            void set_connect(std::string sHost_, int nPort_, std::string sDatabase_, std::string sLogin_, std::string sPassword_) {
-                m_sHost = sHost_;
-                m_nPort = nPort_;
-                m_sDatabase = sDatabase_;
-                m_sLogin = sLogin_;
-                m_sPassword = sPassword_;
+            void set_connect(const std::string& host, int port, const std::string& database, const std::string& login, const std::string& password) {
+                m_host_ = host;
+                m_port_ = port;
+                m_database_ = database;
+                m_login_ = login;
+                m_password_ = password;
 
                 prepare(5, get_connect_param());
             }
 
-            void execute_custom_sql(bool bReadOnly_, const std::string& sSQL_, Json::Value& jvResult_);
+            void execute_custom_sql(bool b_read_only, const std::string& sql, Json::Value& json_result);
 
         };
 
