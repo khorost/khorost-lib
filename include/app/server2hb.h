@@ -11,6 +11,7 @@
 #include "app/config.h"
 #include "util/utils.h"
 #include "util/i18n.h"
+#include "util/profiler.h"
 
 namespace khorost {
     class server2_hb : public network::connection_context {
@@ -227,8 +228,11 @@ namespace khorost {
         static void parse_action(const std::string& query, std::string& action, std::string& params);
         static void json_fill_auth(network::s2h_session* session, bool full_info, Json::Value& value);
 
-        void    set_connect(std::string sHost_, int nPort_, std::string sDatabase_, std::string sLogin_, std::string sPassword_) {
-            m_db_connect_.set_connect(sHost_, nPort_, sDatabase_, sLogin_, sPassword_);
+        void set_connect(const std::string& host, const int port, const std::string& database, const std::string& login, const std::string& password) {
+            PROFILER_FUNCTION_TAG(get_logger_profiler()
+                , fmt::format("host={} port={} user={} password=*** database={}"
+                , host, port, login, database));
+            m_db_connect_.set_connect(host, port, database, login, password);
         }
         void	set_listen_port(int nPort_) { m_nHTTPListenPort = nPort_; }
         //        void    SetStorageFolder(const std::string& strFolder_);
