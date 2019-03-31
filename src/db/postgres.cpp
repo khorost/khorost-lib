@@ -12,8 +12,8 @@
 #include <boost/make_shared.hpp>
 
 #include "util/logger.h"
+#include "util/utils.h"
 #include "app/khl-define.h"
-#include "../../../server/sig_server.h"
 
 using namespace khorost::db;
 
