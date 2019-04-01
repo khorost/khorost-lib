@@ -53,7 +53,7 @@ namespace khorost {
             bool check_connect() const;
         };
 
-        typedef boost::shared_ptr<db_connection_pool> db_connection_pool_ptr;
+        typedef std::shared_ptr<db_connection_pool> db_connection_pool_ptr;
 
         class db_pool {
             std::queue<db_connection_pool_ptr> m_free_pool_;

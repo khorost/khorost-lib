@@ -1,4 +1,4 @@
-#pragma once
+п»ї#pragma once
 
 #if defined(_WIN32) || defined(_WIN64)
 # include <windows.h>
@@ -36,6 +36,7 @@
 #include <deque>
 
 #include "util/autobuffer.h"
+#include <thread>
 
 namespace khorost {
     namespace network {
@@ -92,7 +93,7 @@ namespace khorost {
             virtual void    get_client_ip(char* buffer, size_t buffer_size);
         };
 
-        typedef boost::shared_ptr<connection>		connection_ptr;
+        typedef std::shared_ptr<connection>		connection_ptr;
 
         class connection_context {
         };
@@ -102,11 +103,11 @@ namespace khorost {
             connection_context*      m_context_;
         protected:
             boost::mutex            m_mutex_;
-            // основной слушающий поток 
-            boost::thread*          m_listen_thread_;
+            // РѕСЃРЅРѕРІРЅРѕР№ СЃР»СѓС€Р°СЋС‰РёР№ РїРѕС‚РѕРє 
+            std::thread*          m_listen_thread_;
             event_base*             m_base_listen_;
 
-            // рабочие потоки
+            // СЂР°Р±РѕС‡РёРµ РїРѕС‚РѕРєРё
             boost::thread_group*    m_worker_groups_;
             std::deque<event_base*> m_vWorkersBase;
 
@@ -121,7 +122,7 @@ namespace khorost {
             connection_controller(connection_context* context);
             virtual ~connection_controller();
 
-            // Запуск слушащего сокета. Управление возвращается сразу
+            // Р—Р°РїСѓСЃРє СЃР»СѓС€Р°С‰РµРіРѕ СЃРѕРєРµС‚Р°. РЈРїСЂР°РІР»РµРЅРёРµ РІРѕР·РІСЂР°С‰Р°РµС‚СЃСЏ СЃСЂР°Р·Сѓ
             bool	start_listen(int listen_port, int poll_size = 0);
             bool    wait_listen() const;
             bool    shutdown();

@@ -21,7 +21,7 @@ void db_pool::prepare(int count, const std::string& connect_param) {
     std::lock_guard<std::mutex> locker(m_mutex_);
 
     for (auto n = 0; n < count; ++n) {
-        m_free_pool_.emplace(boost::make_shared<db_connection_pool>(connect_param));
+        m_free_pool_.emplace(std::make_shared<db_connection_pool>(connect_param));
     }
 }
 
@@ -269,7 +269,7 @@ khorost::network::token_ptr khl_postgres::create_token(const int access_timeout,
     }
 
     const auto& row0 = r[0];
-    return boost::make_shared<network::token>(row0[0].as<std::string>(),
+    return std::make_shared<network::token>(row0[0].as<std::string>(),
                                               boost::posix_time::time_from_string(row0[1].as<std::string>()),
                                               row0[2].as<std::string>(),
                                               boost::posix_time::time_from_string(row0[3].as<std::string>()), token_payload);
@@ -305,7 +305,7 @@ khorost::network::token_ptr khl_postgres::load_token(const bool is_access_token,
         data::parse_json_string(row0[4].as<std::string>(), payload);
     }
 
-    return boost::make_shared<network::token>(row0[0].as<std::string>(),
+    return std::make_shared<network::token>(row0[0].as<std::string>(),
                                               boost::posix_time::time_from_string(row0[1].as<std::string>()),
                                               row0[2].as<std::string>(),
                                               boost::posix_time::time_from_string(row0[3].as<std::string>()), payload);

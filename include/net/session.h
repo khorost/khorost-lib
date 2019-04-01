@@ -1,15 +1,11 @@
 #pragma once
-#ifndef _SESSION__H_
-#define _SESSION__H_
 
 #include <map>
 #include <list>
 #include <string>
-#include <boost/shared_ptr.hpp>
 #include "boost/date_time/posix_time/posix_time.hpp"
 
 #include "db/sqlite3.h"
-#include <boost/make_shared.hpp>
 
 namespace khorost {
     namespace network {
@@ -64,7 +60,7 @@ namespace khorost {
             static std::string generate_session_id();
         };
 
-        typedef	boost::shared_ptr<session>	        session_ptr;
+        typedef	std::shared_ptr<session>	        session_ptr;
         typedef std::map<std::string, session_ptr>	dict_session;
         typedef std::list<session_ptr>	            list_session;
 
@@ -102,5 +98,3 @@ namespace khorost {
         };
     }
 }
-
-#endif // _SESSION__H_

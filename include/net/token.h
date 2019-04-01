@@ -49,6 +49,6 @@ namespace khorost {
             void set_refresh_expire(const boost::posix_time::ptime& refresh_expire) { m_refresh_expire_ = refresh_expire; }
         };
 
-        typedef boost::shared_ptr<token> token_ptr;
+        typedef std::shared_ptr<token> token_ptr;
     }
 }

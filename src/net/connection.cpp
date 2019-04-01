@@ -360,7 +360,7 @@ bool connection_controller::start_listen(int listen_port, int poll_size){
 //        m_worker_groups_->create_thread(boost::bind(&stubWorker,this));
     }
 
-    m_listen_thread_ = new boost::thread(boost::bind(&stub_listen_run,this, listen_port));
+    m_listen_thread_ = new std::thread(boost::bind(&stub_listen_run,this, listen_port));
 
     logger->info(LOGGER_PREFIX"Starting listen");
     return true;

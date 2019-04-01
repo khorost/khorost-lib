@@ -75,7 +75,7 @@ namespace khorost {
                 , m_authenticate(false)
                 , m_receive_bytes_prev_request(0)
                 , m_send_bytes_prev_request(0) {
-                m_http = boost::make_shared<network::http_text_protocol_header>();
+                m_http = std::make_shared<network::http_text_protocol_header>();
             }
 
             bool is_authenticate() const { return m_authenticate; }
@@ -129,7 +129,7 @@ namespace khorost {
         static void     stub_timer_run(server2_hb* server);
 
         bool                                m_shutdown_timer;
-        boost::shared_ptr<boost::thread>    m_TimerThread;
+        std::shared_ptr<std::thread>    m_TimerThread;
         // ****************************************************************
         typedef bool (server2_hb::*funcActionS2H)(const std::string& uri_params, http_connection& connection, network::s2h_session* session);
         typedef std::map<std::string, funcActionS2H>		DictionaryActionS2H;

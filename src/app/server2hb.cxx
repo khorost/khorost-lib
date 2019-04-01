@@ -537,7 +537,7 @@ bool server2_hb::check_params(int argc, char* argv[], int& result) {
 }
 
 bool server2_hb::startup() {
-    m_TimerThread.reset(new boost::thread(boost::bind(&stub_timer_run, this)));
+    m_TimerThread.reset(new std::thread(boost::bind(&stub_timer_run, this)));
     return m_connections.start_listen(m_nHTTPListenPort, 5);
 }
 
@@ -669,7 +669,7 @@ void server2_hb::stub_timer_run(server2_hb* server) {
 server2_hb::func_creator server2_hb::get_session_creator() {
     return [](const std::string& session_id, boost::posix_time::ptime created,
         boost::posix_time::ptime expired) {
-        return boost::make_shared<network::s2h_session>(
+        return std::make_shared<network::s2h_session>(
             session_id, created, expired);
     };
 }
