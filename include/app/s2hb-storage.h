@@ -1,9 +1,7 @@
-﻿#ifndef __S2HBSTORAGE_H__
-#define __S2HBSTORAGE_H__
+﻿#pragma  once
 
 #include <string>
 #include <list>
-#include <unordered_map>
 
 #include <json/json.h>
 
@@ -17,11 +15,6 @@ namespace khorost {
             S2HBStorage(postgres& db) : khorost::db::khl_postgres(db) {
             }
 
-            bool    SessionLogger(const network::s2h_session* pSession_, const Json::Value& jsStat_);
-            bool    SessionUpdate(network::s2h_session* pSession_);
-            bool    SessionUpdate(khorost::network::list_session& rLS_);
-            void    session_ip_update();
-
             bool    CreateUser(Json::Value& jsUser_);
             bool    UpdatePassword(int nUserID_, const std::string& sPasswordHash_);
 
@@ -32,5 +25,3 @@ namespace khorost {
         };
     }
 }
-
-#endif // !__S2HBSTORAGE_H__

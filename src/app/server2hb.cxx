@@ -627,13 +627,7 @@ bool server2_hb::process_http_file_server(const std::string& query_uri, http_con
 }
 
 void server2_hb::timer_session_update() {
-    network::list_session ls;
-
     m_sessions.check_alive_sessions();
-
-    if (m_sessions.get_active_sessions_stats(ls)) {
-        m_db_base.SessionUpdate(ls);
-    }
 }
 
 void server2_hb::stub_timer_run(server2_hb* server) {
@@ -657,7 +651,6 @@ void server2_hb::stub_timer_run(server2_hb* server) {
         if ((now - session_ip_update).hours() >= 1) {
             logger->debug("[TIMER] Hours check");
             session_ip_update = now;
-            server->m_db_base.session_ip_update();
         }
 
         this_thread::sleep_for(chrono::milliseconds(1000));
@@ -695,28 +688,6 @@ network::session_ptr server2_hb::processing_session(http_connection& connect) {
     if (s2_h_session != nullptr) {
         s2_h_session->set_last_activity(second_clock::universal_time());
         s2_h_session->set_ip(s_ip);
-
-        if (created) {
-            Json::Value    stats;
-
-            auto hp = http->get_header_parameter(HTTP_ATTRIBUTE_USER_AGENT, nullptr);
-            if (hp != nullptr) {
-                stats["UserAgent"] = hp;
-            }
-            hp = http->get_header_parameter(HTTP_ATTRIBUTE_ACCEPT_ENCODING, nullptr);
-            if (hp != nullptr) {
-                stats["AcceptEncoding"] = hp;
-            }
-            hp = http->get_header_parameter(HTTP_ATTRIBUTE_ACCEPT_LANGUAGE, nullptr);
-            if (hp != nullptr) {
-                stats["AcceptLanguage"] = hp;
-            }
-            hp = http->get_header_parameter(HTTP_ATTRIBUTE_REFERER, nullptr);
-            if (hp != nullptr) {
-                stats["Referer"] = hp;
-            }
-            m_db_base.SessionLogger(s2_h_session, stats);
-        }
     }
 
     http->set_cookie(get_session_code(), sp->get_session_id(), sp->get_expired(), http->get_host(), true);
@@ -857,7 +828,6 @@ bool server2_hb::action_auth(const std::string& uri_params, http_connection& con
                     session->SetAuthenticate(true);
 
                     m_db_base.GetUserRoles(user_id, session);
-                    m_db_base.SessionUpdate(session);
 
                     m_sessions.update_session(session);
                 }
@@ -870,7 +840,6 @@ bool server2_hb::action_auth(const std::string& uri_params, http_connection& con
 
         http->set_cookie(get_session_code(), session->get_session_id(), session->get_expired(), http->get_host(), true);
 
-        m_db_base.SessionUpdate(session);
         m_sessions.remove_session(session);
     } else if (action == "change") {
         std::string login;

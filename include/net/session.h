@@ -65,7 +65,7 @@ namespace khorost {
         typedef std::list<session_ptr>	            list_session;
 
         class session_controller {
-            class session_db : public db::khl_sqlite3 {
+            class session_db final : public db::khl_sqlite3 {
             public:
                 session_db() = default;
 
@@ -76,9 +76,9 @@ namespace khorost {
                 bool load_sessions(session_controller& session_controler, const std::function<session_ptr(const std::string& session_id, boost::posix_time::ptime created, boost::posix_time::ptime expired)> creator);
             };
 
-            session_db m_SessionDB;
-            dict_session m_SessionMemory;
-            int m_nVersionMin, m_nVersionCurrent;
+            session_db m_session_db_;
+            dict_session m_session_memory_;
+            int m_version_min_, m_version_current_;
 
         public:
             session_controller();
@@ -92,7 +92,7 @@ namespace khorost {
             bool update_session(session* sp_);
             void remove_session(session* sp_);
 
-            int GetVersionMin() { return m_nVersionMin; }
+            int get_version_min() const { return m_version_min_; }
             bool get_active_sessions_stats(list_session& rLS_);
             void check_alive_sessions();
         };
