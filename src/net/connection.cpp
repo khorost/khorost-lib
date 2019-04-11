@@ -179,10 +179,10 @@ bool connection_controller::shutdown(){
     event_base_loopexit(m_base_listen_, nullptr);
 
     logger->info(LOGGER_PREFIX"shutdown workers");
-    for (std::deque<event_base*>::const_iterator cit=m_vWorkersBase.begin();cit!=m_vWorkersBase.end();++cit) {
+    for (std::deque<event_base*>::const_iterator cit=m_workers_base_.begin();cit!=m_workers_base_.end();++cit) {
         event_base_loopbreak(*cit);
     }
-    m_vWorkersBase.clear();
+    m_workers_base_.clear();
 
     logger->info(LOGGER_PREFIX"shutdown complete");
     return true;
@@ -343,7 +343,7 @@ void connection_controller::stub_worker(connection_controller* pThis_){
     auto logger = spdlog::get(KHL_LOGGER_COMMON);
     logger->info(LOGGER_PREFIX"Start worker");
     event_base* base = event_base_new();
-    pThis_->m_vWorkersBase.push_back(base);
+    pThis_->m_workers_base_.push_back(base);
 
     // цикл ожидания и обработки событий
     event_base_dispatch(base);

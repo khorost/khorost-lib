@@ -17,8 +17,6 @@
 
 #include <pqxx/pqxx>
 
-#include <boost/shared_ptr.hpp>
-#include <boost/scoped_ptr.hpp>
 #include "boost/date_time/posix_time/posix_time.hpp"
 
 #include <json/json.h>
@@ -30,7 +28,7 @@
 namespace khorost {
     namespace db {
         class db_connection_pool final {
-            boost::scoped_ptr<pqxx::connection> m_connect_;
+            std::unique_ptr<pqxx::connection> m_connect_;
         public:
             explicit db_connection_pool(const std::string& connect_param) {
                 reconnect(connect_param);

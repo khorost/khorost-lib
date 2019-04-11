@@ -2,7 +2,6 @@
 
 #include <string>
 
-#include <boost/shared_ptr.hpp>
 #include <boost/date_time/posix_time/ptime.hpp>
 #include <utility>
 #include "app/config.h"

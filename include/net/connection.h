@@ -30,7 +30,6 @@
 #include <boost/utility.hpp>
 #include <boost/thread/condition.hpp>
 #include <boost/thread/thread.hpp>
-#include <boost/shared_ptr.hpp>
 #include <boost/cstdint.hpp>
 
 #include <deque>
@@ -109,7 +108,7 @@ namespace khorost {
 
             // рабочие потоки
             boost::thread_group*    m_worker_groups_;
-            std::deque<event_base*> m_vWorkersBase;
+            std::deque<event_base*> m_workers_base_;
 
             static void     stub_listen_run(connection_controller* pThis_, int iListenPort_);
             static void     stub_worker(connection_controller* pThis_);
