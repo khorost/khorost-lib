@@ -230,7 +230,7 @@ namespace khorost {
 
         void set_connect(const std::string& host, const int port, const std::string& database, const std::string& login, const std::string& password) {
             PROFILER_FUNCTION_TAG(get_logger_profiler()
-                , fmt::format("host={} port={} user={} password=*** database={}"
+                , fmt::format("[host={} port={} user={} password=*** database={}]"
                 , host, port, login, database));
             m_db_connect_.set_connect(host, port, database, login, password);
         }
