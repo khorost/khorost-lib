@@ -1,4 +1,4 @@
-#ifndef _COMPACT_BINARY__H_
+п»ї#ifndef _COMPACT_BINARY__H_
 #define _COMPACT_BINARY__H_
 
 #include <map>
@@ -38,7 +38,7 @@ namespace khorost {
 #define PACKET_NTOH_SIZE(v)        ntohs(v)
 #define PACKET_NTOH_TYPE(v)        ntohs(v)
 
-            // Вычисляем размер заголовка пакета
+            // Р’С‹С‡РёСЃР»СЏРµРј СЂР°Р·РјРµСЂ Р·Р°РіРѕР»РѕРІРєР° РїР°РєРµС‚Р°
             static size_cbp    GetHeaderSize() { return sizeof(sign_cbp) + sizeof(type_cbp) + sizeof(size_cbp); }
         };
 
@@ -56,13 +56,13 @@ namespace khorost {
 #define CHUNK_NTOH_SIZE(v)        ntohs(v)
 #define CHUNK_NTOH_TYPE(v)        (v)
 
-            static  const type_cbc    CHUNK_TYPE_BYTE = 0x01;       // 1 байт
-            static  const type_cbc    CHUNK_TYPE_SHORT = 0x02;      // 2 байта
-            static  const type_cbc    CHUNK_TYPE_INTEGER = 0x03;    // 4 байта
-            static  const type_cbc    CHUNK_TYPE_LONG = 0x04;       // 8 байт
-            static  const type_cbc    CHUNK_TYPE_STRING = 0x05;     // объект аналогичен CHUNK_TYPE_BINARY
-            static  const type_cbc    CHUNK_TYPE_BINARY = 0x07;     // бинарные данные размером до 64К
-            static  const type_cbc    CHUNK_TYPE_ARRAY = 0x08;      // массив повторяющихся данных
+            static  const type_cbc    CHUNK_TYPE_BYTE = 0x01;       // 1 Р±Р°Р№С‚
+            static  const type_cbc    CHUNK_TYPE_SHORT = 0x02;      // 2 Р±Р°Р№С‚Р°
+            static  const type_cbc    CHUNK_TYPE_INTEGER = 0x03;    // 4 Р±Р°Р№С‚Р°
+            static  const type_cbc    CHUNK_TYPE_LONG = 0x04;       // 8 Р±Р°Р№С‚
+            static  const type_cbc    CHUNK_TYPE_STRING = 0x05;     // РѕР±СЉРµРєС‚ Р°РЅР°Р»РѕРіРёС‡РµРЅ CHUNK_TYPE_BINARY
+            static  const type_cbc    CHUNK_TYPE_BINARY = 0x07;     // Р±РёРЅР°СЂРЅС‹Рµ РґР°РЅРЅС‹Рµ СЂР°Р·РјРµСЂРѕРј РґРѕ 64Рљ
+            static  const type_cbc    CHUNK_TYPE_ARRAY = 0x08;      // РјР°СЃСЃРёРІ РїРѕРІС‚РѕСЂСЏСЋС‰РёС…СЃСЏ РґР°РЅРЅС‹С…
 
         public:
             cbChunk() {
@@ -180,15 +180,15 @@ namespace khorost {
                                 pBuffer_ += sizePacket;
                                 nBufferSize_ -= sizePacket;
                             } else {
-                                // неизвестная команда
+                                // РЅРµРёР·РІРµСЃС‚РЅР°СЏ РєРѕРјР°РЅРґР°
                                 break;
                             }
                         } else {
-                            // пока еще мало данных
+                            // РїРѕРєР° РµС‰Рµ РјР°Р»Рѕ РґР°РЅРЅС‹С…
                             break;
                         }
                     } else {
-                        // неправильный формат
+                        // РЅРµРїСЂР°РІРёР»СЊРЅС‹Р№ С„РѕСЂРјР°С‚
 //                        LOGF(WARNING, "Wrong signature - %x", sign);
                         break;
                     }

@@ -1,4 +1,4 @@
-#include "net/compactbinary.h"
+п»ї#include "net/compactbinary.h"
 
 using namespace khorost::network;
 using namespace khorost::data;
@@ -12,7 +12,7 @@ union uint64x32_t {
 };
 
 void cbChunkIn::ParsePacket(const boost::uint8_t* pBuffer_, size_t nBufferSize_) {
-    // Блоки в формате ITLV
+    // Р‘Р»РѕРєРё РІ С„РѕСЂРјР°С‚Рµ ITLV
     id_cbc      id;
     type_cbc    type;
     size_cbc    length;
@@ -35,7 +35,7 @@ void cbChunkIn::ParsePacket(const boost::uint8_t* pBuffer_, size_t nBufferSize_)
         }
         length = CHUNK_NTOH_SIZE(ReadBuffer<size_cbc>(pBuffer_, nBufferSize_));
         if (length>nBufferSize_) {
-            break;  // ошибка. ожидается данных больше чем их представлено
+            break;  // РѕС€РёР±РєР°. РѕР¶РёРґР°РµС‚СЃСЏ РґР°РЅРЅС‹С… Р±РѕР»СЊС€Рµ С‡РµРј РёС… РїСЂРµРґСЃС‚Р°РІР»РµРЅРѕ
         }
 
         switch(type){
@@ -108,7 +108,7 @@ void cbChunkIn::ParsePacket(const boost::uint8_t* pBuffer_, size_t nBufferSize_)
             }
             break;
         default:
-            // chunk не распознали, переходим к следующему
+            // chunk РЅРµ СЂР°СЃРїРѕР·РЅР°Р»Рё, РїРµСЂРµС…РѕРґРёРј Рє СЃР»РµРґСѓСЋС‰РµРјСѓ
             pBuffer_ += length;
             nBufferSize_ -= length;
             break;

@@ -1,4 +1,4 @@
-/***************************************************************************
+п»ї/***************************************************************************
 *   Copyright (C) 2005 by khap                                            *
 *   khap@khorost.com                                                      *
 *                                                                         *
@@ -181,7 +181,7 @@ void khl_mysql::Query::Execute(){
 	bool	bReconnectEnable = true;
     auto logger = spdlog::get(KHL_LOGGER_COMMON);
 
-    // нужна z-строка, а то ошибки ползут
+    // РЅСѓР¶РЅР° z-СЃС‚СЂРѕРєР°, Р° С‚Рѕ РѕС€РёР±РєРё РїРѕР»Р·СѓС‚
     *m_abQuery.get_position(m_abQuery.get_fill_size()) = '\0';
 m1:
 	if(mysql_real_query(m_Handle, (const char*)m_abQuery.get_position(0), m_abQuery.get_fill_size())){

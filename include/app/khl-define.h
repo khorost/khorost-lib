@@ -1,4 +1,4 @@
-#pragma once 
+п»ї#pragma once 
 
 #define KHL_LOGGER_CONSOLE                              "console"
 #define KHL_LOGGER_COMMON                               "core"
@@ -21,12 +21,12 @@
 #define KHL_SET_CPU_DURATION(json_object, json_tag, now_value) \
     json_object[json_tag] = (boost::posix_time::microsec_clock::universal_time() - now_value).total_microseconds()
 
-#define S2H_PARAM_ACTION_AUTH               "auth"      // авторизация пользователя
-#define S2H_PARAM_ACTION_AUTH_CHECK         "ca"        // проверка авторизации
-#define S2H_PARAM_ACTION_AUTH_DO            "da"        // подтверждение авторизации
-#define S2H_PARAM_ACTION_AUTH_PRE           "ba"        // запрос авторизации
-#define S2H_PARAM_ACTION_AUTH_RESET         "ra"        // сброс авторизации
-#define S2H_PARAM_ACTION_AUTH_CHANGEPASS    "chpwd"     // изменить пароль
+#define S2H_PARAM_ACTION_AUTH               "auth"      // Р°РІС‚РѕСЂРёР·Р°С†РёСЏ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ
+#define S2H_PARAM_ACTION_AUTH_CHECK         "ca"        // РїСЂРѕРІРµСЂРєР° Р°РІС‚РѕСЂРёР·Р°С†РёРё
+#define S2H_PARAM_ACTION_AUTH_DO            "da"        // РїРѕРґС‚РІРµСЂР¶РґРµРЅРёРµ Р°РІС‚РѕСЂРёР·Р°С†РёРё
+#define S2H_PARAM_ACTION_AUTH_PRE           "ba"        // Р·Р°РїСЂРѕСЃ Р°РІС‚РѕСЂРёР·Р°С†РёРё
+#define S2H_PARAM_ACTION_AUTH_RESET         "ra"        // СЃР±СЂРѕСЃ Р°РІС‚РѕСЂРёР·Р°С†РёРё
+#define S2H_PARAM_ACTION_AUTH_CHANGEPASS    "chpwd"     // РёР·РјРµРЅРёС‚СЊ РїР°СЂРѕР»СЊ
 
 #define S2H_JSON_PONG                       "pong"
 #define S2H_PARAM_ACTION_PING               "ping"
