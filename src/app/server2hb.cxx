@@ -10,6 +10,11 @@
 #include <openssl/md5.h>
 #include <boost/algorithm/hex.hpp>
 #include <boost/program_options.hpp>
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_generators.hpp>
+#include <boost/uuid/uuid_io.hpp>
+#include <boost/lexical_cast.hpp>
+
 namespace po = boost::program_options;
 #include <boost/filesystem.hpp>
 namespace fs = boost::filesystem;
@@ -606,7 +611,7 @@ bool server2_hb::process_http(http_connection& connection) {
 
         logger->debug("[HTTP_PROCESS] worker pQueryAction not found");
 
-        http->set_response_status(HTTP_RESPONSE_STATUS_NOT_FOUND, "Not found");
+        http->set_response_status(http_response_status_not_found, "Not found");
         http->send_response(connection, "File not found");
 
         return false;
@@ -700,11 +705,13 @@ network::session_ptr server2_hb::processing_session(http_connection& connect) {
 }
 
 network::token_ptr server2_hb::parse_token(const khorost::network::http_text_protocol_header_ptr& http, const bool is_access_token, const boost::posix_time::ptime& check) {
-    static const std::string token_mask = KHL_TOKEN_TYPE " ";
+    PROFILER_FUNCTION_TAG(get_logger_profiler(), fmt::format("[AT={}]", is_access_token));
+
+    static const auto token_mask = khl_token_type + std::string(" ");
     const auto logger = get_logger();
     std::string id;
 
-    const auto header_authorization = http->get_header_parameter(KHL_HTTP_PARAM__AUTHORIZATION, nullptr);
+    const auto header_authorization = http->get_header_parameter(khl_http_param_authorization, nullptr);
     if (header_authorization != nullptr) {
         const auto token_id = data::escape_string(header_authorization);
         const auto token_pos = token_mask.size();
@@ -742,10 +749,10 @@ network::token_ptr server2_hb::parse_token(const khorost::network::http_text_pro
 }
 
 void server2_hb::fill_json_token(const network::token_ptr& token, Json::Value& value) {
-    value["token_type"] = KHL_TOKEN_TYPE;
+    value["token_type"] = khl_token_type;
 
-    value["access_token"] = token->get_access_token();
-    value["refresh_token"] = token->get_refresh_token();
+    value[khl_json_param_access_token] = token->get_access_token();
+    value[khl_json_param_refresh_token] = token->get_refresh_token();
 
     value["access_expires_in"] = token->get_access_duration();
     value["refresh_expires_in"] = token->get_refresh_duration();
@@ -760,37 +767,66 @@ bool server2_hb::action_refresh_token(const std::string& params_uri, http_connec
     try {
         auto token = parse_token(http, false, now);
         if (token != nullptr) {
-            const auto time_refresh = http->get_parameter("time_refresh", 0);
-            const auto time_access = http->get_parameter("time_access", 0);
+            const auto time_refresh = http->get_parameter("time_refresh", token->get_refresh_duration());
+            const auto time_access = http->get_parameter("time_access", token->get_access_duration());
 
-            const auto access_token = token->get_access_token();
-            const auto refresh_token = token->get_refresh_token();
+            const auto prev_access_token = token->get_access_token();
+            const auto prev_refresh_token = token->get_refresh_token();
 
-            if (m_db_base.refresh_token(token, time_access, time_refresh, KHL_TOKEN_APPEND_TIME)) {
-                logger->debug("[OAUTH] Remove token Access='{}', Refresh='{}' and append token Access='{}'@{}, Refresh='{}'@{}"
-                              , access_token
-                              , refresh_token
-                              , token->get_access_token()
-                              , to_iso_extended_string(token->get_access_expire())
-                              , token->get_refresh_token()
-                              , to_iso_extended_string(token->get_refresh_expire())
-                );
-                update_tokens(token, access_token, refresh_token);
+            auto access_token = boost::lexical_cast<std::string>(boost::uuids::random_generator()());
+            auto refresh_token = boost::lexical_cast<std::string>(boost::uuids::random_generator()());
 
-                fill_json_token(token, json_root);
-            }
+            data::compact_uuid_to_string(access_token);
+            data::compact_uuid_to_string(refresh_token);
+
+            const auto access_expire = now + boost::posix_time::seconds(time_access + khl_token_append_time);
+            const auto refresh_expire = now + boost::posix_time::seconds(time_refresh + khl_token_append_time);
+
+            token->set_access_token(access_token);
+            token->set_access_duration(time_access);
+            token->set_access_expire(access_expire);
+
+            token->set_refresh_token( refresh_token);
+            token->set_refresh_duration(time_refresh);
+            token->set_refresh_expire(refresh_expire);
+
+            const auto& payload = token->get_payload();
+            const auto token_value = khorost::data::json_string(payload);
+            const auto cache_set_value = payload[get_cache_set_tag()].asString();
+            // clear previous state
+            m_cache_db_.del({ prev_access_token , prev_refresh_token });
+            m_cache_db_.srem(m_cache_db_context_ + "tt:" + cache_set_value, { prev_refresh_token });
+            // set new state
+            m_cache_db_.setex(m_cache_db_context_ + "at:" + access_token, time_access + khl_token_append_time,
+                token_value);
+            m_cache_db_.setex(m_cache_db_context_ + "rt:" + refresh_token, time_refresh + khl_token_append_time,
+                token_value);
+            m_cache_db_.sadd(m_cache_db_context_ + "tt:" + cache_set_value, { refresh_token });
+            m_cache_db_.sync_commit();
+
+            logger->debug("[OAUTH] Remove token Access='{}', Refresh='{}' and append token Access='{}'@{}, Refresh='{}'@{}"
+                , prev_access_token
+                , prev_refresh_token
+                , token->get_access_token()
+                , to_iso_extended_string(token->get_access_expire())
+                , token->get_refresh_token()
+                , to_iso_extended_string(token->get_refresh_expire())
+            );
+            update_tokens(token, prev_access_token, prev_refresh_token);
+
+            fill_json_token(token, json_root);
         }
     } catch (const std::exception&) {
-        http->set_response_status(402, "UNKNOWN_ERROR");
+        http->set_response_status(http_response_status_internal_server_error, "UNKNOWN_ERROR");
     }
 
     if (!json_root.isNull()) {
-        KHL_SET_CPU_DURATION(json_root, KHL_JSON_PARAM__DURATION, now);
+        KHL_SET_CPU_DURATION(json_root, khl_json_param_duration, now);
 
         http->set_content_type(HTTP_ATTRIBUTE_CONTENT_TYPE__APP_JSON);
         http->send_response(connection, data::json_string(json_root));
     } else {
-        http->set_response_status(HTTP_RESPONSE_STATUS_UNAUTHORIZED, "Unauthorized");
+        http->set_response_status(http_response_status_unauthorized, "Unauthorized");
         http->end_of_response(connection);
     }
 
@@ -892,6 +928,24 @@ void server2_hb::append_token(const khorost::network::token_ptr& token) {
     }
 }
 
+void server2_hb::remove_token(const bool is_access_token, const std::string& token_id) {
+    if (is_access_token) {
+        const auto it = m_access_tokens.find(token_id);
+        if (it != m_access_tokens.end()) {
+            const auto t = it->second;
+            m_refresh_tokens.erase(t->get_refresh_token());
+            m_access_tokens.erase(t->get_access_token());
+        }
+    } else {
+        const auto it = m_refresh_tokens.find(token_id);
+        if (it != m_refresh_tokens.end()) {
+            const auto t = it->second;
+            m_refresh_tokens.erase(t->get_refresh_token());
+            m_access_tokens.erase(t->get_access_token());
+        }
+    }
+}
+
 void server2_hb::remove_token(const std::string& access_token, const std::string& refresh_token) {
     m_refresh_tokens.erase(refresh_token);
     m_access_tokens.erase(access_token);
@@ -908,24 +962,48 @@ network::token_ptr server2_hb::find_token(const bool is_access_token, const std:
         return nullptr;
     }
 
-    if (is_access_token) {
-        const auto it = m_access_tokens.find(token_id);
-        if (it != m_access_tokens.end()) {
-            return it->second;
+    const auto token_context = m_cache_db_context_ + (is_access_token ? "at:" : "rt:") + token_id;
+    const std::vector<std::string> token_context_vector = {token_context};
+    auto rit = m_cache_db_.exists(token_context_vector);
+    m_cache_db_.sync_commit();
+
+    const auto exist = rit.get();
+    if (!exist.is_null() && exist.as_integer() == 1) {
+        if (is_access_token) {
+            const auto it = m_access_tokens.find(token_id);
+            if (it != m_access_tokens.end()) {
+                return it->second;
+            }
+        } else {
+            const auto it = m_refresh_tokens.find(token_id);
+            if (it != m_refresh_tokens.end()) {
+                return it->second;
+            }
+        }
+
+        auto riv = m_cache_db_.get(token_context);
+        m_cache_db_.sync_commit();
+
+        const auto cp = riv.get();
+        if (!cp.is_null()) {
+            Json::Value payload;
+            data::parse_json_string(cp.as_string(), payload);
+
+            auto token = std::make_shared<network::token>(
+                payload[khl_json_param_access_token].asString()
+                , boost::posix_time::from_iso_extended_string(payload[khl_json_param_access_expire].asString())
+                , payload[khl_json_param_refresh_token].asString()
+                , boost::posix_time::from_iso_extended_string(payload[khl_json_param_refresh_expire].asString())
+                , payload);
+
+            append_token(token);
+            return token;
         }
     } else {
-        const auto it = m_refresh_tokens.find(token_id);
-        if (it != m_refresh_tokens.end()) {
-            return it->second;
-        }
+        remove_token(is_access_token, token_id);
     }
 
-    auto token = m_db_base.load_token(is_access_token, token_id);
-    if (token!=nullptr) {
-        append_token(token);
-    }
-
-    return token;
+    return nullptr;
 }
 
 std::shared_ptr<spdlog::logger> server2_hb::get_logger() {

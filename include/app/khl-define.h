@@ -4,16 +4,23 @@
 #define KHL_LOGGER_COMMON                               "core"
 #define KHL_LOGGER_PROFILER                             "profiler"
 
-#define KHL_HTTP_PARAM__AUTHORIZATION   "Authorization"
-#define KHL_JSON_PARAM__DURATION "0dur"
+constexpr auto khl_http_param_authorization = "Authorization";
+constexpr auto khl_json_param_duration = "0dur";
 
-#define TIME_SECONDS_IN_MINUTE      (60)
-#define TIME_MINUTES_IN_HOUR        (60*TIME_SECONDS_IN_MINUTE)
-#define TIME_HOURS_IN_DAY           (24*TIME_MINUTES_IN_HOUR)
-#define TIME_DAY_IN_WEEK            (7*TIME_HOURS_IN_DAY)
+constexpr auto time_seconds_in_minute = 60;
+constexpr auto time_minutes_in_hour = 60 * time_seconds_in_minute;
+constexpr auto time_hours_in_day = 24 * time_minutes_in_hour;
+constexpr auto time_day_in_week = 7 * time_hours_in_day;
 
-#define KHL_TOKEN_TYPE "token"
-#define KHL_TOKEN_APPEND_TIME       (2*TIME_SECONDS_IN_MINUTE)
+constexpr auto khl_token_type = "token";
+constexpr auto khl_token_append_time = 2 * time_seconds_in_minute;
+
+constexpr auto khl_json_param_access_token = "access_token";
+constexpr auto khl_json_param_access_expire = "access_expire";
+constexpr auto khl_json_param_delta_access_time = "delta_access_time";
+constexpr auto khl_json_param_refresh_token = "refresh_token";
+constexpr auto khl_json_param_refresh_expire = "refresh_expire";
+constexpr auto khl_json_param_delta_refresh_time = "delta_refresh_time";
 
 #define KHL_SET_TIMESTAMP_MILLISECONDS(json_object, json_tag, json_value)       json_object[json_tag] = khorost::data::epoch_diff(json_value).total_milliseconds()
 #define KHL_SET_TIMESTAMP_MICROSECONDS(json_object, json_tag, json_value)       json_object[json_tag] = khorost::data::epoch_diff(json_value).total_microseconds()

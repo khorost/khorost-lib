@@ -12,7 +12,7 @@ KHL_INC =  -I/usr/include/mysql
 KHL_LIB = -L/usr/local/lib -lmysqlclient \
 	-lz -levent -levent_pthreads -lboost_thread -lboost_filesystem \
 	-lboost_system -llog4cxx -lsqlite3 -lcurl -lboost_regex -lpthread \
-	-lstdc++ -lcrypto -lpqxx -lpq  -lboost_program_options -lboost_date_time -lm -lmaxminddb
+	-lstdc++ -lcrypto -lpqxx -lpq  -lboost_program_options -lboost_date_time -lm -lmaxminddb -lboost_chrono
 
 
 KHL_EXT_SRC = json/json_reader.cpp json/json_value.cpp json/json_writer.cpp

@@ -74,11 +74,11 @@
 #define HTTP_CODEPAGE_UTF8                      "UTF-8"
 #define HTTP_CODEPAGE_NULL                      ""
 
-#define HTTP_RESPONSE_STATUS_OK                 200
-#define HTTP_RESPONSE_STATUS_UNAUTHORIZED       401
-#define HTTP_RESPONSE_STATUS_NOT_FOUND          404
-
-#define HTTP_RESPONSE_STATUS_ERROR              503
+constexpr auto http_response_status_ok = 200;
+constexpr auto http_response_status_unauthorized = 401;
+constexpr auto http_response_status_not_found = 404;
+constexpr auto http_response_status_internal_server_error = 500;
+constexpr auto http_response_status_error = 503;
 
 #define HTTP_RESPONSE_STATUS_UNAUTHORIZED_DESC  "Unauthorized"
 #define HTTP_RESPONSE_STATUS_ERROR_DESC         "Server internal error"
@@ -170,7 +170,7 @@ namespace khorost {
                 void    clear() {
                     m_cookies_.clear();
                     m_auto_close = true;
-                    m_nCode = HTTP_RESPONSE_STATUS_OK;
+                    m_nCode = http_response_status_ok;
                     m_sCodeReason = "Ok";
                     m_sContentType = HTTP_ATTRIBUTE_CONTENT_TYPE__TEXT_HTML;
                     m_sContentTypeCP = "UTF-8";

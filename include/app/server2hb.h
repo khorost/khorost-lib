@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include <boost/uuid/uuid.hpp>
+#include <cpp_redis/cpp_redis>
 
 #include "net/http.h"
 #include "app/khl-define.h"
@@ -97,6 +98,10 @@ namespace khorost {
         typedef std::map<std::string, network::token_ptr> dict_tokens;
         dict_tokens m_refresh_tokens;
         dict_tokens m_access_tokens;
+        cpp_redis::client m_cache_db_;
+        std::string m_cache_db_context_;
+
+        virtual const char* get_cache_set_tag() const { return "id"; }
     private:
         class cb_controller final : public network::connection_controller {
         public:
@@ -182,6 +187,7 @@ namespace khorost {
         }
 
         void remove_token(const std::string& access_token, const std::string& refresh_token);
+        void remove_token(bool is_access_token, const std::string& token_id);
 
         std::string     m_sConfigFileName;
 

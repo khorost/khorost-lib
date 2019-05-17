@@ -576,7 +576,7 @@ bool http_text_protocol_header::send_file(const std::string& query_uri, network:
     if (sFileName.length() >= MAX_PATH) {
         logger->warn("Path is too long");
         
-        set_response_status(HTTP_RESPONSE_STATUS_NOT_FOUND, "Not found");
+        set_response_status(http_response_status_not_found, "Not found");
         send_response(connect, "File not found");
         return false;
     }
@@ -588,7 +588,7 @@ bool http_text_protocol_header::send_file(const std::string& query_uri, network:
     if (!PathCanonicalize((LPSTR)bufCanonicFileName, sFileName.c_str())) {
         logger->warn("PathCanonicalize failed");
 
-        set_response_status(HTTP_RESPONSE_STATUS_NOT_FOUND, "Not found");
+        set_response_status(http_response_status_not_found, "Not found");
         send_response(connect, "File not found");
         return false;
     }
@@ -596,7 +596,7 @@ bool http_text_protocol_header::send_file(const std::string& query_uri, network:
     if (!realpath(sFileName.c_str(), bufCanonicFileName)) {
         logger->warn("realpath failed");
 
-        set_response_status(HTTP_RESPONSE_STATUS_NOT_FOUND, "Not found");
+        set_response_status(http_response_status_not_found, "Not found");
         send_response(connect, "File not found");
         return false;
     }
@@ -607,7 +607,7 @@ bool http_text_protocol_header::send_file(const std::string& query_uri, network:
     if (sCanonicFileName.substr(0, doc_root.length()) != doc_root) {
         logger->warn("Access outside of docroot attempted");
 
-        set_response_status(HTTP_RESPONSE_STATUS_NOT_FOUND, "Not found");
+        set_response_status(http_response_status_not_found, "Not found");
         send_response(connect, "File not found");
         return false;
     }
@@ -684,7 +684,7 @@ bool http_text_protocol_header::send_file(const std::string& query_uri, network:
     } else {
         logger->warn("[HTTP] File not found '{}'", sCanonicFileName.c_str());
 
-        set_response_status(HTTP_RESPONSE_STATUS_NOT_FOUND, "Not found");
+        set_response_status(http_response_status_not_found, "Not found");
         send_response(connect, "File not found");
         return false;
     }
