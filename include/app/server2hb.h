@@ -96,8 +96,7 @@ namespace khorost {
         std::shared_ptr<spdlog::logger> m_logger_profiler_ = nullptr;
 
         typedef std::map<std::string, network::token_ptr> dict_tokens;
-        dict_tokens m_refresh_tokens;
-        dict_tokens m_access_tokens;
+        dict_tokens m_tokens_;
         cpp_redis::client m_cache_db_;
         std::string m_cache_db_context_;
 
@@ -187,7 +186,7 @@ namespace khorost {
         }
 
         void remove_token(const std::string& access_token, const std::string& refresh_token);
-        void remove_token(bool is_access_token, const std::string& token_id);
+        void remove_token(const std::string& token_id);
 
         std::string     m_sConfigFileName;
 

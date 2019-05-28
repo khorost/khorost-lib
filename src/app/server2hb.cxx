@@ -921,34 +921,24 @@ void server2_hb::json_fill_auth(network::s2h_session* session, bool full_info, J
     }
 }
 
-void server2_hb::append_token(const khorost::network::token_ptr& token) {
+void server2_hb::append_token(const network::token_ptr& token) {
     if (token != nullptr) {
-        m_refresh_tokens.insert(std::make_pair(token->get_refresh_token(), token));
-        m_access_tokens.insert(std::make_pair(token->get_access_token(), token));
+        m_tokens_.insert(std::make_pair(token->get_refresh_token(), token));
+        m_tokens_.insert(std::make_pair(token->get_access_token(), token));
     }
 }
 
-void server2_hb::remove_token(const bool is_access_token, const std::string& token_id) {
-    if (is_access_token) {
-        const auto it = m_access_tokens.find(token_id);
-        if (it != m_access_tokens.end()) {
-            const auto t = it->second;
-            m_refresh_tokens.erase(t->get_refresh_token());
-            m_access_tokens.erase(t->get_access_token());
-        }
-    } else {
-        const auto it = m_refresh_tokens.find(token_id);
-        if (it != m_refresh_tokens.end()) {
-            const auto t = it->second;
-            m_refresh_tokens.erase(t->get_refresh_token());
-            m_access_tokens.erase(t->get_access_token());
-        }
+void server2_hb::remove_token(const std::string& token_id) {
+    const auto it = m_tokens_.find(token_id);
+    if (it != m_tokens_.end()) {
+        const auto t = it->second;
+        remove_token(t->get_access_token(), t->get_refresh_token());
     }
 }
 
 void server2_hb::remove_token(const std::string& access_token, const std::string& refresh_token) {
-    m_refresh_tokens.erase(refresh_token);
-    m_access_tokens.erase(access_token);
+    m_tokens_.erase(refresh_token);
+    m_tokens_.erase(access_token);
 }
 
 void server2_hb::update_tokens(const network::token_ptr& token, const std::string& access_token,
@@ -962,25 +952,17 @@ network::token_ptr server2_hb::find_token(const bool is_access_token, const std:
         return nullptr;
     }
 
+    const auto it = m_tokens_.find(token_id);
+    if (it != m_tokens_.end()) {
+        return it->second;
+    }
+
     const auto token_context = m_cache_db_context_ + (is_access_token ? "at:" : "rt:") + token_id;
-    const std::vector<std::string> token_context_vector = {token_context};
-    auto rit = m_cache_db_.exists(token_context_vector);
+    auto rit = m_cache_db_.exists({token_context});
     m_cache_db_.sync_commit();
 
     const auto exist = rit.get();
     if (!exist.is_null() && exist.as_integer() == 1) {
-        if (is_access_token) {
-            const auto it = m_access_tokens.find(token_id);
-            if (it != m_access_tokens.end()) {
-                return it->second;
-            }
-        } else {
-            const auto it = m_refresh_tokens.find(token_id);
-            if (it != m_refresh_tokens.end()) {
-                return it->second;
-            }
-        }
-
         auto riv = m_cache_db_.get(token_context);
         m_cache_db_.sync_commit();
 
@@ -1000,7 +982,7 @@ network::token_ptr server2_hb::find_token(const bool is_access_token, const std:
             return token;
         }
     } else {
-        remove_token(is_access_token, token_id);
+        remove_token(token_id);
     }
 
     return nullptr;
