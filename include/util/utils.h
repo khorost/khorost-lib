@@ -16,6 +16,7 @@ namespace khorost {
         std::string clear_html_tags(const std::string source);
 
         typedef boost::date_time::local_adjustor<boost::posix_time::ptime, +3, boost::posix_time::no_dst> tz_msk;
+        typedef boost::date_time::local_adjustor<boost::posix_time::ptime, +2, boost::posix_time::no_dst> tz_cet;
 
         std::string json_string(const Json::Value& value);
         bool parse_json(char const* begin_doc, char const* end_doc, Json::Value& value);
