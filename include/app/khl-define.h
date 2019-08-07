@@ -12,7 +12,7 @@ constexpr auto time_minutes_in_hour = 60 * time_seconds_in_minute;
 constexpr auto time_hours_in_day = 24 * time_minutes_in_hour;
 constexpr auto time_day_in_week = 7 * time_hours_in_day;
 
-constexpr auto khl_token_type = "token";
+constexpr auto khl_token_type = "Bearer";
 constexpr auto khl_token_append_time = 2 * time_seconds_in_minute;
 
 constexpr auto khl_json_param_access_token = "access_token";
