@@ -65,7 +65,7 @@ namespace khorost {
             static void stub_conn_write(bufferevent* bev, void* ctx);
             static void stub_conn_event(bufferevent* bev, short events, void* ctx);
         protected:
-            data::AutoBufferT<boost::uint8_t>  m_socket_buffer;
+            data::auto_buffer_t<boost::uint8_t>  m_socket_buffer;
             size_t      m_receive_bytes;
             size_t      m_send_bytes;
 

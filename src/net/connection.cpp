@@ -62,7 +62,7 @@ bool connection::compile_buffer_data() {
         if (processed_bytes == 0)
             break;
     }
-    m_socket_buffer.CutFromHead(s);
+    m_socket_buffer.cut_from_head(s);
     return true;
 }
 
@@ -95,7 +95,7 @@ void connection::stub_conn_read(bufferevent* bev, void* ctx) {
     if (len != 0) {
         connect->m_socket_buffer.check_size(len);
         len = bufferevent_read(bev, static_cast<void*>(connect->m_socket_buffer.get_free_position()), len);
-        connect->m_socket_buffer.DecrementFreeSize(len);
+        connect->m_socket_buffer.decrement_free_size(len);
         connect->m_receive_bytes += len;
 
         connect->compile_buffer_data();

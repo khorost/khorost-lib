@@ -39,7 +39,7 @@ bool find_sub_value(const char* pSource_, size_t nSourceSize_, const char* pMatc
         return false;
     }
 
-    if (nSourceSize_ == -1) {
+    if (nSourceSize_ == data::auto_buffer_char::npos) {
         nSourceSize_ = strlen(pSource_);
     }
 
@@ -111,7 +111,7 @@ void http_text_protocol_header::response::send_header_data(connection& connect) 
     }
 }
 
-bool http_text_protocol_header::get_chunk(const char*& rpBuffer_, size_t& rnBufferSize_, char cPrefix_, const char* pDiv_, data::AutoBufferChar& abTarget_, data::AutoBufferChunkChar& rabcQueryValue_, size_t& rnChunkSize_) {
+bool http_text_protocol_header::get_chunk(const char*& rpBuffer_, size_t& rnBufferSize_, char cPrefix_, const char* pDiv_, data::auto_buffer_char& abTarget_, data::auto_buffer_chunk_char& rabcQueryValue_, size_t& rnChunkSize_) {
     size_t s;
     // зачишаем префикс от white символов
     for (s=0; s<rnBufferSize_ && rpBuffer_[s]==cPrefix_; ++s) {
@@ -165,7 +165,7 @@ size_t  http_text_protocol_header::process_data(const boost::uint8_t *buffer, si
         }
         //  ?key=val& ***************************************************
         if (m_abParams.get_fill_size()==0 && buffer[0]=='?') {
-            data::AutoBufferChunkChar   abcParam(m_abParams);
+            data::auto_buffer_chunk_char   abcParam(m_abParams);
             buffer += sizeof(char);
             buffer_size -= sizeof(char);
             if (!get_chunk(reinterpret_cast<const char*&>(buffer), buffer_size, '?', " ", m_abParams, abcParam, nChunkSize)) {
@@ -201,8 +201,8 @@ size_t  http_text_protocol_header::process_data(const boost::uint8_t *buffer, si
                 break;
             }
             
-            data::AutoBufferChunkChar   abcHeaderKey(m_abHeader);
-            data::AutoBufferChunkChar   abcHeaderValue(m_abHeader);
+            data::auto_buffer_chunk_char   abcHeaderKey(m_abHeader);
+            data::auto_buffer_chunk_char   abcHeaderValue(m_abHeader);
 
             if (get_chunk(reinterpret_cast<const char*&>(buffer), buffer_size, ' ', ":", m_abHeader, abcHeaderKey, nChunkSize) 
                 && get_chunk(reinterpret_cast<const char*&>(buffer), buffer_size, ' ', "\r\n", m_abHeader, abcHeaderValue, nChunkSizeV)) {
@@ -220,7 +220,7 @@ size_t  http_text_protocol_header::process_data(const boost::uint8_t *buffer, si
                     parse_string(const_cast<char*>(abcHeaderValue.get_chunk()), nChunkSizeV, abcHeaderValue.get_reference(), m_cookies_, ';', true);
                 }
             }  else {
-                m_abHeader.DecrementFreeSize(nChunkSize);
+                m_abHeader.decrement_free_size(nChunkSize);
                 break;
             }
         }
@@ -240,7 +240,7 @@ size_t  http_text_protocol_header::process_data(const boost::uint8_t *buffer, si
                 m_eBodyProcess = eSuccessful;
 
                 const char *content_type = get_header_parameter(HTTP_ATTRIBUTE_CONTENT_TYPE, nullptr);
-                if (content_type!= nullptr && find_sub_value(content_type, -1, HTTP_ATTRIBUTE_CONTENT_TYPE__FORM, sizeof(HTTP_ATTRIBUTE_CONTENT_TYPE__FORM) - 1, '=', ';')) {
+                if (content_type!= nullptr && find_sub_value(content_type, data::auto_buffer_char::npos, HTTP_ATTRIBUTE_CONTENT_TYPE__FORM, sizeof(HTTP_ATTRIBUTE_CONTENT_TYPE__FORM) - 1, '=', ';')) {
 //                if (strcmp(HTTP_ATTRIBUTE_CONTENT_TYPE__FORM, pszContentType) == 0) {
                     size_t k = m_abParams.get_fill_size();
                     if (k != 0) {
@@ -286,48 +286,48 @@ bool http_text_protocol_header::get_multi_part(size_t& rszIterator_, std::string
             std::string sBoundary = HTTP_ATTRIBUTE_LABEL_CD;
             sBoundary.append(pszBoundary, szBoundary);
             // проверить что контрольная метка правильная
-            if (m_abBody.Compare(rszIterator_, sBoundary.c_str(), sBoundary.size()) != 0) {
+            if (m_abBody.compare(rszIterator_, sBoundary.c_str(), sBoundary.size()) != 0) {
                 return false;
             }
             rszIterator_ += sBoundary.size();
 
-            if (m_abBody.Compare(rszIterator_, HTTP_ATTRIBUTE_LABEL_CD, sizeof(HTTP_ATTRIBUTE_LABEL_CD) - 1) == 0) {
+            if (m_abBody.compare(rszIterator_, HTTP_ATTRIBUTE_LABEL_CD, sizeof(HTTP_ATTRIBUTE_LABEL_CD) - 1) == 0) {
                 return false; // завершение блока
-            } else if (m_abBody.Compare(rszIterator_, HTTP_ATTRIBUTE_ENDL, sizeof(HTTP_ATTRIBUTE_ENDL) - 1) != 0) {
+            } else if (m_abBody.compare(rszIterator_, HTTP_ATTRIBUTE_ENDL, sizeof(HTTP_ATTRIBUTE_ENDL) - 1) != 0) {
                 return false;
             }
             rszIterator_ += sizeof(HTTP_ATTRIBUTE_ENDL) - 1;
-            auto    pMax = m_abBody.get_fill_size();
-            while (rszIterator_ < pMax) {
-                auto pEndLine = m_abBody.Find(rszIterator_, HTTP_ATTRIBUTE_ENDL, sizeof(HTTP_ATTRIBUTE_ENDL) - 1);
-                if (pEndLine == std::string::npos) {
-                    pEndLine = m_abBody.get_fill_size() - rszIterator_;
+            const auto    p_max = m_abBody.get_fill_size();
+            while (rszIterator_ < p_max) {
+                auto p_end_line = m_abBody.find(rszIterator_, HTTP_ATTRIBUTE_ENDL, sizeof(HTTP_ATTRIBUTE_ENDL) - 1);
+                if (p_end_line == data::auto_buffer_char::npos) {
+                    p_end_line = m_abBody.get_fill_size() - rszIterator_;
                 }
-                if (pEndLine == rszIterator_) {
+                if (p_end_line == rszIterator_) {
                     rszIterator_ += sizeof(HTTP_ATTRIBUTE_ENDL) - 1;
                     sBoundary.insert(0, HTTP_ATTRIBUTE_ENDL);
-                    pEndLine = m_abBody.Find(rszIterator_, sBoundary.c_str(), sBoundary.size());
-                    if (pEndLine == std::string::npos) {
+                    p_end_line = m_abBody.find(rszIterator_, sBoundary.c_str(), sBoundary.size());
+                    if (p_end_line == data::auto_buffer_char::npos) {
                         return false;
                     }
 
                     rpBuffer_ = m_abBody.get_head() + rszIterator_;
-                    rszBuffer = pEndLine - rszIterator_;
-                    rszIterator_ = pEndLine;
+                    rszBuffer = p_end_line - rszIterator_;
+                    rszIterator_ = p_end_line;
                     return true;
                 } else {
                     const char* pValue;
                     size_t szValue;
-                    if (m_abBody.Compare(rszIterator_, HTTP_ATTRIBUTE_CONTENT_DISPOSITION, sizeof(HTTP_ATTRIBUTE_CONTENT_DISPOSITION) - 1) == 0) {
-                        if (find_sub_value(m_abBody.get_head() + rszIterator_, pEndLine - rszIterator_, "name", sizeof("name") - 1, '=', ';', &pValue, &szValue)) {
+                    if (m_abBody.compare(rszIterator_, HTTP_ATTRIBUTE_CONTENT_DISPOSITION, sizeof(HTTP_ATTRIBUTE_CONTENT_DISPOSITION) - 1) == 0) {
+                        if (find_sub_value(m_abBody.get_head() + rszIterator_, p_end_line - rszIterator_, "name", sizeof("name") - 1, '=', ';', &pValue, &szValue)) {
                             rsName_.assign(pValue, szValue);
                         }
-                    } else if (m_abBody.Compare(rszIterator_, HTTP_ATTRIBUTE_CONTENT_TYPE, sizeof(HTTP_ATTRIBUTE_CONTENT_TYPE) - 1) == 0) {
-                        if (find_sub_value(m_abBody.get_head() + rszIterator_, pEndLine - rszIterator_, HTTP_ATTRIBUTE_CONTENT_TYPE, sizeof(HTTP_ATTRIBUTE_CONTENT_TYPE) - 1, ':', ';', &pValue, &szValue)) {
+                    } else if (m_abBody.compare(rszIterator_, HTTP_ATTRIBUTE_CONTENT_TYPE, sizeof(HTTP_ATTRIBUTE_CONTENT_TYPE) - 1) == 0) {
+                        if (find_sub_value(m_abBody.get_head() + rszIterator_, p_end_line - rszIterator_, HTTP_ATTRIBUTE_CONTENT_TYPE, sizeof(HTTP_ATTRIBUTE_CONTENT_TYPE) - 1, ':', ';', &pValue, &szValue)) {
                             rsContentType_.assign(pValue, szValue);
                         }
                     }
-                    rszIterator_ = pEndLine + sizeof(HTTP_ATTRIBUTE_ENDL) - 1;
+                    rszIterator_ = p_end_line + sizeof(HTTP_ATTRIBUTE_ENDL) - 1;
                 }
             }
         }

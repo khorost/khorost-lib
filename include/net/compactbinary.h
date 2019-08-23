@@ -74,7 +74,7 @@ namespace khorost {
         class cbChunkIn : public cbChunk {
         public:
             virtual void        SetValue(id_cbc id_, const std::string& value_){}
-            virtual void        SetValue(id_cbc id_, const data::AutoBufferT<boost::uint8_t>& value_){}
+            virtual void        SetValue(id_cbc id_, const data::auto_buffer_t<boost::uint8_t>& value_){}
             virtual void        SetValue8(id_cbc id_, const boost::uint8_t value_){}
             virtual void        SetValue16(id_cbc id_, const boost::uint16_t value_){}
             virtual void        SetValue32(id_cbc id_, const boost::uint32_t value_){}
@@ -88,7 +88,7 @@ namespace khorost {
 
         class cbChunkOut : public cbChunk {
         protected:
-            data::AutoBufferT<boost::uint8_t>   m_abPacket;
+            data::auto_buffer_t<boost::uint8_t>   m_abPacket;
         public:
             template<typename T, cbChunk::type_cbc tv_>
             void AppendChunkT(cbChunk::id_cbc id_, T value_) {
@@ -107,7 +107,7 @@ namespace khorost {
 #define AppendChunkInteger(i,v)  AppendChunkT<boost::uint32_t, cbChunk::CHUNK_TYPE_INTEGER>(i,v)
 
             void    AppendChunkString(cbChunk::id_cbc id_, const std::string& value_);
-            void    AppendChunkBuffer(cbChunk::id_cbc id_, const data::AutoBufferT<boost::uint8_t>& value_);
+            void    AppendChunkBuffer(cbChunk::id_cbc id_, const data::auto_buffer_t<boost::uint8_t>& value_);
 
             size_cbc    GetSize() const { return static_cast<size_cbc>(m_abPacket.get_fill_size()); }
             boost::uint8_t* GetBuffer() const { return m_abPacket.get_position(0); }
@@ -136,7 +136,7 @@ namespace khorost {
             nBufferSize_ -= nSizeValueChunk_;
         }
 
-        inline void ReadBuffer(const boost::uint8_t*& pBuffer_, size_t& nBufferSize_, cbChunk::size_cbc nSizeValueChunk_, data::AutoBufferT<boost::uint8_t>& value_) {
+        inline void ReadBuffer(const boost::uint8_t*& pBuffer_, size_t& nBufferSize_, cbChunk::size_cbc nSizeValueChunk_, data::auto_buffer_t<boost::uint8_t>& value_) {
             value_.append(pBuffer_, nSizeValueChunk_);
             pBuffer_ += nSizeValueChunk_;
             nBufferSize_ -= nSizeValueChunk_;

@@ -137,36 +137,36 @@ void khl_mysql::Query::AppendQuery(const std::string& rsQuery_) {
 }
 
 void khl_mysql::Query::ExpandValue(const char* psTag_, const std::string& rsValue_) {
-	m_abQuery.Replace(psTag_, strlen(psTag_), rsValue_.c_str(), rsValue_.size());
+	m_abQuery.replace(psTag_, strlen(psTag_), rsValue_.c_str(), rsValue_.size());
 }
 
 void khl_mysql::Query::BindValue(const char* psTag_, const std::string& rsValue_) {
     std::string strTarget = std::string("\'") + rsValue_ + std::string("\'");
-	m_abQuery.Replace(psTag_, strlen(psTag_), strTarget.c_str(), strTarget.size());
+	m_abQuery.replace(psTag_, strlen(psTag_), strTarget.c_str(), strTarget.size());
 }
 
 void khl_mysql::Query::BindValueBool(const char* psTag_, bool bValue_) {
-	m_abQuery.Replace(psTag_, strlen(psTag_), (bValue_?"1":"0"), 1);
+	m_abQuery.replace(psTag_, strlen(psTag_), (bValue_?"1":"0"), 1);
 }
 
 void khl_mysql::Query::BindValue(const char* psTag_, uint32_t nValue_) {
     std::string strTarget = boost::lexical_cast<std::string>(nValue_);
-	m_abQuery.Replace(psTag_, strlen(psTag_), strTarget.c_str(), strTarget.size());
+	m_abQuery.replace(psTag_, strlen(psTag_), strTarget.c_str(), strTarget.size());
 }
 
 void khl_mysql::Query::BindValue64(const char* psTag_, uint64_t nValue_) {
     std::string strTarget = boost::lexical_cast<std::string>(nValue_);
-	m_abQuery.Replace(psTag_, strlen(psTag_), strTarget.c_str(), strTarget.size());
+	m_abQuery.replace(psTag_, strlen(psTag_), strTarget.c_str(), strTarget.size());
 }
 
-void khl_mysql::Query::BindValueBLOB(const char* psTag_, const AutoBufferT<uint8_t>& abBLOB_) {
-	data::AutoBufferChar	abTemp;
+void khl_mysql::Query::BindValueBLOB(const char* psTag_, const auto_buffer_t<uint8_t>& abBLOB_) {
+	data::auto_buffer_char	abTemp;
 	abTemp.check_size(abBLOB_.get_fill_size()*2 + 1 + 2);
 	uint32_t uiReplaceSize = mysql_real_escape_string(m_Handle, abTemp.get_position(1), (char*)abBLOB_.get_position(0), abBLOB_.get_fill_size());
-	abTemp.DecrementFreeSize(uiReplaceSize + 2);
+	abTemp.decrement_free_size(uiReplaceSize + 2);
 	*(abTemp.get_position(0)) = '\'';
 	*(abTemp.get_position(uiReplaceSize + 1)) = '\'';
-	m_abQuery.Replace(psTag_, strlen(psTag_), abTemp.get_position(0), abTemp.get_fill_size());
+	m_abQuery.replace(psTag_, strlen(psTag_), abTemp.get_position(0), abTemp.get_fill_size());
 }
 /*
 void MySQL::Query::BindValue(const char* strTag,const char* strTagMS,const system::DateTime& dtValue){

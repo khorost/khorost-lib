@@ -87,9 +87,9 @@ namespace khorost {
     namespace network {
         class http_text_protocol_header final {
             // Быстрый доступ к атрибутам HTTP
-            data::AutoBufferChunkChar   m_query_method_;
-            data::AutoBufferChunkChar   m_query_uri_;
-            data::AutoBufferChunkChar   m_query_version_;
+            data::auto_buffer_chunk_char   m_query_method_;
+            data::auto_buffer_chunk_char   m_query_uri_;
+            data::auto_buffer_chunk_char   m_query_version_;
 
             size_t  m_nHost{};
             size_t  m_nPort{};
@@ -100,9 +100,9 @@ namespace khorost {
             ListPairs   m_params_value_;  // словарь для параметров
             ListPairs   m_cookies_;      // словарь для кук
 
-            data::AutoBufferChar                    m_abHeader;
-            data::AutoBufferChar                    m_abParams;
-            data::AutoBufferChar                    m_abBody;
+            data::auto_buffer_char                    m_abHeader;
+            data::auto_buffer_char                    m_abParams;
+            data::auto_buffer_char                    m_abBody;
             enum {
                 eNone
                 , eProcessingFirst
@@ -186,7 +186,7 @@ namespace khorost {
 
             }   m_response_;
 
-            bool    get_chunk(const char*& rpBuffer_, size_t& rnBufferSize_, char cPrefix_, const char* pDiv_, data::AutoBufferChar& abTarget_, data::AutoBufferChunkChar& rabcQueryValue_, size_t& rnChunkSize_);
+            bool    get_chunk(const char*& rpBuffer_, size_t& rnBufferSize_, char cPrefix_, const char* pDiv_, data::auto_buffer_char& abTarget_, data::auto_buffer_chunk_char& rabcQueryValue_, size_t& rnChunkSize_);
             bool    parse_string(char* pBuffer_, size_t nBufferSize_, size_t nShift, ListPairs& lpTarget_, char cDiv, bool bTrim);
         public:
             http_text_protocol_header() :
@@ -291,7 +291,7 @@ namespace khorost {
         class http_curl_t {
             static size_t WriteAutobufferCallback(void* Contents_, size_t nSize_, size_t nMemb_, void *Ctx_) {
                 size_t nRealSize = (nSize_ * nMemb_) / sizeof(T);
-                data::AutoBufferT<T>* pBuffer = reinterpret_cast<data::AutoBufferT<T>*>(Ctx_);
+                data::auto_buffer_t<T>* pBuffer = reinterpret_cast<data::auto_buffer_t<T>*>(Ctx_);
 
                 pBuffer->check_size(pBuffer->get_fill_size() + nRealSize);
                 pBuffer->append(reinterpret_cast<const T*>(Contents_), nRealSize);
@@ -312,7 +312,7 @@ namespace khorost {
                 }
             }
 
-            bool do_request(const std::string& sURL_, data::AutoBufferT<T>& abBuffer_) {
+            bool do_request(const std::string& sURL_, data::auto_buffer_t<T>& abBuffer_) {
                 bool    bResult = false;
 
                 CURLcode    curlCode, nRespCode;
@@ -333,13 +333,13 @@ namespace khorost {
         };
 
         class   http_curl_string : http_curl_t<char> {
-            data::AutoBufferChar    m_abBuffer;
+            data::auto_buffer_char    m_abBuffer;
         public:
             bool    do_easy_request(const std::string& sURL_) {
                 return do_request(sURL_, m_abBuffer);
             }
 
-            const data::AutoBufferChar&   get_buffer() const { return m_abBuffer; }
+            const data::auto_buffer_char&   get_buffer() const { return m_abBuffer; }
             const char* get_uri_encode(const char* pURIString_) {
 
                 if (pURIString_ == nullptr || *pURIString_ == '\0') {
@@ -348,17 +348,17 @@ namespace khorost {
                 } else {
                     int nLenghtOut = 0;
 
-                    data::AutoBufferChar    abTemp;
+                    data::auto_buffer_char    abTemp;
                     abTemp.append(pURIString_, strlen(pURIString_));
                     // if +'s aren't replaced with %20's then curl won't unescape to spaces propperly
-                    abTemp.Replace("+", 1, "%20", 3, false);
+                    abTemp.replace("+", 1, "%20", 3, false);
                     //            string url = std::str_replace("+", "%20", str);
                     char* pt = curl_easy_unescape(m_curl, abTemp.get_head(), static_cast<int>(abTemp.get_fill_size()), &nLenghtOut);
 
                     m_abBuffer.check_size(nLenghtOut);
                     strcpy(m_abBuffer.get_head(), pt);
                     m_abBuffer.flush_free_size();
-                    m_abBuffer.DecrementFreeSize(nLenghtOut);
+                    m_abBuffer.decrement_free_size(nLenghtOut);
                     curl_free(pt);
                 }
 

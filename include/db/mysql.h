@@ -33,7 +33,7 @@ namespace khorost {
 			    MYSQL*		            m_Handle;				// 
 			    MYSQL_RES*				m_Result;				// 
 			    MYSQL_ROW				m_Row;					// 
-			    data::AutoBufferChar	m_abQuery;	// 
+			    data::auto_buffer_char	m_abQuery;	// 
 			    int			            m_nRowsCount;			// 
 		    public:
 			    Query(khl_mysql* pConnection_);
@@ -48,7 +48,7 @@ namespace khorost {
 			    void	BindValueBool(const char* psTag_, bool bValue_);
 			    void	BindValue(const char* strTag, uint32_t uiValue);
 			    void	BindValue64(const char* strTag,uint64_t uiValue);
-			    void	BindValueBLOB(const char* strTag,const data::AutoBufferT<uint8_t>& abBLOB_);
+			    void	BindValueBLOB(const char* strTag,const data::auto_buffer_t<uint8_t>& abBLOB_);
     //			void	BindValue(const char* strTag,const system::DateTime& dtValue){BindValue(strTag,NULL,dtValue);}
     //			void	BindValue(const char* strTag,const char* strTagMS,const system::DateTime& dtValue);
 
