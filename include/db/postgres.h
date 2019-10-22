@@ -1,5 +1,4 @@
-﻿#ifndef __POSTGRES_H__
-#define __POSTGRES_H__
+﻿#pragma once
 
 #if defined(_WIN32) || defined(_WIN64)
 # include <windows.h>
@@ -9,128 +8,152 @@
 /* For socket functions */
 # include <sys/socket.h>
 # include <unistd.h>
-#endif  
+#endif
 
 #include <queue>
 #include <string>
 #include <mutex>
 #include <condition_variable>
+
 #include <pqxx/pqxx>
-#include <boost/shared_ptr.hpp>
-#include <boost/scoped_ptr.hpp>
+
 #include "boost/date_time/posix_time/posix_time.hpp"
 
 #include <json/json.h>
 
+#include "net/token.h"
+#include "util/i18n.h"
+#include <spdlog/spdlog.h>
+
 namespace khorost {
-    namespace DB {
-        class DBConnectionPool {
-            boost::scoped_ptr<pqxx::connection>    m_spConnect;
+    namespace db {
+        class db_connection_pool final {
+            std::unique_ptr<pqxx::connection> m_connect_;
         public:
-            DBConnectionPool(const std::string& sConnectParam_) {
-                Reconnect(sConnectParam_);
-            }
-            virtual ~DBConnectionPool() {
+            explicit db_connection_pool(const std::string& connect_param) {
+                reconnect(connect_param);
             }
 
-            pqxx::connection& GetHandle() {
-                return *m_spConnect;
+            ~db_connection_pool() = default;
+
+            pqxx::connection& get_handle() const {
+                return *m_connect_;
             }
 
-            void    Reconnect(const std::string& sConnectParam_) {
-                m_spConnect.reset(new pqxx::connection(sConnectParam_));
+            void reconnect(const std::string& connect_param) {
+                m_connect_.reset(new pqxx::connection(connect_param));
             }
-            void    Disconnect() {
-                m_spConnect.reset(nullptr);
+
+            void disconnect() {
+                m_connect_.reset(nullptr);
             }
-            bool    CheckConnect();
+
+            bool check_connect() const;
         };
 
-        typedef	boost::shared_ptr<DBConnectionPool>	DBConnectionPoolPtr;
+        typedef std::shared_ptr<db_connection_pool> db_connection_pool_ptr;
 
-        class DBPool {
-            std::queue<DBConnectionPoolPtr>  m_FreePool;
+        class db_pool {
+            std::queue<db_connection_pool_ptr> m_free_pool_;
 
-            std::mutex m_mutex;
-            std::condition_variable m_condition;
+            std::mutex m_mutex_;
+            std::condition_variable m_condition_;
 
         public:
-            DBPool() {
-            }
+            db_pool() = default;
 
-            void Prepare(int nCount_, const std::string& sConnectParam_);
+            void prepare(int count, const std::string& connect_param);
 
-            DBConnectionPoolPtr GetConnectionPool();
-            void    ReleaseConnectionPool(DBConnectionPoolPtr pdbc_);
+            db_connection_pool_ptr get_connection_pool();
+            void release_connection_pool(db_connection_pool_ptr pdbc);
         };
 
-        class DBConnection {
-            DBPool&             m_dbPool;
-            DBConnectionPoolPtr m_pdbConnectionPool;
+        class db_connection final {
+            db_pool& m_db_pool_;
+            db_connection_pool_ptr m_pdb_connection_pool_;
         public:
-            DBConnection(DBPool& dbp_) : m_dbPool(dbp_), m_pdbConnectionPool(nullptr) {
-                m_pdbConnectionPool = m_dbPool.GetConnectionPool();
-            }
-            virtual ~DBConnection() {
-                ReleaseConnectionPool();
+            explicit db_connection(db_pool& dbp) : m_db_pool_(dbp), m_pdb_connection_pool_(nullptr) {
+                m_pdb_connection_pool_ = m_db_pool_.get_connection_pool();
             }
 
-            pqxx::connection& GetHandle() {
-                return m_pdbConnectionPool->GetHandle();
+            ~db_connection() {
+                release_connection_pool();
             }
 
-            void    ReleaseConnectionPool() {
-                if (m_pdbConnectionPool != nullptr) {
-                    m_dbPool.ReleaseConnectionPool(m_pdbConnectionPool);
-                    m_pdbConnectionPool = nullptr;
+            pqxx::connection& get_handle() const {
+                return m_pdb_connection_pool_->get_handle();
+            }
+
+            void release_connection_pool() {
+                if (m_pdb_connection_pool_ != nullptr) {
+                    m_db_pool_.release_connection_pool(m_pdb_connection_pool_);
+                    m_pdb_connection_pool_ = nullptr;
                 }
             }
         };
 
 
-        class Postgres : public DBPool  {
-            int         m_nPort;
-            std::string m_sHost;
-            std::string m_sDatabase;
-            std::string m_sLogin;
-            std::string m_sPassword;
+        class postgres final : public db_pool {
+            int m_port_;
+            std::string m_host_;
+            std::string m_database_;
+            std::string m_login_;
+            std::string m_password_;
 
         public:
-            Postgres() {
-            }
-            virtual ~Postgres() {
-            }
+            postgres() = default;
+            ~postgres() = default;
 
-            std::string GetConnectParam() const;
+            std::string get_connect_param() const;
 
-            void    SetConnect(std::string sHost_, int nPort_, std::string sDatabase_, std::string sLogin_, std::string sPassword_) {
-                m_sHost = sHost_;
-                m_nPort = nPort_;
-                m_sDatabase = sDatabase_;
-                m_sLogin = sLogin_;
-                m_sPassword = sPassword_;
+            void set_connect(const std::string& host, int port, const std::string& database, const std::string& login, const std::string& password) {
+                m_host_ = host;
+                m_port_ = port;
+                m_database_ = database;
+                m_login_ = login;
+                m_password_ = password;
 
-                Prepare(5, GetConnectParam());
+                prepare(5, get_connect_param());
             }
 
-            void    ExecuteCustomSQL(bool bReadOnly_, const std::string& sSQL_, Json::Value& jvResult_);
+            void execute_custom_sql(bool b_read_only, const std::string& sql, Json::Value& json_result);
 
         };
 
-        class LinkedPostgres {
+        class linked_postgres {
         protected:
-            Postgres& m_rDB;
+            postgres& m_db_;
         public:
-            LinkedPostgres(Postgres& rDB_) : m_rDB(rDB_) {}
-            virtual ~LinkedPostgres() = default;
+            explicit linked_postgres(postgres& db) : m_db_(db) {
+            }
+
+            virtual ~linked_postgres() = default;
 
             static std::string to_string(const pqxx::transaction_base& txn, const boost::posix_time::ptime& timestamp, bool nullable_infinity = true);
             static std::string to_string(const pqxx::transaction_base& txn, const Json::Value& info);
             static std::string to_string(const pqxx::transaction_base& txn, const bool value);
+            static std::string to_string(const pqxx::transaction_base& txn, const unsigned int value);
         private:
+
+        };
+
+        class khl_postgres : protected linked_postgres {
+        protected:
+            internalization m_internalization_;
+        public:
+            explicit khl_postgres(postgres& db) : linked_postgres(db) {
+            }
+
+            virtual ~khl_postgres() = default;
+
+            network::token_ptr create_token(int access_timeout, int refresh_timeout, int append_time, const Json::Value& payload) const;
+            network::token_ptr load_token(bool is_access_token, const std::string& token_id) const;
+            bool refresh_token(network::token_ptr& token, int access_timeout, int refresh_timeout, int append_time) const;
+
+            internalization::func_append_value load_tag();
+
+            std::string load_value_by_tag(const std::string& lang, const std::string& tag) const;
 
         };
     }
 }
-
-#endif  // __POSTGRES_H__

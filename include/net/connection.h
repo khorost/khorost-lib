@@ -1,7 +1,7 @@
-#ifndef __CONNECTION_H__
-#define __CONNECTION_H__
+п»ї#pragma once
 
 #if defined(_WIN32) || defined(_WIN64)
+# include <windows.h>
 # include <WinSock2.h>
 #else
 /* For sockaddr_in */
@@ -30,18 +30,16 @@
 #include <boost/utility.hpp>
 #include <boost/thread/condition.hpp>
 #include <boost/thread/thread.hpp>
-#include <boost/shared_ptr.hpp>
 #include <boost/cstdint.hpp>
 
 #include <deque>
 
 #include "util/autobuffer.h"
-
-#define LOG_CTX_NETWORK			"network"
+#include <thread>
 
 namespace khorost {
-    namespace Network {
-        inline bool Init(){
+    namespace network {
+        inline bool init(){
 #ifndef UNIX
             WSADATA wsa_data;
             WSAStartup(0x0201, &wsa_data);
@@ -50,93 +48,92 @@ namespace khorost {
             return true;
         }
 
-        inline bool Destroy(){
+        inline bool destroy(){
             return true;
         }
 
-        class ConnectionController;
+        class connection_controller;
 
-        class Connection {
-            ConnectionController*       m_pController;
-            int                         m_ID;
-            bufferevent*                m_bev;
-            evutil_socket_t             m_fd;
-            sockaddr                    m_sa;
+        class connection {
+            connection_controller* m_controller;
+            int m_id;
+            bufferevent* m_bev;
+            evutil_socket_t m_fd;
+            sockaddr m_sa;
 
-            static void stubConnRead(bufferevent* bev_, void* ctx_);
-            static void stubConnWrite(bufferevent* bev_, void* ctx_);
-            static void stubConnEvent(bufferevent* bev_, short events_, void* ctx_);
+            static void stub_conn_read(bufferevent* bev, void* ctx);
+            static void stub_conn_write(bufferevent* bev, void* ctx);
+            static void stub_conn_event(bufferevent* bev, short events, void* ctx);
         protected:
-            Data::AutoBufferT<boost::uint8_t>  m_abSocketBuffer;
-            size_t      m_nReceiveBytes;
-            size_t      m_nSendBytes;
+            data::auto_buffer_t<boost::uint8_t>  m_socket_buffer;
+            size_t      m_receive_bytes;
+            size_t      m_send_bytes;
 
-            bool    CompileBufferData();
-            virtual size_t DataProcessing(const boost::uint8_t* pBuffer_, size_t nBufferSize_){ return 0; }
+            bool    compile_buffer_data();
+            virtual size_t data_processing(const boost::uint8_t* buffer, const size_t buffer_size){ return 0; }
         public:
-            Connection(ConnectionController* pThis_, int ID_, evutil_socket_t fd_, struct sockaddr* sa_, int socklen_);
-            virtual ~Connection();
+            connection(connection_controller* pThis_, int ID_, evutil_socket_t fd_, struct sockaddr* sa_, int socklen_);
+            virtual ~connection();
 
-            bool    OpenConnection();
-            bool    CloseConnection();
+            bool    open_connection();
+            bool    close_connection();
 
-            bool    SendData(const boost::uint8_t* pBuffer_, size_t nBufferSize_);
-            bool    SendString(const char* pString_, size_t nLength_ = -1);
-            bool    SendString(const std::string& rString_);
-            bool    SendNumber(unsigned int nNumber_);
+            bool    send_data(const boost::uint8_t* buffer, size_t buffer_size);
+            bool    send_string(const char* value, size_t length = -1);
+            bool    send_string(const std::string& value);
+            bool    send_number(unsigned int number);
 
-            int     GetID() const { return m_ID; }
-            ConnectionController*    GetController() { return m_pController; }
+            int     get_id() const { return m_id; }
+            connection_controller*    get_controller() const { return m_controller; }
 
-            size_t  GetReceiveBytes() const { return m_nReceiveBytes; }
-            size_t  GetSendBytes() const { return m_nSendBytes; }
+            size_t  get_receive_bytes() const { return m_receive_bytes; }
+            size_t  get_send_bytes() const { return m_send_bytes; }
 
-            virtual void    GetClientIP(char* pBuffer_, size_t nBufferSize_);
+            virtual void    get_client_ip(char* buffer, size_t buffer_size);
         };
 
-        typedef boost::shared_ptr<Connection>		ConnectionPtr;
+        typedef std::shared_ptr<connection>		connection_ptr;
 
-        class ConnectionContext {
+        class connection_context {
         };
 
-        class ConnectionController {
-            int						m_nUniqID;
-            ConnectionContext*      m_pContext;
+        class connection_controller {
+            int						m_uniq_id_;
+            connection_context*      m_context_;
         protected:
-            boost::mutex            m_mutex;
-            // основной слушающий поток 
-            boost::thread*          m_ptListen;
-            event_base*             m_pebBaseListen;
+            boost::mutex            m_mutex_;
+            // РѕСЃРЅРѕРІРЅРѕР№ СЃР»СѓС€Р°СЋС‰РёР№ РїРѕС‚РѕРє 
+            std::thread*          m_listen_thread_;
+            event_base*             m_base_listen_;
 
-            // рабочие потоки
-            boost::thread_group*    m_ptgWorkers;
-            std::deque<event_base*> m_vWorkersBase;
+            // СЂР°Р±РѕС‡РёРµ РїРѕС‚РѕРєРё
+            boost::thread_group*    m_worker_groups_;
+            std::deque<event_base*> m_workers_base_;
 
-            static void     stubListenRun(ConnectionController* pThis_, int iListenPort_);
-            static void     stubWorker(ConnectionController* pThis_);
-            static void     stubAccept(struct evconnlistener *listener, evutil_socket_t fd, struct sockaddr *sa, int socklen, void *user_data);
+            static void     stub_listen_run(connection_controller* pThis_, int iListenPort_);
+            static void     stub_worker(connection_controller* pThis_);
+            static void     stub_accept(struct evconnlistener *listener, evutil_socket_t fd, struct sockaddr *sa, int socklen, void *user_data);
 
-            int     	GetUniqID(){ return ++m_nUniqID; }
+            int     	get_uniq_id(){ return ++m_uniq_id_; }
 
-            virtual Connection* CreateConnection(ConnectionController* pThis_, int ID_, evutil_socket_t fd_, struct sockaddr* sa_, int socklen_);
+            virtual connection* create_connection(connection_controller* pThis_, int ID_, evutil_socket_t fd_, struct sockaddr* sa_, int socklen_);
         public:
-            ConnectionController(ConnectionContext* pContext_);
-            virtual ~ConnectionController();
+            connection_controller(connection_context* context);
+            virtual ~connection_controller();
 
-            // Запуск слушащего сокета. Управление возвращается сразу
-            bool	StartListen(int iListenPort_, int iPollSize_ = 0);
-            bool    WaitListen() const;
-            bool    Shutdown();
+            // Р—Р°РїСѓСЃРє СЃР»СѓС€Р°С‰РµРіРѕ СЃРѕРєРµС‚Р°. РЈРїСЂР°РІР»РµРЅРёРµ РІРѕР·РІСЂР°С‰Р°РµС‚СЃСЏ СЃСЂР°Р·Сѓ
+            bool	start_listen(int listen_port, int poll_size = 0);
+            bool    wait_listen() const;
+            bool    shutdown();
 
-            event_base* GetBaseListen() { return m_pebBaseListen; }
+            event_base* get_base_listen() const { return m_base_listen_; }
 
-            ConnectionContext*  GetContext() { return m_pContext; }
-            void                SetContext(ConnectionContext* pContext_) { m_pContext = pContext_; }
+            connection_context*  get_context() const { return m_context_; }
+            void                set_context(connection_context* context) { m_context_ = context; }
 
-            Connection* AddConnection(evutil_socket_t fd_, struct sockaddr* sa_, int socklen_);
-            bool        RemoveConnection(Connection* pConnection_);
+            connection* add_connection(evutil_socket_t fd_, struct sockaddr* sa_, int socklen_);
+            bool        remove_connection(connection* connect);
         };
     }
 }
 
-#endif // __CONNECTION_H__

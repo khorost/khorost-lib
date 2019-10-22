@@ -72,8 +72,8 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <OutDir>$(SolutionDir)lib\bin-$(PlatformShortName)\</OutDir>
     <IntDir>$(SolutionDir)bin\$(Configuration)\$(PlatformShortName)\$(ProjectName)\</IntDir>
-    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);$(CPP_SDK)\boost14\include;$(CPP_SDK)\apache-log4cxx.MD\include;$(CPP_SDK)\libcurl\include;$(CPP_SDK)\libevent\include;$(CPP_SDK)\libsqlite3\include;$(ProjectDir)..\include;$(ProjectDir)..\external\include;$(CPP_SDK)\openssl\include;$(CPP_SDK)\libmongo\include;$(CPP_SDK)\libpqxx\include;$(CPP_SDK)\libmysql\include;$(CPP_SDK)\libImageMagick\include;$(CPP_SDK)\libwebsocketpp\include;$(CPP_SDK)\libgeoip\include</IncludePath>
-    <LibraryPath>$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86);$(NETFXKitsDir)Lib\um\x86;$(CPP_SDK)\libpqxx\lib;$(CPP_SDK)\boost14\lib;$(CPP_SDK)\apache-log4cxx.MD\lib;$(CPP_SDK)\libevent\lib;$(CPP_SDK)\libsqlite3\lib;$(CPP_SDK)\libmysql\lib\opt;$(CPP_SDK)\libmongo\lib;$(CPP_SDK)\openssl\lib;$(CPP_SDK)\libcurl\lib;$(CPP_SDK)\libgeoip\lib;$(CPP_SDK)\libImageMagick\lib</LibraryPath>
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);$(CPP_SDK)\boost14\include;$(CPP_SDK)\libcurl\include;$(CPP_SDK)\libevent\include;$(CPP_SDK)\libsqlite3\include;$(ProjectDir)..\include;$(ProjectDir)..\external\include;$(CPP_SDK)\openssl\include;$(CPP_SDK)\libmongo\include;$(CPP_SDK)\libpqxx\include;$(CPP_SDK)\libmysql\include;$(CPP_SDK)\libImageMagick\include;$(CPP_SDK)\libwebsocketpp\include;$(CPP_SDK)\libgeoip\include;$(CPP_SDK)\libgeoip2\include;$(CPP_SDK)\tacopie\include;$(CPP_SDK)\cpp_redis\include</IncludePath>
+    <LibraryPath>$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86);$(NETFXKitsDir)Lib\um\x86;$(CPP_SDK)\libpqxx\lib;$(CPP_SDK)\boost14\lib;$(CPP_SDK)\apache-log4cxx.MD\lib;$(CPP_SDK)\libevent\lib;$(CPP_SDK)\libsqlite3\lib;$(CPP_SDK)\libmysql\lib\opt;$(CPP_SDK)\libmongo\lib;$(CPP_SDK)\openssl\lib;$(CPP_SDK)\libcurl\lib;$(CPP_SDK)\libgeoip\lib;$(CPP_SDK)\libImageMagick\lib;$(CPP_SDK)\libgeoip2\lib;$(CPP_SDK)\cpp_redis\lib</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <IntDir>$(SolutionDir)bin\$(Configuration)\$(PlatformShortName)\$(ProjectName)\</IntDir>
@@ -138,18 +138,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\external\src\g3log\crashhandler_windows.cpp" />
-    <ClCompile Include="..\external\src\g3log\filesink.cpp" />
-    <ClCompile Include="..\external\src\g3log\g3log.cpp" />
-    <ClCompile Include="..\external\src\g3log\logcapture.cpp" />
-    <ClCompile Include="..\external\src\g3log\loglevels.cpp" />
-    <ClCompile Include="..\external\src\g3log\logmessage.cpp" />
-    <ClCompile Include="..\external\src\g3log\logworker.cpp" />
-    <ClCompile Include="..\external\src\g3log\stacktrace_windows.cpp" />
-    <ClCompile Include="..\external\src\g3log\time.cpp" />
     <ClCompile Include="..\external\src\ini\dictionary.c" />
     <ClCompile Include="..\external\src\ini\iniparser.c" />
-    <ClCompile Include="..\external\src\json\jsoncpp.cpp" />
+    <ClCompile Include="..\external\src\json\json_reader.cpp" />
+    <ClCompile Include="..\external\src\json\json_value.cpp" />
+    <ClCompile Include="..\external\src\json\json_writer.cpp" />
     <ClCompile Include="..\external\src\win\strptime.c" />
     <ClCompile Include="..\src\app\config.cxx" />
     <ClCompile Include="..\src\app\s2h-session.cxx" />
@@ -164,14 +157,15 @@
     <ClCompile Include="..\src\net\http.cpp" />
     <ClCompile Include="..\src\net\mail.cxx" />
     <ClCompile Include="..\src\net\session.cpp" />
+    <ClCompile Include="..\src\net\token.cxx" />
     <ClCompile Include="..\src\system\fastfile.cpp" />
     <ClCompile Include="..\src\util\logger.cpp" />
     <ClCompile Include="..\src\util\utils.cxx" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\external\src\g3log\g2log.hpp" />
     <ClInclude Include="..\include\app\config.h" />
     <ClInclude Include="..\include\app\framework.h" />
+    <ClInclude Include="..\include\app\khl-define.h" />
     <ClInclude Include="..\include\app\server2hb.h" />
     <ClInclude Include="..\include\db\mysql.h" />
     <ClInclude Include="..\include\db\postgres.h" />
@@ -182,13 +176,14 @@
     <ClInclude Include="..\include\net\http.h" />
     <ClInclude Include="..\include\net\mail.h" />
     <ClInclude Include="..\include\net\session.h" />
+    <ClInclude Include="..\include\net\stomp.h" />
+    <ClInclude Include="..\include\net\token.h" />
     <ClInclude Include="..\include\system\fastfile.h" />
     <ClInclude Include="..\include\util\autobuffer.h" />
+    <ClInclude Include="..\include\util\i18n.h" />
     <ClInclude Include="..\include\util\logger.h" />
+    <ClInclude Include="..\include\util\profiler.h" />
     <ClInclude Include="..\include\util\utils.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="..\external\src\g3log\filesinkhelper.ipp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

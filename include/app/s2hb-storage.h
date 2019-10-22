@@ -1,9 +1,7 @@
-﻿#ifndef __S2HBSTORAGE_H__
-#define __S2HBSTORAGE_H__
+﻿#pragma  once
 
 #include <string>
 #include <list>
-#include <unordered_map>
 
 #include <json/json.h>
 
@@ -11,16 +9,11 @@
 #include "app/s2h-session.h"
 
 namespace khorost {
-    namespace DB {
-        class S2HBStorage : public khorost::DB::LinkedPostgres {
+    namespace db {
+        class S2HBStorage : public khorost::db::khl_postgres {
         public:
-            S2HBStorage(Postgres& rDB_) : khorost::DB::LinkedPostgres(rDB_) {
+            S2HBStorage(postgres& db) : khorost::db::khl_postgres(db) {
             }
-
-            bool    SessionLogger(const Network::S2HSession* pSession_, const Json::Value& jsStat_);
-            bool    SessionUpdate(Network::S2HSession* pSession_);
-            bool    SessionUpdate(khorost::Network::ListSession& rLS_);
-            void    SessionIPUpdate();
 
             bool    CreateUser(Json::Value& jsUser_);
             bool    UpdatePassword(int nUserID_, const std::string& sPasswordHash_);
@@ -28,9 +21,7 @@ namespace khorost {
             bool    IsUserExist(const std::string& sLogin_);
             bool    get_user_info(const std::string& sLogin_, int& nUserID_, std::string& sNickname_, std::string& sPWHash_, std::string& sSalt_) const;
             bool    GetUserInfo(int nUserID_, std::string& sLogin_, std::string& sNickname_, std::string& sPWHash_, std::string& sSalt_);
-            bool    GetUserRoles(int& nUserID_, Network::S2HSession* ps_);
+            bool    GetUserRoles(int& nUserID_, network::s2h_session* ps_);
         };
     }
 }
-
-#endif // !__S2HBSTORAGE_H__

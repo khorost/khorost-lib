@@ -1,19 +1,17 @@
-﻿#if defined(_WIN32) || defined(_WIN64)
- #include <windows.h>
- #include <shlwapi.h>
- #include <strsafe.h>
-#endif
-
-#include "app/server2hb.h"
+﻿#include "app/server2hb.h"
+#include "net/geoip.h"
 
 #include <openssl/md5.h>
 #include <boost/algorithm/hex.hpp>
 #include <boost/program_options.hpp>
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_generators.hpp>
+#include <boost/uuid/uuid_io.hpp>
+#include <boost/lexical_cast.hpp>
+
 namespace po = boost::program_options;
 #include <boost/filesystem.hpp>
 namespace fs = boost::filesystem;
-
-khorost::Server2HB* khorost::g_pS2HB = NULL;
 
 using namespace khorost;
 
@@ -62,327 +60,68 @@ bool IsPasswordHashEqual3(const std::string& sChecked_, const std::string& sFirs
     return sChecked_ == sPwhashSession;
 }
 
-#ifdef UNIX
-void UNIXSignal(int sg_) {
-    LOGF(INFO, "Receive stopped signal...");
-    if (g_pS2HB != nullptr) {
-        g_pS2HB->Shutdown();
-    }
-    LOGF(INFO, "Stopped signal processed");
-}
-#else
-bool WinSignal(DWORD SigType_) {
-    LOGF(INFO, "Receive stopped signal...");
-    switch (SigType_) {
-    case CTRL_C_EVENT:
-    case CTRL_BREAK_EVENT:
-        LOGF(INFO, "Interrupted by keyboard");
-        break;
-    case CTRL_CLOSE_EVENT:
-        LOGF(INFO, "Interrupted by Close");
-        break;
-    case CTRL_LOGOFF_EVENT:
-        LOGF(INFO, "Interrupted by LogOff");
-        break;
-    case CTRL_SHUTDOWN_EVENT:
-        LOGF(INFO, "Interrupted by Shutdown");
-        break;
-    default:
-        LOGF(INFO, "Interrupted by unknown signal");
-        break;
-    }
-    if (g_pS2HB != nullptr) {
-        g_pS2HB->Shutdown();
-    }
-    LOGF(INFO, "Stopped signal processed");
-    return true;
+server2_hb::server2_hb() :
+    server2_h()
+    , m_db_base(m_db_connect_)
+    , m_dispatcher(this)
+    , m_shutdown_timer(false) {
 }
 
-void WINAPI ServiceControl(DWORD dwControlCode) {
-    switch (dwControlCode) {
-    case SERVICE_CONTROL_STOP:
-        g_pS2HB->ReportServiceStatus(SERVICE_STOP_PENDING, NO_ERROR, 0);
-        g_pS2HB->Shutdown();
-        g_pS2HB->ReportServiceStatus(SERVICE_STOPPED, NOERROR, 0);
-        break;
-    case SERVICE_CONTROL_INTERROGATE:
-        g_pS2HB->ReportServiceStatus(g_pS2HB->GetSSCurrentState(), NOERROR, 0);
-        break;
-    default:
-        g_pS2HB->ReportServiceStatus(g_pS2HB->GetSSCurrentState(), NOERROR, 0);
-        break;
-    }
+bool server2_hb::shutdown() {
+    m_shutdown_timer = true;
+    return server2_h::shutdown();
 }
 
-void WINAPI ServiceMain(DWORD dwArgc, LPTSTR* plszArgv) {
-    if (g_pS2HB != NULL) {
-        char ServicePath[_MAX_PATH + 3];
-        // Получаем путь к exe-файлу
-        GetModuleFileName(NULL, ServicePath, _MAX_PATH);
-        PathRemoveFileSpec(ServicePath);
-        SetCurrentDirectory(ServicePath);
+bool server2_hb::prepare_to_start() {
+    server2_h::prepare_to_start();
 
-        SERVICE_STATUS_HANDLE ssHandle = RegisterServiceCtrlHandler(g_pS2HB->GetServiceName(), ServiceControl);
+    auto logger = get_logger();
 
-        if (ssHandle != NULL) {
-            g_pS2HB->SetSSHandle(ssHandle);
-        }
+    set_session_driver(m_configure_.get_value("http:session", "./session.db"));
 
-        g_pS2HB->ReportServiceStatus(SERVICE_RUNNING, NO_ERROR, 0);
+    m_dictActionS2H.insert(std::pair<std::string, funcActionS2H>(S2H_PARAM_ACTION_AUTH, &server2_hb::action_auth));
+    m_dictActionS2H.insert(std::pair<std::string, funcActionS2H>("refresh_token", &server2_hb::action_refresh_token));
 
-        if (g_pS2HB->PrepareToStart() && g_pS2HB->AutoExecute() && g_pS2HB->Startup()) {
-            g_pS2HB->Run();
-        }
-
-        g_pS2HB->Finish();
-    }
-}
-
-void Server2HB::ReportServiceStatus(DWORD dwCurrentState_, DWORD dwWin32ExitCode_, DWORD dwWaitHint_) {
-    static DWORD dwCheckPoint = 1;
-
-    if (dwCurrentState_ == SERVICE_START_PENDING) {
-        m_ss.dwControlsAccepted = 0;
-    } else {
-        m_ss.dwControlsAccepted = SERVICE_ACCEPT_STOP;
-    }
-    m_ss.dwCurrentState = dwCurrentState_;
-    m_ss.dwWin32ExitCode = dwWin32ExitCode_;
-    m_ss.dwWaitHint = dwWaitHint_;
-
-    if ((dwCurrentState_ == SERVICE_RUNNING) ||
-        (dwCurrentState_ == SERVICE_STOPPED)) {
-        m_ss.dwCheckPoint = 0;
-    } else {
-        m_ss.dwCheckPoint = dwCheckPoint++;
-    }
-    SetServiceStatus(m_ssHandle, &m_ss);
-}
-
-bool Server2HB::ServiceInstall() {
-    LOG(DEBUG) << "ServiceInstalling...";
-
-    SC_HANDLE hSCManager;
-    SC_HANDLE hService;
-
-    hSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_CREATE_SERVICE);
-    if (!hSCManager) {
-        LOG(WARNING) << "ServiceInstall: Не удалось открыть SC Manager";
-        return false;
-    }
-
-    TCHAR ServicePath[_MAX_PATH + 3];
-
-    // Получаем путь к exe-файлу
-    GetModuleFileName(NULL, ServicePath + 1, _MAX_PATH);
-
-    // Заключаем в кавычки
-    ServicePath[0] = TEXT('\"');
-    ServicePath[lstrlen(ServicePath) + 1] = 0;
-    ServicePath[lstrlen(ServicePath)] = TEXT('\"');
-    lstrcat(ServicePath, " --service --cfg ");
-    lstrcat(ServicePath, m_sConfigFileName.c_str());
-
-    LOG(DEBUG) << ServicePath;
-
-    // Создаём службу
-    hService = CreateService(
-        hSCManager,
-        m_sServiceName.c_str(),
-        m_sServiceDisplayName.c_str(),
-        0,
-        SERVICE_WIN32_OWN_PROCESS,
-        SERVICE_AUTO_START,
-        SERVICE_ERROR_NORMAL,
-        ServicePath,
-        NULL,
-        NULL,
-        NULL,
-        NULL,
-        NULL);
-
-    CloseServiceHandle(hSCManager);
-
-    if (!hService) {
-        LOG(WARNING) << "ServiceInstall: Не удалось создать службу";
-        return false;
-    }
-
-    CloseServiceHandle(hService);
-    LOG(DEBUG) << "ServiceInstalled";
-    return true;
-};
-
-bool Server2HB::ServiceUninstall() {
-    LOG(DEBUG) << "ServiceUninstall...";
-
-    SC_HANDLE hSCManager;
-    SC_HANDLE hService;
-
-    hSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
-    if (!hSCManager) {
-        LOG(WARNING) << "ServiceUninstall: Не удалось открыть SC Manager";
-        return false;
-    }
-
-    hService = OpenService(hSCManager, m_sServiceName.c_str(), DELETE | SERVICE_STOP);
-    if (!hService) {
-        LOG(WARNING) << "ServiceUninstall: Не удалось открыть службу";
-        CloseServiceHandle(hSCManager);
-        return true;
-    }
-
-    SERVICE_STATUS ss;
-
-    ControlService(hService, SERVICE_CONTROL_STOP, &ss);
-
-    DeleteService(hService);
-    CloseServiceHandle(hService);
-    CloseServiceHandle(hSCManager);
-
-    LOG(DEBUG) << "ServiceUninstalled";
-    return true;
-};
-
-bool Server2HB::ServiceStart() {
-    LOG(DEBUG) << "ServiceStarting...";
-
-    SC_HANDLE hSCManager;
-    SC_HANDLE hService;
-
-    hSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
-    if (!hSCManager) {
-        LOG(WARNING) << "ServiceStart: no open SC Manager";
-        return false;
-    }
-
-    hService = OpenService(hSCManager, m_sServiceName.c_str(), SERVICE_START);
-    if (!hService) {
-        LOG(WARNING) << "ServiceStart: not open service";
-        CloseServiceHandle(hSCManager);
-        return true;
-    }
-    if (!StartService(hService, 0, NULL)) {
-        LOG(WARNING) << "ServiceStart: not started";
-        return false;
-    }
-
-    CloseServiceHandle(hService);
-    CloseServiceHandle(hSCManager);
-
-    LOG(DEBUG) << "ServiceStarted";
-    return true;
-};
-
-bool Server2HB::ServiceStop() {
-    LOG(DEBUG) << "Service Stopping...";
-
-    SC_HANDLE hSCManager;
-    SC_HANDLE hService;
-
-    hSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
-    if (!hSCManager) {
-        LOG(WARNING) << "ServiceStop: Не удалось открыть SC Manager";
-        return false;
-    }
-
-    hService = OpenService(hSCManager, m_sServiceName.c_str(), SERVICE_STOP);
-    if (!hService) {
-        LOG(WARNING) << "ServiceStop: Не удалось открыть службу";
-        CloseServiceHandle(hSCManager);
-        return true;
-    }
-
-    SERVICE_STATUS ss;
-
-    ControlService(hService, SERVICE_CONTROL_STOP, &ss);
-
-    CloseServiceHandle(hService);
-    CloseServiceHandle(hSCManager);
-
-    LOG(DEBUG) << "Service Stopped...";
-    return true;
-};
-
-#define SVC_ERROR                        ((DWORD)0xC0020001L)
-
-void Server2HB::ServiceReportEvent(LPTSTR szFunction) {
-    HANDLE hEventSource;
-    LPCTSTR lpszStrings[2];
-    TCHAR Buffer[80];
-
-    hEventSource = RegisterEventSource(NULL, m_sServiceName.c_str());
-
-    if (NULL != hEventSource) {
-        StringCchPrintf(Buffer, 80, TEXT("%s failed with %d"), szFunction, GetLastError());
-
-        lpszStrings[0] = m_sServiceName.c_str();
-        lpszStrings[1] = Buffer;
-
-        ReportEvent(hEventSource,        // event log handle
-            EVENTLOG_ERROR_TYPE, // event type
-            0,                   // event category
-            SVC_ERROR,           // event identifier
-            NULL,                // no security identifier
-            2,                   // size of lpszStrings array
-            0,                   // no binary data
-            lpszStrings,         // array of strings
-            NULL);               // no binary data
-
-        DeregisterEventSource(hEventSource);
-    }
-}
-
-#endif  // UNIX
-
-
-Server2HB::Server2HB() :
-    m_Connections(reinterpret_cast<ConnectionContext*>(this))
-    , m_dbBase(m_dbConnect)
-    , m_nHTTPListenPort(0)
-    , m_Dispatcher(this)
-    , m_bShutdownTimer(false) {
-}
-
-bool Server2HB::Shutdown() {
-    m_bShutdownTimer = true;
-    return m_Connections.Shutdown();
-}
-
-bool Server2HB::PrepareToStart() {
-    LOG(DEBUG) << "PrepareToStart";
-
-    Network::Init();
-
-    m_dictActionS2H.insert(std::pair<std::string, funcActionS2H>(S2H_PARAM_ACTION_AUTH, &Server2HB::action_auth));
-
-    SetListenPort(m_Configure.GetValue("http:port", S2H_DEFAULT_TCP_PORT));
-    SetHTTPDocRoot(m_Configure.GetValue("http:docroot", "./"), m_Configure.GetValue("http:storageroot", "./"));
-    SetSessionDriver(m_Configure.GetValue("http:session", "./session.db"));
-
-    SetConnect(
-        m_Configure.GetValue("storage:host", "localhost")
-        , m_Configure.GetValue("storage:port", 5432)
-        , m_Configure.GetValue("storage:db", "")
-        , m_Configure.GetValue("storage:user", "")
-        , m_Configure.GetValue("storage:password", "")
+    set_connect(
+        m_configure_.get_value("storage:host", "localhost")
+        , m_configure_.get_value("storage:port", 5432)
+        , m_configure_.get_value("storage:db", "")
+        , m_configure_.get_value("storage:user", "")
+        , m_configure_.get_value("storage:password", "")
     );
 
-    m_dbGeoIP.OpenDatabase(m_Configure.GetValue("geoip:db", ""));
+    logger->debug("[GEOIP] MMDB version: {}", khorost::network::geo_ip_database::get_lib_version_mmdb());
+
+    khorost::network::geo_ip_database db;
+
+    const auto geoip_city_path = m_configure_.get_value("geoip:city", "");
+    if (db.open_database(geoip_city_path)) {
+//        logger->debug("[GEOIP] meta city info \"{}\"", db.get_metadata());
+        m_geoip_city_path_ = geoip_city_path;
+    } else {
+        logger->warn("[GEOIP] Error init MMDB City by path {}", geoip_city_path);
+    }
+    db.close_database();
+
+    const auto geoip_asn_path = m_configure_.get_value("geoip:asn", "");
+    if (db.open_database(geoip_asn_path)){
+//        logger->debug("[GEOIP] meta asn info \"{}\"", db.get_metadata());
+        m_geoip_asn_path_ = geoip_asn_path;
+    } else {
+        logger->warn("[GEOIP] Error init MMDB ASN by path {}", geoip_asn_path);
+    }
 
     return true;
 }
 
-bool Server2HB::AutoExecute() {
-    LOG(DEBUG) << "AutoExecute";
+bool server2_hb::auto_execute() {
+    server2_h::auto_execute();
 
-    Config::Iterator    cfgCreateUser = m_Configure["autoexec"]["Create"]["User"];
-    if (!cfgCreateUser.isNull()) {
-        for (Config::Iterator::ArrayIndex k = 0; k < cfgCreateUser.size(); ++k) {
-            Config::Iterator cfgUser = cfgCreateUser[k];
-
-            if (!m_dbBase.IsUserExist(cfgUser["Login"].asString())) {
-                m_dbBase.CreateUser(cfgUser);
+    auto cfg_create_user = m_configure_["autoexec"]["Create"]["User"];
+    if (!cfg_create_user.isNull()) {
+        for (auto cfg_user : cfg_create_user) {
+            if (!m_db_base.IsUserExist(cfg_user["Login"].asString())) {
+                m_db_base.CreateUser(cfg_user);
             }
         }
     }
@@ -390,409 +129,347 @@ bool Server2HB::AutoExecute() {
     return true;
 }
 
-bool Server2HB::CheckParams(int argc_, char* argv_[], int& nResult_, g3::LogWorker* logger_) {
-    g_pS2HB = this;
-
-    po::options_description desc("Allowable options");
-    desc.add_options()
-        ("name", po::value<std::string>(), "set service name")
-        ("install", "install service")
-        ("uninstall", "uninstall service")
-        ("start", "start service")
-        ("stop", "stop service")
-        ("restart", "restart service")
-        ("service", "run in service mode")
-        ("configure", "configure server")
-        ("cfg", po::value<std::string>(), "config file (default server.conf)")
-        ("console", "run in console mode (default)")
-        ;
-    po::variables_map vm;
-    try {
-        po::store(po::parse_command_line(argc_, argv_, desc), vm);
-    } catch (...) {
-        std::cout << desc << std::endl;
-        nResult_ = EXIT_FAILURE;
-        return false;
-    }
-
-    po::notify(vm);
-
-    m_sConfigFileName = std::string("configure.") + GetContextDefaultName() + std::string(".json");
-    if (vm.count("cfg")) {
-        m_sConfigFileName = vm["cfg"].as<std::string>();
-    }
-
-    if (m_Configure.Load(m_sConfigFileName)) {
-        LOG(INFO) << "Config file parsed";
-
-        if (logger_ != NULL) {
-            auto fs = logger_->addDefaultLogger(GetContextDefaultName(), m_Configure.GetValue("log:path", "./"), "s2");
-            std::future<std::string> log_file_name = fs->call(&g3::FileSink::fileName);
-            LOG(DEBUG) << "Append file log - \'" << log_file_name.get() << "\'";
-        }
-    } else {
-        LOG(WARNING) << "Config file not parsed";
-        return false;
-    }
-#if defined(_WIN32) || defined(_WIN64)
-    m_sServiceName = vm.count("name")?vm["name"].as<std::string>(): m_Configure.GetValue("service:name", std::string("khlsrv_") + GetContextDefaultName());
-    m_sServiceDisplayName = m_Configure.GetValue("service:displayName", std::string("Khorost Service (") + GetContextDefaultName() + ")");
-
-    if (vm.count("service")) {
-        m_bRunAsService = true;
-
-        LOG(INFO) << "Service = " << m_sServiceName;
-        SERVICE_TABLE_ENTRY DispatcherTable[] = {
-            { (LPSTR)m_sServiceName.c_str(), (LPSERVICE_MAIN_FUNCTION)ServiceMain },
-            { NULL, NULL }
-        };
-
-        if (!StartServiceCtrlDispatcher(DispatcherTable)) {
-            LOG(WARNING) << "InitAsService: Probable error 1063";
-        };
-        
-        LOG(DEBUG) << "Service shutdown";
-        return false;
-    }
-    if (vm.count("configure")) {
-        FreeConsole();
-        CallServerConfigurator();
-        return false;
-    }
-    if (vm.count("help")) {
-        std::cout << desc << std::endl;
-        return false;
-    }
-    // Управление сервисом
-    if (vm.count("install")) {
-        m_bRunAsService = true;
-        ServiceUninstall();
-        ServiceInstall();
-        LOG(INFO) << "Install Service";
-        return false;
-    } else if (vm.count("start")) {
-        m_bRunAsService = true;
-        ServiceStart();
-        LOG(INFO) << "Start Service";
-        return false;
-    } else if (vm.count("stop")) {
-        m_bRunAsService = true;
-        ServiceStop();
-        LOG(INFO) <<"Stop Service";
-        return false;
-    } else if (vm.count("restart")) {
-        m_bRunAsService = true;
-        ServiceStop();
-        LOG(INFO) << "Stop Service";
-        ServiceStart();
-        LOG(INFO) << "Start Service";
-        return false;
-    } else if (vm.count("uninstall")) {
-        m_bRunAsService = true;
-        ServiceUninstall();
-        LOG(INFO) << "Uninstall Service";
-        return false;
-    }
-
-    SetConsoleCtrlHandler((PHANDLER_ROUTINE)&WinSignal, TRUE);
-#else
-    setlocale(LC_ALL, "");
-
-    signal(SIGQUIT, SIG_DFL);
-    signal(SIGTERM, UNIXSignal);
-    signal(SIGINT, UNIXSignal);
-#endif
-
-    return true;
+bool server2_hb::startup() {
+    m_TimerThread.reset(new std::thread(boost::bind(&stub_timer_run, this)));
+    return server2_h::startup();
 }
 
-bool Server2HB::Startup() {
-    m_TimerThread.reset(new boost::thread(boost::bind(&stubTimerRun, this)));
-    return m_Connections.StartListen(m_nHTTPListenPort, 5);
-}
-
-bool Server2HB::Run() {
+bool server2_hb::run() {
     m_TimerThread->join();
-    return m_Connections.WaitListen();
+    return server2_h::run();
 }
 
-bool Server2HB::Finish() {
-    m_dbGeoIP.CloseDatabase();
-    khorost::Network::Destroy();
-    return true;
-}
+bool server2_hb::process_http_action(const std::string& action, const std::string& uri_params, http_connection& connection) {
+    auto http = connection.get_http();
+    const auto s2_h_session = reinterpret_cast<network::s2h_session*>(processing_session(connection).get());
 
-void Server2HB::HTTPConnection::GetClientIP(char* pBuffer_, size_t nBufferSize_) {
-    const char* pPIP = m_HTTP.GetClientProxyIP();
-    if (pPIP != nullptr) {
-        strncpy(pBuffer_, pPIP, nBufferSize_);
-    } else {
-        Connection::GetClientIP(pBuffer_, nBufferSize_);
-    }
-}
-
-bool Server2HB::process_http_action(const std::string& action, const std::string& uri_params, Network::S2HSession* session,
-    HTTPConnection& connection, Network::HTTPTextProtocolHeader& http) {
     const auto it = m_dictActionS2H.find(action);
     if (it != m_dictActionS2H.end()) {
         const auto func_action = it->second;
-        return (this->*func_action)(uri_params, connection, session, http);
+        return (this->*func_action)(uri_params, connection, s2_h_session);
     }
     return false;
 }
 
-void Server2HB::parse_action(const std::string& query, std::string& action, std::string& params) {
-    const auto pos = query.find_first_of('/');
-    if (pos != std::string::npos) {
-        action = query.substr(0, pos);
-        params = query.substr(pos + 1);
-    } else {
-        action = query;
-        params.clear();
-    }
-}
+bool server2_hb::process_http(http_connection& connection) {
+    auto logger = get_logger();
 
-bool Server2HB::process_http(HTTPConnection& connection) {
-    auto& http = connection.GetHTTP();
-    const auto s2_h_session = reinterpret_cast<Network::S2HSession*>(ProcessingSession(connection, http).get());
-    const auto query_uri = http.GetQueryURI();
-    const auto url_prefix_action = GetURLPrefixAction();
+    auto http = connection.get_http();
+    const auto query_uri = http->get_query_uri();
+    const auto url_prefix_action = get_url_prefix_action();
     const auto size_upa = strlen(url_prefix_action);
 
-    LOGF(DEBUG, "[HTTP_PROCESS] URI='%s'", query_uri);
+    logger->debug("[HTTP_PROCESS] URI='{}'", query_uri);
 
     if (strncmp(query_uri, url_prefix_action, size_upa) == 0) {
         std::string action, params;
         parse_action(query_uri + size_upa, action, params);
-        if (process_http_action(action, params, s2_h_session, connection, http)) {
+        if (process_http_action(action, params, connection)) {
             return true;
         }
 
-        LOG(DEBUG) << "[HTTP_PROCESS] worker pQueryAction not found";
+        logger->debug("[HTTP_PROCESS] worker pQueryAction not found");
 
-        http.SetResponseStatus(404, "Not found");
-        http.Response(connection, "File not found");
+        http->set_response_status(http_response_status_not_found, "Not found");
+        http->send_response(connection, "File not found");
 
         return false;
     }
-    return process_http_file_server(query_uri, s2_h_session, connection, http);
+    return process_http_file_server(query_uri, connection);
 }
 
-bool Server2HB::process_http_file_server(const std::string& query_uri, Network::S2HSession* session, HTTPConnection& connection, Network::HTTPTextProtocolHeader& http) {
-    Network::HTTPFileTransfer    hft;
-
-    const std::string prefix = GetURLPrefixStorage();
+bool server2_hb::process_http_file_server(const std::string& query_uri, http_connection& connection) {
+    const std::string prefix = get_url_prefix_storage();
 
     if (prefix == query_uri.substr(0, prefix.size())) {
-        return hft.SendFile(query_uri.substr(prefix.size() - 1), connection, http, m_sStorageRoot);
-    } else {
-        return hft.SendFile(query_uri, connection, http, m_strDocRoot);
+        auto http = connection.get_http();
+        return http->send_file(query_uri.substr(prefix.size() - 1), connection, m_storage_root);
     }
+
+    return server2_h::process_http_file_server(query_uri, connection);
 }
 
-void Server2HB::TimerSessionUpdate() {
-    Network::ListSession ls;
-
-    m_Sessions.CheckAliveSessions();
-
-    if (m_Sessions.GetActiveSessionsStats(ls)) {
-        m_dbBase.SessionUpdate(ls);
-    }
+void server2_hb::timer_session_update() {
+    m_sessions.check_alive_sessions();
 }
 
-void Server2HB::stubTimerRun(Server2HB* pThis_) {
+void server2_hb::stub_timer_run(server2_hb* server) {
     using namespace boost;
     using namespace posix_time;
 
-    ptime   ptSessionUpdate, ptSessionIPUpdate;
+    auto logger = server->get_logger();
 
-    ptSessionUpdate = ptSessionIPUpdate = second_clock::universal_time();
+    ptime session_ip_update;
 
-    while (!pThis_->m_bShutdownTimer) {
+    auto session_update = session_ip_update = second_clock::universal_time();
+
+    while (!server->m_shutdown_timer) {
         const auto now = second_clock::universal_time();
 
-        if ((now - ptSessionUpdate).minutes() >= 10) {
-            LOG(DEBUG) << "Every 10 minutes check";
-            ptSessionUpdate = now;
-            pThis_->TimerSessionUpdate();
+        if ((now - session_update).minutes() >= 10) {
+            logger->debug("[TIMER] 10 minutes check");
+            session_update = now;
+            server->timer_session_update();
         }
-        if ((now - ptSessionIPUpdate).hours() >= 1) {
-            LOG(DEBUG) << "Every Hours check";
-            ptSessionIPUpdate = now;
-            pThis_->m_dbBase.SessionIPUpdate();
+        if ((now - session_ip_update).hours() >= 1) {
+            logger->debug("[TIMER] Hours check");
+            session_ip_update = now;
         }
 
         this_thread::sleep_for(chrono::milliseconds(1000));
     }
     // сбросить кэш
-    pThis_->TimerSessionUpdate();
+    server->timer_session_update();
 }
 
-Network::SessionPtr Server2HB::ProcessingSession(HTTPConnection& connection, Network::HTTPTextProtocolHeader& http) {
+server2_hb::func_creator server2_hb::get_session_creator() {
+    return [](const std::string& session_id, boost::posix_time::ptime created,
+        boost::posix_time::ptime expired) {
+        return std::make_shared<network::s2h_session>(
+            session_id, created, expired);
+    };
+}
+
+void   server2_hb::set_session_driver(const std::string& driver) {
+    m_sessions.open(driver, SESSION_VERSION_MIN, SESSION_VERSION_CURRENT, get_session_creator());
+}
+
+network::session_ptr server2_hb::processing_session(http_connection& connect) {
     using namespace boost::posix_time;
 
-    bool        bCreated = false;
-    const char* pQuerySession = http.GetCookie(GetSessionCode());
-    Network::SessionPtr  sp = m_Sessions.GetSession(pQuerySession != nullptr ? pQuerySession : "", bCreated);
-    Network::S2HSession* s2hSession = reinterpret_cast<Network::S2HSession*>(sp.get());
+    auto logger = get_logger();
+    auto http = connect.get_http();
 
-    char sIP[255];
-    connection.GetClientIP(sIP, sizeof(sIP));
+    auto created = false;
+    const auto session_id = http->get_cookie(get_session_code(), nullptr);
+    auto sp = m_sessions.get_session(session_id != nullptr ? session_id : "", created, get_session_creator());
+    auto* s2_h_session = reinterpret_cast<network::s2h_session*>(sp.get());
 
-    if (s2hSession != nullptr) {
-        s2hSession->SetLastActivity(second_clock::universal_time());
-        s2hSession->SetIP(sIP);
+    char s_ip[255];
+    connect.get_client_ip(s_ip, sizeof(s_ip));
 
-        if (bCreated) {
-            Json::Value    jvStats;
-
-            const char* pHP = http.GetHeaderParameter(HTTP_ATTRIBUTE_USER_AGENT);
-            if (pHP != nullptr) {
-                jvStats["UserAgent"] = pHP;
-            }
-            pHP = http.GetHeaderParameter(HTTP_ATTRIBUTE_ACCEPT_ENCODING);
-            if (pHP != nullptr) {
-                jvStats["AcceptEncoding"] = pHP;
-            }
-            pHP = http.GetHeaderParameter(HTTP_ATTRIBUTE_ACCEPT_LANGUAGE);
-            if (pHP != nullptr) {
-                jvStats["AcceptLanguage"] = pHP;
-            }
-            pHP = http.GetHeaderParameter(HTTP_ATTRIBUTE_REFERER);
-            if (pHP != nullptr) {
-                jvStats["Referer"] = pHP;
-            }
-            m_dbBase.SessionLogger(s2hSession, jvStats);
-        }
+    if (s2_h_session != nullptr) {
+        s2_h_session->set_last_activity(second_clock::universal_time());
+        s2_h_session->set_ip(s_ip);
     }
 
-    http.SetCookie(GetSessionCode(), sp->GetSessionID(), sp->get_expired(), http.GetHost(), true);
+    http->set_cookie(get_session_code(), sp->get_session_id(), sp->get_expired(), http->get_host(), true);
 
-    LOGF(DEBUG, "%s = '%s' ClientIP = '%s' ConnectID = #%d InS = '%s' "
-        , GetSessionCode(), sp->GetSessionID().c_str(), sIP, connection.GetID()
-        , pQuerySession != NULL ? (strcmp(sp->GetSessionID().c_str(), pQuerySession) == 0 ? "+" : pQuerySession) : "-"
+    logger->debug("[OAUTH] {} = '{}' ClientIP = '{}' ConnectID = #{:d} InS = '{}' "
+        , get_session_code(), sp->get_session_id().c_str(), s_ip, connect.get_id()
+        , session_id != nullptr ? (strcmp(sp->get_session_id().c_str(), session_id) == 0 ? "+" : session_id) : "-"
     );
     return sp;
 }
 
-bool Server2HB::action_auth(const std::string& uri_params, Network::Connection& connection, Network::S2HSession* session, Network::HTTPTextProtocolHeader& http) {
-    using namespace boost::posix_time;
+network::token_ptr server2_hb::parse_token(const khorost::network::http_text_protocol_header_ptr& http, const bool is_access_token, const boost::posix_time::ptime& check) {
+    PROFILER_FUNCTION_TAG(get_logger_profiler(), fmt::format("[AT={}]", is_access_token));
 
-    LOGF(DEBUG, "[ActionAuth]");
-    Json::Value jvRoot;
-    std::string sLogin, sNickname, sPwHash, sSalt;
-    int nUserID;
+    static const auto token_mask = khl_token_type + std::string(" ");
+    const auto logger = get_logger();
+    std::string id;
 
-    const char* pActionParam = http.GetParameter(GetURLParamActionParam());
-    if (pActionParam == nullptr) {
-        Json::Reader reader;
-        Json::Value auth;
+    const auto header_authorization = http->get_header_parameter(khl_http_param_authorization, nullptr);
+    if (header_authorization != nullptr) {
+        const auto token_id = data::escape_string(header_authorization);
+        const auto token_pos = token_mask.size();
 
-        const auto pBody = reinterpret_cast<const char*>(http.GetBody());
-        if (reader.parse(pBody, pBody + http.GetBodyLength(), auth)) {
-            const auto login = auth["login"].asString();
-            const auto password = auth["password"].asString();
-
-            if (m_dbBase.get_user_info(login, nUserID, sNickname, sPwHash, sSalt)) {
-                std::string calculate_passowrd_hash;
-                RecalcPasswordHash(calculate_passowrd_hash, login, password, sSalt);
-                if (calculate_passowrd_hash == sPwHash) {
-                    session->SetUserID(nUserID);
-                    session->SetNickname(sNickname);
-                    // TODO: pSession->SetPostion(/*------* /);
-                    session->SetAuthenticate(true);
-
-                    m_dbBase.GetUserRoles(nUserID, session);
-                    m_dbBase.SessionUpdate(session);
-
-                    m_Sessions.UpdateSession(session);
-                }
-            }
+        if (token_id.size() <= token_pos || token_id.substr(0, token_pos) != token_mask) {
+            logger->warn("[OAUTH] Bad token format '{}'", token_id);
+            return nullptr;
         }
+
+        id = token_id.substr(token_pos);
     } else {
-        LOGF(DEBUG, "[ActionAuth] ActionParam = '%s'", pActionParam);
-
-        const auto pQueryQ = http.GetParameter(S2H_PARAM_QUESTION);
-        if (strcmp(pActionParam, S2H_PARAM_ACTION_AUTH_PRE) == 0) {
-            if (m_dbBase.get_user_info(pQueryQ != nullptr ? pQueryQ : "", nUserID, sNickname, sPwHash, sSalt)) {
-                jvRoot[S2H_JSON_SALT] = sSalt;
-            } else {
-                // не найден пользователь. но так в принципе наверно не стоит 
-                LOGF(WARNING, "User not found");
-                // посылаем fake данные к проверке подключения
-                jvRoot[S2H_JSON_SALT] = session->GetSessionID();
-            }
-        } else if (strcmp(pActionParam, S2H_PARAM_ACTION_AUTH_DO) == 0) {
-
-            if (m_dbBase.get_user_info(pQueryQ != nullptr ? pQueryQ : "", nUserID, sNickname, sPwHash, sSalt)) {
-                if (IsPasswordHashEqual2(http.GetParameter(S2H_PARAM_HASH, ""), sPwHash, session->GetSessionID())) {
-                    session->SetUserID(nUserID);
-                    session->SetNickname(sNickname);
-                    // TODO: pSession->SetPostion(/*------* /);
-                    session->SetAuthenticate(true);
-
-                    m_dbBase.GetUserRoles(nUserID, session);
-                    m_dbBase.SessionUpdate(session);
-                    m_Sessions.UpdateSession(session);
-                } else {
-                    // не найден пользователь
-                    LOGF(WARNING, "Password not correct");
-                }
-            } else {
-                // не найден пользователь
-                LOGF(WARNING, "User not found");
-            }
-        } else if (strcmp(pActionParam, S2H_PARAM_ACTION_AUTH_RESET) == 0) {
-            session->reset();
-            session->set_expired(second_clock::universal_time());
-
-            http.SetCookie(GetSessionCode(), session->GetSessionID(), session->get_expired(), http.GetHost(),true);
-
-            m_dbBase.SessionUpdate(session);
-            m_Sessions.RemoveSession(session);
-        } else if (strcmp(pActionParam, S2H_PARAM_ACTION_AUTH_CHANGEPASS) == 0) {
-
-            std::string sAdminPassword = http.GetParameter(S2H_PARAM_ADMIN_PASSWORD, "");
-            if (!sAdminPassword.empty()
-                && m_dbBase.GetUserInfo(session->GetUserID(), sLogin, sNickname, sPwHash, sSalt)
-                && IsPasswordHashEqual3(sPwHash, sLogin, sAdminPassword, sSalt)) {
-
-                std::string sNewPassword = http.GetParameter(S2H_PARAM_PASSWORD, "");
-                if (http.IsParameterExist(S2H_PARAM_LOGIN_PASSWORD)) {
-                    sLogin = http.GetParameter(S2H_PARAM_LOGIN_PASSWORD, "");
-                    if (m_dbBase.get_user_info(sLogin, nUserID, sNickname, sPwHash, sSalt)) {
-                        RecalcPasswordHash(sPwHash, sLogin, sNewPassword, sSalt);
-                        m_dbBase.UpdatePassword(nUserID, sPwHash);
-                    } else {
-                        // пользователь не найден
-                    }
-                } else {
-                    RecalcPasswordHash(sPwHash, sLogin, sNewPassword, sSalt);
-                    m_dbBase.UpdatePassword(session->GetUserID(), sPwHash);
-                }
-            } else {
-                jvRoot[S2H_JSON_REASON] = "UserNotFound";
-            }
-        }
-        // if (strcmp(pActionParam, PMX_PARAM_ACTION_AUTH_CHECK)==0) - пройдет по умолчанию и передаст информацию об авторизации
+        id = data::escape_string(http->get_parameter("token", ""));
     }
 
-    json_fill_auth(session, true, jvRoot);
+    auto token = find_token(is_access_token, id);
+    if (token != nullptr) {
+        if (check != boost::date_time::neg_infin && (is_access_token && !token->is_no_expire_access(check) || !is_access_token && !token->is_no_expire_refresh(check))) {
+            logger->debug("[OAUTH] {} Token {} expire. timestamp = {}"
+                          , is_access_token ? "Access" : "Refresh"
+                          , id
+                          , to_iso_extended_string(is_access_token ? token->get_access_expire() : token->get_refresh_expire()));
+            remove_token(token);
+            return nullptr;
+        }
 
-    http.SetContentType(HTTP_ATTRIBUTE_CONTENT_TYPE__APP_JS);
-    http.Response(connection, json_string(jvRoot, http.GetParameter(S2H_PARAM_HUMMAN_JSON, 0) == 1));
+        logger->debug("[OAUTH] {} Token {} expired after {}"
+                      , is_access_token ? "Access" : "Refresh"
+                      , id
+                      , to_iso_extended_string(is_access_token ? token->get_access_expire() : token->get_refresh_expire()));
+    } else {
+        logger->warn("[OAUTH] {} Token with id = '{}' not found", is_access_token ? "Access" : "Refresh", id);
+    }
+
+    return token;
+}
+
+void server2_hb::fill_json_token(const network::token_ptr& token, Json::Value& value) {
+    value["token_type"] = khl_token_type;
+
+    value[khl_json_param_access_token] = token->get_access_token();
+    value[khl_json_param_refresh_token] = token->get_refresh_token();
+
+    value["access_expires_in"] = token->get_access_duration();
+    value["refresh_expires_in"] = token->get_refresh_duration();
+}
+
+bool server2_hb::action_refresh_token(const std::string& params_uri, http_connection& connection, khorost::network::s2h_session* session) {
+    const auto& logger = get_logger();
+    const auto& http = connection.get_http();
+    Json::Value json_root;
+    const auto now = boost::posix_time::microsec_clock::universal_time();
+
+    try {
+        auto token = parse_token(http, false, now);
+        if (token != nullptr) {
+            const auto time_refresh = http->get_parameter("time_refresh", token->get_refresh_duration());
+            const auto time_access = http->get_parameter("time_access", token->get_access_duration());
+
+            const auto prev_access_token = token->get_access_token();
+            const auto prev_refresh_token = token->get_refresh_token();
+
+            auto access_token = boost::lexical_cast<std::string>(boost::uuids::random_generator()());
+            auto refresh_token = boost::lexical_cast<std::string>(boost::uuids::random_generator()());
+
+            data::compact_uuid_to_string(access_token);
+            data::compact_uuid_to_string(refresh_token);
+
+            const auto access_expire = now + boost::posix_time::seconds(time_access + khl_token_append_time);
+            const auto refresh_expire = now + boost::posix_time::seconds(time_refresh + khl_token_append_time);
+
+            token->set_access_token(access_token);
+            token->set_access_duration(time_access);
+            token->set_access_expire(access_expire);
+
+            token->set_refresh_token( refresh_token);
+            token->set_refresh_duration(time_refresh);
+            token->set_refresh_expire(refresh_expire);
+
+            const auto& payload = token->get_payload();
+            const auto token_value = khorost::data::json_string(payload);
+            const auto cache_set_value = payload[get_cache_set_tag()].asString();
+            // clear previous state
+            m_cache_db_.del({ prev_access_token , prev_refresh_token });
+            m_cache_db_.srem(m_cache_db_context_ + "tt:" + cache_set_value, { prev_refresh_token });
+            // set new state
+            m_cache_db_.setex(m_cache_db_context_ + "at:" + access_token, time_access + khl_token_append_time,
+                token_value);
+            m_cache_db_.setex(m_cache_db_context_ + "rt:" + refresh_token, time_refresh + khl_token_append_time,
+                token_value);
+            m_cache_db_.sadd(m_cache_db_context_ + "tt:" + cache_set_value, { refresh_token });
+            m_cache_db_.sync_commit();
+
+            logger->debug("[OAUTH] Remove token Access='{}', Refresh='{}' and append token Access='{}'@{}, Refresh='{}'@{}"
+                , prev_access_token
+                , prev_refresh_token
+                , token->get_access_token()
+                , to_iso_extended_string(token->get_access_expire())
+                , token->get_refresh_token()
+                , to_iso_extended_string(token->get_refresh_expire())
+            );
+            update_tokens(token, prev_access_token, prev_refresh_token);
+
+            fill_json_token(token, json_root);
+        }
+    } catch (const std::exception&) {
+        http->set_response_status(http_response_status_internal_server_error, "UNKNOWN_ERROR");
+    }
+
+    if (!json_root.isNull()) {
+        KHL_SET_CPU_DURATION(json_root, khl_json_param_duration, now);
+
+        http->set_content_type(HTTP_ATTRIBUTE_CONTENT_TYPE__APP_JSON);
+        http->send_response(connection, data::json_string(json_root));
+    } else {
+        http->set_response_status(http_response_status_unauthorized, "Unauthorized");
+        http->end_of_response(connection);
+    }
 
     return true;
 }
 
-std::string Server2HB::json_string(const Json::Value& value, bool styled) {
-    if (styled) {
-        return Json::StyledWriter().write(value);
+bool server2_hb::action_auth(const std::string& uri_params, http_connection& connection, network::s2h_session* session) {
+    using namespace boost::posix_time;
+
+    auto http = connection.get_http();
+
+    Json::Value root;
+    std::string action, params;
+    std::string nickname, hash, salt;
+    int user_id;
+
+    parse_action(uri_params, action, params);
+
+    if (action == "login") {
+        Json::Value auth;
+        const auto body = reinterpret_cast<const char*>(http->get_body());
+
+        if (data::parse_json(body, body + http->get_body_length(), auth)) {
+            const auto login = auth["login"].asString();
+            const auto password = auth["password"].asString();
+
+            if (m_db_base.get_user_info(login, user_id, nickname, hash, salt)) {
+                decltype(hash) calculate_passowrd_hash;
+
+                RecalcPasswordHash(calculate_passowrd_hash, login, password, salt);
+                if (calculate_passowrd_hash == hash) {
+                    session->SetUserID(user_id);
+                    session->SetNickname(nickname);
+                    // TODO: pSession->SetPostion(/*------* /);
+                    session->SetAuthenticate(true);
+
+                    m_db_base.GetUserRoles(user_id, session);
+
+                    m_sessions.update_session(session);
+                }
+            }
+        }
+        json_fill_auth(session, true, root);
+    } else if (action == "logout") {
+        session->reset();
+        session->set_expired(second_clock::universal_time());
+
+        http->set_cookie(get_session_code(), session->get_session_id(), session->get_expired(), http->get_host(), true);
+
+        m_sessions.remove_session(session);
+    } else if (action == "change") {
+        std::string login;
+        const auto current_password = http->get_parameter("curpwd", nullptr);
+
+        if (current_password != nullptr
+            && m_db_base.GetUserInfo(session->GetUserID(), login, nickname, hash, salt)
+            && IsPasswordHashEqual3(hash, login, current_password, salt)) {
+
+            const auto new_password = http->get_parameter("newpwd", nullptr);
+            if (http->is_parameter_exist("loginpwd")) {
+                login = http->get_parameter("loginpwd", nullptr);
+
+                if (m_db_base.get_user_info(login, user_id, nickname, hash, salt)) {
+                    RecalcPasswordHash(hash, login, new_password, salt);
+                    m_db_base.UpdatePassword(user_id, hash);
+                } else {
+                    // пользователь не найден
+                }
+            } else {
+                RecalcPasswordHash(hash, login, new_password, salt);
+                m_db_base.UpdatePassword(session->GetUserID(), hash);
+            }
+        } else {
+            root[S2H_JSON_REASON] = "UserNotFound";
+        }
+        json_fill_auth(session, true, root);
     }
-    return Json::FastWriter().write(value);
+
+    http->set_content_type(HTTP_ATTRIBUTE_CONTENT_TYPE__APP_JS);
+    http->send_response(connection, data::json_string(root));
+
+    return true;
 }
 
-void Server2HB::json_fill_auth(Network::S2HSession* session, bool full_info, Json::Value& value) {
+void server2_hb::json_fill_auth(network::s2h_session* session, bool full_info, Json::Value& value) {
     value[S2H_JSON_AUTH] = session->IsAuthenticate();
     if (full_info && session->IsAuthenticate()) {
         value[S2H_JSON_NICKNAME] = session->GetNickname();
@@ -800,5 +477,72 @@ void Server2HB::json_fill_auth(Network::S2HSession* session, bool full_info, Jso
         session->fill_roles(jvRoles);
         value[S2H_JSON_ROLES] = jvRoles;
     }
+}
+
+void server2_hb::append_token(const network::token_ptr& token) {
+    if (token != nullptr) {
+        m_tokens_.insert(std::make_pair(token->get_refresh_token(), token));
+        m_tokens_.insert(std::make_pair(token->get_access_token(), token));
+    }
+}
+
+void server2_hb::remove_token(const std::string& token_id) {
+    const auto it = m_tokens_.find(token_id);
+    if (it != m_tokens_.end()) {
+        const auto t = it->second;
+        remove_token(t->get_access_token(), t->get_refresh_token());
+    }
+}
+
+void server2_hb::remove_token(const std::string& access_token, const std::string& refresh_token) {
+    m_tokens_.erase(refresh_token);
+    m_tokens_.erase(access_token);
+}
+
+void server2_hb::update_tokens(const network::token_ptr& token, const std::string& access_token,
+                               const std::string& refresh_token) {
+    remove_token(access_token, refresh_token);
+    append_token(token);
+}
+
+network::token_ptr server2_hb::find_token(const bool is_access_token, const std::string& token_id) {
+    if (token_id.empty()) {
+        return nullptr;
+    }
+
+    const auto it = m_tokens_.find(token_id);
+    if (it != m_tokens_.end()) {
+        return it->second;
+    }
+
+    const auto token_context = m_cache_db_context_ + (is_access_token ? "at:" : "rt:") + token_id;
+    auto rit = m_cache_db_.exists({token_context});
+    m_cache_db_.sync_commit();
+
+    const auto exist = rit.get();
+    if (!exist.is_null() && exist.as_integer() == 1) {
+        auto riv = m_cache_db_.get(token_context);
+        m_cache_db_.sync_commit();
+
+        const auto cp = riv.get();
+        if (!cp.is_null()) {
+            Json::Value payload;
+            data::parse_json_string(cp.as_string(), payload);
+
+            auto token = std::make_shared<network::token>(
+                payload[khl_json_param_access_token].asString()
+                , boost::posix_time::from_iso_extended_string(payload[khl_json_param_access_expire].asString())
+                , payload[khl_json_param_refresh_token].asString()
+                , boost::posix_time::from_iso_extended_string(payload[khl_json_param_refresh_expire].asString())
+                , payload);
+
+            append_token(token);
+            return token;
+        }
+    } else {
+        remove_token(token_id);
+    }
+
+    return nullptr;
 }
 

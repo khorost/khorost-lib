@@ -1,7 +1,7 @@
-#include "net/compactbinary.h"
+п»ї#include "net/compactbinary.h"
 
-using namespace khorost::Network;
-using namespace khorost::Data;
+using namespace khorost::network;
+using namespace khorost::data;
 
 union uint64x32_t {
     boost::uint64_t	m_ui64;
@@ -12,12 +12,12 @@ union uint64x32_t {
 };
 
 void cbChunkIn::ParsePacket(const boost::uint8_t* pBuffer_, size_t nBufferSize_) {
-    // Блоки в формате ITLV
+    // Р‘Р»РѕРєРё РІ С„РѕСЂРјР°С‚Рµ ITLV
     id_cbc      id;
     type_cbc    type;
     size_cbc    length;
     std::string sv;
-    Data::AutoBufferT<boost::uint8_t>   ab;
+    auto_buffer_t<boost::uint8_t>   ab;
 
     while (true) {
         if (!CheckBuffer<id_cbc>(pBuffer_, nBufferSize_)) {
@@ -35,7 +35,7 @@ void cbChunkIn::ParsePacket(const boost::uint8_t* pBuffer_, size_t nBufferSize_)
         }
         length = CHUNK_NTOH_SIZE(ReadBuffer<size_cbc>(pBuffer_, nBufferSize_));
         if (length>nBufferSize_) {
-            break;  // ошибка. ожидается данных больше чем их представлено
+            break;  // РѕС€РёР±РєР°. РѕР¶РёРґР°РµС‚СЃСЏ РґР°РЅРЅС‹С… Р±РѕР»СЊС€Рµ С‡РµРј РёС… РїСЂРµРґСЃС‚Р°РІР»РµРЅРѕ
         }
 
         switch(type){
@@ -71,7 +71,7 @@ void cbChunkIn::ParsePacket(const boost::uint8_t* pBuffer_, size_t nBufferSize_)
             break;
         case CHUNK_TYPE_BINARY:
             if (CheckBuffer(pBuffer_, nBufferSize_, length)) {
-                ab.FlushFreeSize();
+                ab.flush_free_size();
                 ReadBuffer(pBuffer_, nBufferSize_, length, ab);
                 SetValue(id, ab);
             }
@@ -108,7 +108,7 @@ void cbChunkIn::ParsePacket(const boost::uint8_t* pBuffer_, size_t nBufferSize_)
             }
             break;
         default:
-            // chunk не распознали, переходим к следующему
+            // chunk РЅРµ СЂР°СЃРїРѕР·РЅР°Р»Рё, РїРµСЂРµС…РѕРґРёРј Рє СЃР»РµРґСѓСЋС‰РµРјСѓ
             pBuffer_ += length;
             nBufferSize_ -= length;
             break;
@@ -121,19 +121,19 @@ void cbChunkOut::AppendChunkString(cbChunk::id_cbc id_, const std::string& value
     cbChunk::size_cbc   sizeValue(CHUNK_HTON_SIZE((cbChunk::size_cbc)value_.size()));
     cbChunk::type_cbc   typeValue(CHUNK_HTON_TYPE(cbChunk::CHUNK_TYPE_STRING));
 
-    m_abPacket.Append(reinterpret_cast<const boost::uint8_t*>(&id_), sizeof(id_));
-    m_abPacket.Append(reinterpret_cast<const boost::uint8_t*>(&typeValue), sizeof(typeValue));
-    m_abPacket.Append(reinterpret_cast<const boost::uint8_t*>(&sizeValue), sizeof(sizeValue));
-    m_abPacket.Append(reinterpret_cast<const boost::uint8_t*>(value_.c_str()), value_.size());
+    m_abPacket.append(reinterpret_cast<const boost::uint8_t*>(&id_), sizeof(id_));
+    m_abPacket.append(reinterpret_cast<const boost::uint8_t*>(&typeValue), sizeof(typeValue));
+    m_abPacket.append(reinterpret_cast<const boost::uint8_t*>(&sizeValue), sizeof(sizeValue));
+    m_abPacket.append(reinterpret_cast<const boost::uint8_t*>(value_.c_str()), value_.size());
 }
 
-void cbChunkOut::AppendChunkBuffer(cbChunk::id_cbc id_, const AutoBufferT<boost::uint8_t>& value_) {
+void cbChunkOut::AppendChunkBuffer(cbChunk::id_cbc id_, const auto_buffer_t<boost::uint8_t>& value_) {
     id_ = CHUNK_HTON_ID(id_);
-    cbChunk::size_cbc   sizeValue(CHUNK_HTON_SIZE((cbChunk::size_cbc)value_.GetFillSize()));
+    cbChunk::size_cbc   sizeValue(CHUNK_HTON_SIZE((cbChunk::size_cbc)value_.get_fill_size()));
     cbChunk::type_cbc   typeValue(CHUNK_HTON_TYPE(cbChunk::CHUNK_TYPE_BINARY));
 
-    m_abPacket.Append(reinterpret_cast<const boost::uint8_t*>(&id_), sizeof(id_));
-    m_abPacket.Append(reinterpret_cast<const boost::uint8_t*>(&typeValue), sizeof(typeValue));
-    m_abPacket.Append(reinterpret_cast<const boost::uint8_t*>(&sizeValue), sizeof(sizeValue));
-    m_abPacket.Append(reinterpret_cast<const boost::uint8_t*>(value_.GetPosition(0)), value_.GetFullSize());
+    m_abPacket.append(reinterpret_cast<const boost::uint8_t*>(&id_), sizeof(id_));
+    m_abPacket.append(reinterpret_cast<const boost::uint8_t*>(&typeValue), sizeof(typeValue));
+    m_abPacket.append(reinterpret_cast<const boost::uint8_t*>(&sizeValue), sizeof(sizeValue));
+    m_abPacket.append(reinterpret_cast<const boost::uint8_t*>(value_.get_position(0)), value_.get_full_size());
 }

@@ -25,19 +25,19 @@
 #include "util/autobuffer.h"
 
 namespace khorost {
-    namespace DB {
-	    class MySQL{
+    namespace db {
+	    class khl_mysql{
 	    public:
 		    class Query{
-			    MySQL*		            m_Connection;			// 
+                khl_mysql*		            m_Connection;			// 
 			    MYSQL*		            m_Handle;				// 
 			    MYSQL_RES*				m_Result;				// 
 			    MYSQL_ROW				m_Row;					// 
-			    Data::AutoBufferChar	m_abQuery;	// 
+			    data::auto_buffer_char	m_abQuery;	// 
 			    int			            m_nRowsCount;			// 
 		    public:
-			    Query(MySQL* pConnection_);
-                Query(MySQL* pConnection_, const std::string& rsQuery_);
+			    Query(khl_mysql* pConnection_);
+                Query(khl_mysql* pConnection_, const std::string& rsQuery_);
 			    virtual ~Query();
 
 			    void	AppendQuery(const std::string& rsQuery_);
@@ -48,9 +48,9 @@ namespace khorost {
 			    void	BindValueBool(const char* psTag_, bool bValue_);
 			    void	BindValue(const char* strTag, uint32_t uiValue);
 			    void	BindValue64(const char* strTag,uint64_t uiValue);
-			    void	BindValueBLOB(const char* strTag,const Data::AutoBufferT<uint8_t>& abBLOB_);
-    //			void	BindValue(const char* strTag,const System::DateTime& dtValue){BindValue(strTag,NULL,dtValue);}
-    //			void	BindValue(const char* strTag,const char* strTagMS,const System::DateTime& dtValue);
+			    void	BindValueBLOB(const char* strTag,const data::auto_buffer_t<uint8_t>& abBLOB_);
+    //			void	BindValue(const char* strTag,const system::DateTime& dtValue){BindValue(strTag,NULL,dtValue);}
+    //			void	BindValue(const char* strTag,const char* strTagMS,const system::DateTime& dtValue);
 
 			    void	Execute();
 
@@ -69,12 +69,12 @@ namespace khorost {
 			    int			GetInteger(int position);
 			    uint64_t	GetInteger64(int position);
 			    const char*	GetString(int position);
-    //			const System::DateTime	GetDateTime(int position, int positionMS = -1) const;
+    //			const system::DateTime	GetDateTime(int position, int positionMS = -1) const;
 		    };
 	    protected:
 		    MYSQL								m_mysql;		// 
 		    MYSQL*								m_Handle;		// 
-    //		System::SynchronizeCriticalSection	m_hLock;		// 
+    //		system::SynchronizeCriticalSection	m_hLock;		// 
     /************************************************************************/
     /* Параметры подключения                                                */
     /************************************************************************/
@@ -85,8 +85,8 @@ namespace khorost {
 		    std::string		m_sDatabase;
 		    std::string		m_sConfigGroup;
 	    public:
-		    MySQL();
-		    virtual ~MySQL();
+            khl_mysql();
+		    virtual ~khl_mysql();
 
 		    virtual bool	ExecuteSQL(const std::string& rsSQL_);
 		    virtual bool	Begin();

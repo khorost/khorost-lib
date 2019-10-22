@@ -1,4 +1,4 @@
-#ifndef _COMPACT_BINARY__H_
+п»ї#ifndef _COMPACT_BINARY__H_
 #define _COMPACT_BINARY__H_
 
 #include <map>
@@ -22,7 +22,7 @@
 #include "util/logger.h"
 
 namespace khorost {
-    namespace Network {
+    namespace network {
 
         class cbPacket {
         public:
@@ -38,7 +38,7 @@ namespace khorost {
 #define PACKET_NTOH_SIZE(v)        ntohs(v)
 #define PACKET_NTOH_TYPE(v)        ntohs(v)
 
-            // Вычисляем размер заголовка пакета
+            // Р’С‹С‡РёСЃР»СЏРµРј СЂР°Р·РјРµСЂ Р·Р°РіРѕР»РѕРІРєР° РїР°РєРµС‚Р°
             static size_cbp    GetHeaderSize() { return sizeof(sign_cbp) + sizeof(type_cbp) + sizeof(size_cbp); }
         };
 
@@ -56,13 +56,13 @@ namespace khorost {
 #define CHUNK_NTOH_SIZE(v)        ntohs(v)
 #define CHUNK_NTOH_TYPE(v)        (v)
 
-            static  const type_cbc    CHUNK_TYPE_BYTE = 0x01;       // 1 байт
-            static  const type_cbc    CHUNK_TYPE_SHORT = 0x02;      // 2 байта
-            static  const type_cbc    CHUNK_TYPE_INTEGER = 0x03;    // 4 байта
-            static  const type_cbc    CHUNK_TYPE_LONG = 0x04;       // 8 байт
-            static  const type_cbc    CHUNK_TYPE_STRING = 0x05;     // объект аналогичен CHUNK_TYPE_BINARY
-            static  const type_cbc    CHUNK_TYPE_BINARY = 0x07;     // бинарные данные размером до 64К
-            static  const type_cbc    CHUNK_TYPE_ARRAY = 0x08;      // массив повторяющихся данных
+            static  const type_cbc    CHUNK_TYPE_BYTE = 0x01;       // 1 Р±Р°Р№С‚
+            static  const type_cbc    CHUNK_TYPE_SHORT = 0x02;      // 2 Р±Р°Р№С‚Р°
+            static  const type_cbc    CHUNK_TYPE_INTEGER = 0x03;    // 4 Р±Р°Р№С‚Р°
+            static  const type_cbc    CHUNK_TYPE_LONG = 0x04;       // 8 Р±Р°Р№С‚
+            static  const type_cbc    CHUNK_TYPE_STRING = 0x05;     // РѕР±СЉРµРєС‚ Р°РЅР°Р»РѕРіРёС‡РµРЅ CHUNK_TYPE_BINARY
+            static  const type_cbc    CHUNK_TYPE_BINARY = 0x07;     // Р±РёРЅР°СЂРЅС‹Рµ РґР°РЅРЅС‹Рµ СЂР°Р·РјРµСЂРѕРј РґРѕ 64Рљ
+            static  const type_cbc    CHUNK_TYPE_ARRAY = 0x08;      // РјР°СЃСЃРёРІ РїРѕРІС‚РѕСЂСЏСЋС‰РёС…СЃСЏ РґР°РЅРЅС‹С…
 
         public:
             cbChunk() {
@@ -74,7 +74,7 @@ namespace khorost {
         class cbChunkIn : public cbChunk {
         public:
             virtual void        SetValue(id_cbc id_, const std::string& value_){}
-            virtual void        SetValue(id_cbc id_, const Data::AutoBufferT<boost::uint8_t>& value_){}
+            virtual void        SetValue(id_cbc id_, const data::auto_buffer_t<boost::uint8_t>& value_){}
             virtual void        SetValue8(id_cbc id_, const boost::uint8_t value_){}
             virtual void        SetValue16(id_cbc id_, const boost::uint16_t value_){}
             virtual void        SetValue32(id_cbc id_, const boost::uint32_t value_){}
@@ -88,7 +88,7 @@ namespace khorost {
 
         class cbChunkOut : public cbChunk {
         protected:
-            Data::AutoBufferT<boost::uint8_t>   m_abPacket;
+            data::auto_buffer_t<boost::uint8_t>   m_abPacket;
         public:
             template<typename T, cbChunk::type_cbc tv_>
             void AppendChunkT(cbChunk::id_cbc id_, T value_) {
@@ -96,10 +96,10 @@ namespace khorost {
                 cbChunk::size_cbc   sizeValue(CHUNK_HTON_SIZE(sizeof(value_)));
                 cbChunk::type_cbc   typeValue(CHUNK_HTON_TYPE(tv_));
 
-                m_abPacket.Append(reinterpret_cast<const boost::uint8_t*>(&id_), sizeof(id_));
-                m_abPacket.Append(reinterpret_cast<const boost::uint8_t*>(&typeValue), sizeof(typeValue));
-                m_abPacket.Append(reinterpret_cast<const boost::uint8_t*>(&sizeValue), sizeof(sizeValue));
-                m_abPacket.Append(reinterpret_cast<const boost::uint8_t*>(&value_), sizeof(value_));
+                m_abPacket.append(reinterpret_cast<const boost::uint8_t*>(&id_), sizeof(id_));
+                m_abPacket.append(reinterpret_cast<const boost::uint8_t*>(&typeValue), sizeof(typeValue));
+                m_abPacket.append(reinterpret_cast<const boost::uint8_t*>(&sizeValue), sizeof(sizeValue));
+                m_abPacket.append(reinterpret_cast<const boost::uint8_t*>(&value_), sizeof(value_));
             }
 
 #define AppendChunkByte(i,v)     AppendChunkT<boost::uint8_t, cbChunk::CHUNK_TYPE_BYTE>(i,v)
@@ -107,10 +107,10 @@ namespace khorost {
 #define AppendChunkInteger(i,v)  AppendChunkT<boost::uint32_t, cbChunk::CHUNK_TYPE_INTEGER>(i,v)
 
             void    AppendChunkString(cbChunk::id_cbc id_, const std::string& value_);
-            void    AppendChunkBuffer(cbChunk::id_cbc id_, const Data::AutoBufferT<boost::uint8_t>& value_);
+            void    AppendChunkBuffer(cbChunk::id_cbc id_, const data::auto_buffer_t<boost::uint8_t>& value_);
 
-            size_cbc    GetSize() const { return static_cast<size_cbc>(m_abPacket.GetFillSize()); }
-            boost::uint8_t* GetBuffer() const { return m_abPacket.GetPosition(0); }
+            size_cbc    GetSize() const { return static_cast<size_cbc>(m_abPacket.get_fill_size()); }
+            boost::uint8_t* GetBuffer() const { return m_abPacket.get_position(0); }
         };
 
         template<typename T>
@@ -136,8 +136,8 @@ namespace khorost {
             nBufferSize_ -= nSizeValueChunk_;
         }
 
-        inline void ReadBuffer(const boost::uint8_t*& pBuffer_, size_t& nBufferSize_, cbChunk::size_cbc nSizeValueChunk_, Data::AutoBufferT<boost::uint8_t>& value_) {
-            value_.Append(pBuffer_, nSizeValueChunk_);
+        inline void ReadBuffer(const boost::uint8_t*& pBuffer_, size_t& nBufferSize_, cbChunk::size_cbc nSizeValueChunk_, data::auto_buffer_t<boost::uint8_t>& value_) {
+            value_.append(pBuffer_, nSizeValueChunk_);
             pBuffer_ += nSizeValueChunk_;
             nBufferSize_ -= nSizeValueChunk_;
         }
@@ -170,7 +170,7 @@ namespace khorost {
                         if (sizePacket <= nBufferSize_) {
                             nProcessBytes += nHeaderSize + sizePacket;
 
-                            LOGF(DEBUG, "Process packet type = 0x%04X size = %d bytes", typePacket, sizePacket);
+  //                          LOGF(DEBUG, "Process packet type = 0x%04X size = %d bytes", typePacket, sizePacket);
 
                             auto	itDPCCB = m_ProcessCommandCB.find(typePacket);
                             if (itDPCCB != m_ProcessCommandCB.end()) {
@@ -180,16 +180,16 @@ namespace khorost {
                                 pBuffer_ += sizePacket;
                                 nBufferSize_ -= sizePacket;
                             } else {
-                                // неизвестная команда
+                                // РЅРµРёР·РІРµСЃС‚РЅР°СЏ РєРѕРјР°РЅРґР°
                                 break;
                             }
                         } else {
-                            // пока еще мало данных
+                            // РїРѕРєР° РµС‰Рµ РјР°Р»Рѕ РґР°РЅРЅС‹С…
                             break;
                         }
                     } else {
-                        // неправильный формат
-                        LOGF(WARNING, "Wrong signature - %x", sign);
+                        // РЅРµРїСЂР°РІРёР»СЊРЅС‹Р№ С„РѕСЂРјР°С‚
+//                        LOGF(WARNING, "Wrong signature - %x", sign);
                         break;
                     }
                 }
@@ -200,17 +200,15 @@ namespace khorost {
         };
 
         template<cbPacket::sign_cbp signConst>
-        void SendChunkInPacket(Network::Connection& rConnect_, Network::cbPacket::type_cbp tp_, const Network::cbChunkOut& ch_) {
-            using namespace Network;
-
+        void SendChunkInPacket(network::connection& connect, network::cbPacket::type_cbp tp_, const network::cbChunkOut& ch_) {
             cbPacket::sign_cbp  signPacket(PACKET_HTON_SIGN(signConst));
             cbPacket::size_cbp  packetLength(PACKET_HTON_SIZE(ch_.GetSize()));
             tp_ = PACKET_HTON_TYPE(tp_);
 
-            rConnect_.SendData(reinterpret_cast<boost::uint8_t*>(&signPacket), sizeof(signPacket));
-            rConnect_.SendData(reinterpret_cast<boost::uint8_t*>(&packetLength), sizeof(packetLength));
-            rConnect_.SendData(reinterpret_cast<boost::uint8_t*>(&tp_), sizeof(tp_));
-            rConnect_.SendData(reinterpret_cast<boost::uint8_t*>(ch_.GetBuffer()), ch_.GetSize());
+            connect.send_data(reinterpret_cast<boost::uint8_t*>(&signPacket), sizeof(signPacket));
+            connect.send_data(reinterpret_cast<boost::uint8_t*>(&packetLength), sizeof(packetLength));
+            connect.send_data(reinterpret_cast<boost::uint8_t*>(&tp_), sizeof(tp_));
+            connect.send_data(reinterpret_cast<boost::uint8_t*>(ch_.GetBuffer()), ch_.GetSize());
         }
     }
 }

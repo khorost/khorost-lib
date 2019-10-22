@@ -1,27 +1,22 @@
-#ifndef _CONFIG__H_
-#define _CONFIG__H_
+#pragma once
 
 #include <json/json.h>
 
 namespace khorost {
-    class Config {
-        Json::Value     m_Container;
+    class config {
+        Json::Value m_container_;
     public:
-        Config() {}
-        virtual ~Config(){}
+        bool load(const std::string& file_name);
 
-        bool    Load(const std::string& sFileName_);
+        typedef Json::Value iterator;
 
-        typedef Json::Value Iterator;
+        iterator& operator[](const std::string& key);
 
-        Iterator&    operator[](const std::string& sKey_);
+        iterator find_item(const std::string& super_key, const std::string& div = ":") const;
 
-        Iterator            FindItem(const std::string& sSuperKey_, const std::string& sDiv_ = ":");
-        int                 GetValue(const std::string& sSuperKey_, int nDefaultValue_ = 0, const std::string& sDiv_ = ":");
-        const std::string   GetValue(const std::string& sSuperKey_, const std::string& sDefaultValue_ = "", const std::string& sDiv_ = ":");
+        bool is_value(const std::string& super_key, bool default_value, const std::string& div = ":") const;
+        int get_value(const std::string& super_key, int default_value = 0, const std::string& div = ":") const;
+        std::string get_value(const std::string& super_key, const std::string& default_value = "", const std::string& div = ":") const;
     private:
     };
 };
-
-#endif // _CONFIG__H_
-

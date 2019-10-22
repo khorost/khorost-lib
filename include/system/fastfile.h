@@ -1,5 +1,4 @@
-﻿#ifndef _FASTFILE__H_
-#define _FASTFILE__H_
+﻿#pragma once
 
 #if defined(_WIN32) || defined(_WIN64)
 # include <windows.h>
@@ -9,48 +8,46 @@
 /* For socket functions */
 # include <sys/socket.h>
 # include <unistd.h>
-#endif  
+#endif
 
 #include <string>
 
 namespace khorost {
-    namespace System {
-        class FastFile {
+    namespace system {
+        class fastfile final {
         public:
-            typedef size_t  size_ff;
+            typedef size_t size_ff;
         private:
-            size_ff	    m_nGranulate;       // Грануляция файла при его увеличении
-            size_ff	    m_nFileSize;        // Размер реальных данных
-            size_ff     m_nOverFileSize;    // Размер "захваченных" данных с учетом грануляции
+            size_ff m_granulate_; // Грануляция файла при его увеличении
+            size_ff m_file_size_; // Размер реальных данных
+            size_ff m_over_file_size_; // Размер "захваченных" данных с учетом грануляции
 #ifndef UNIX
-            HANDLE		m_hFile;            // идентификатор файла
-            HANDLE		m_hFileMap;         // идентификатор проекции
+            HANDLE m_file_; // идентификатор файла
+            HANDLE m_file_map_; // идентификатор проекции
 #else
-            int			m_hFile;	        // идентификатор файла
+            int	m_file_;	        // идентификатор файла
 #endif
-            void*		m_pMemory;	        // Указатель на начало проекции
-            bool		m_bOnlyRead;	    // Файл открыт только для чтения
-            time_t      m_tUpdate;
+            void* m_memory_ = nullptr; // Указатель на начало проекции
+            bool m_only_read_; // Файл открыт только для чтения
+            time_t m_update_;
         public:
-            FastFile(size_ff Granulate = 0);
-            virtual ~FastFile();
+            fastfile(size_ff Granulate = 0);
+            virtual ~fastfile();
 
             // Открывает файл. Если Size_ == 0, тогда файл открывается размером соответствующим действительному размеру файла.
-            bool	    Open(const std::string& sName_, size_ff Size_ = 0, bool bOnlyRead_ = true);
+            bool open_file(const std::string& file_name, size_ff file_size = 0, bool file_open_mode_only_read = true);
             // Закрывает файл. Если Size_ != 0, тогда файл закрывается с заданным размером, иначе с m_nRealSize.
-            void	    Close(size_ff Size_ = 0);
+            void close_file(size_ff size_on_close = 0);
 
             //	    void*	    GetBlock(size_ff BlockSize_);
-            inline void*	GetMemory() { return m_pMemory; }
-            size_ff     GetLength() const { return m_nFileSize; }
-            void	    SetLength(size_ff nNewSize_);
+            inline void* get_memory() const { return m_memory_; }
+            size_ff get_length() const { return m_file_size_; }
+            void set_length(size_ff new_size);
 
-            bool	    IsOpen() const { return m_pMemory != NULL; }
-            bool	    IsReadOnly() const { return m_bOnlyRead; }
+            bool is_open() const { return m_memory_ != nullptr; }
+            bool is_read_only() const { return m_only_read_; }
 
-            time_t      GetTimeUpdate() const { return m_tUpdate; }
+            time_t get_time_update() const { return m_update_; }
         };
-    };
+    }
 }
-
-#endif // _FASTFILE__H_

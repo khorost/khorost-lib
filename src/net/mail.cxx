@@ -3,8 +3,9 @@
 
 #include "net/mail.h"
 #include "util/logger.h"
+#include "app/khl-define.h"
 
-using namespace khorost::Network;
+using namespace khorost::network;
 
 static std::queue<std::string> init_message(const std::string& to_, const std::string& from_,
                                             const std::string& subject_, const std::string& message_) {
@@ -104,7 +105,8 @@ bool smtp::send_message(const std::string& to_, const std::string& from_, const 
 
         CURLcode res = curl_easy_perform(curl);
         if (res != CURLE_OK) {
-            LOG(WARNING) << "SMTP error - " << curl_easy_strerror(res);
+            auto logger = spdlog::get(KHL_LOGGER_COMMON);
+            logger->warn("SMTP error - {}" , curl_easy_strerror(res));
         }
 
         curl_slist_free_all(recipients);

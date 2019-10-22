@@ -1,28 +1,29 @@
 #pragma once
-#ifndef _GEOIP__H_
-#define _GEOIP__H_
 
+#ifndef _NO_USE_MMDB
 #include <string>
-#include <GeoIP.h>
+#include <maxminddb.h>
 
 namespace khorost {
-    namespace Network {
-        class GeoIPDatabase {
-            GeoIP*  m_gi;
+    namespace network {
+        class geo_ip_database {
+            MMDB_s m_mmdb_;
         public:
-            GeoIPDatabase():m_gi(nullptr) {
+            geo_ip_database() {
             }
 
-            virtual ~GeoIPDatabase() { 
-                CloseDatabase(); 
+            virtual ~geo_ip_database() {
+                close_database();
             }
 
-            bool    OpenDatabase(const std::string& sGeoiIPDatFile);
-            void    CloseDatabase();
+            static std::string get_lib_version_mmdb() { return MMDB_lib_version(); }
 
-            std::string GetCountryCodeByIP(const std::string& sIP);
+            bool open_database(const std::string& path_name);
+            void close_database();
+
+            std::string get_country_code_by_ip(const std::string& ip) const;
         };
     }
 }
 
-#endif // _GEOIP__H_
+#endif // _NO_USE_MMDB
