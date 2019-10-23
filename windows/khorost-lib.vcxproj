@@ -147,6 +147,7 @@
     <ClCompile Include="..\src\app\config.cxx" />
     <ClCompile Include="..\src\app\s2h-session.cxx" />
     <ClCompile Include="..\src\app\s2hb-storage.cxx" />
+    <ClCompile Include="..\src\app\server2h.cxx" />
     <ClCompile Include="..\src\app\server2hb.cxx" />
     <ClCompile Include="..\src\db\mysql.cpp" />
     <ClCompile Include="..\src\db\postgres.cpp" />
