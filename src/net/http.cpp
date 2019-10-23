@@ -635,7 +635,7 @@ bool http_text_protocol_header::send_file(const std::string& query_uri, network:
         const char* ims = get_header_parameter("If-Modified-Since", nullptr);
         if (ims != nullptr) {
             tm t;
-            strptime(ims, "%a, %d-%b-%Y %H:%M:%S GMT", &t);
+                (ims, "%a, %d-%b-%Y %H:%M:%S GMT", &t);
 #ifdef WIN32
             time_t tt = _mkgmtime(&t);
 #else

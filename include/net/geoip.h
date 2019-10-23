@@ -1,5 +1,6 @@
 #pragma once
 
+#ifndef _NO_USE_MMDB
 #include <string>
 #include <maxminddb.h>
 
@@ -24,3 +25,5 @@ namespace khorost {
         };
     }
 }
+
+#endif // _NO_USE_MMDB

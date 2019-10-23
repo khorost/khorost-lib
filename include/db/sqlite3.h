@@ -1,5 +1,4 @@
-﻿#ifndef __SQLITE3_H__
-#define __SQLITE3_H__
+﻿#pragma once
 
 #include <string>
 
@@ -91,4 +90,4 @@ namespace khorost {
     }
 }
 
-#endif  // __SQLITE3_H__
+

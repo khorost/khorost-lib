@@ -97,7 +97,7 @@ bool fastfile::open_file(const std::string& file_name, const size_ff file_size, 
         m_over_file_size_ = m_file_size_;
     }
 
-    m_file_map_ = CreateFileMapping(m_file_, nullptr, m_only_read_ ? PAGE_READONLY : PAGE_READWRITE, 0, m_over_file_size_, nullptr);
+    m_file_map_ = CreateFileMapping(m_file_, nullptr, m_only_read_ ? PAGE_READONLY : PAGE_READWRITE, 0, DWORD(m_over_file_size_), nullptr);
     if (m_file_map_ == nullptr) {
         return false;
     }
@@ -159,7 +159,7 @@ void fastfile::set_length(const size_ff new_size) {
         m_file_size_ = new_size;
         m_over_file_size_ = (m_file_size_ / m_granulate_ + 1) * m_granulate_;
 
-        m_file_map_ = CreateFileMapping(m_file_, nullptr, m_only_read_ ? PAGE_READONLY : PAGE_READWRITE, 0, m_over_file_size_, nullptr);
+        m_file_map_ = CreateFileMapping(m_file_, nullptr, m_only_read_ ? PAGE_READONLY : PAGE_READWRITE, 0, DWORD(m_over_file_size_), nullptr);
         if (m_file_map_ == nullptr) {
             return;
         }
@@ -196,7 +196,7 @@ void fastfile::close_file(size_ff size_on_close) {
             size_on_close = m_file_size_;
         }
 
-        SetFilePointer(m_file_, size_on_close, 0, FILE_BEGIN);
+        SetFilePointer(m_file_, LONG(size_on_close), 0, FILE_BEGIN);
         SetEndOfFile(m_file_);
 
         CloseHandle(m_file_);

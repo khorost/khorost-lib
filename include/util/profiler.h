@@ -2,6 +2,7 @@
 
 #include <utility>
 #include <spdlog/spdlog.h>
+#include <boost/date_time/posix_time/posix_time.hpp>
 
 namespace khorost {
     namespace profiler {
@@ -45,7 +46,9 @@ namespace khorost {
             }
         };
 
+#if !(defined(STRINGIFY))
 #define STRINGIFY(x) #x
+#endif
 #define TOSTRING(x) STRINGIFY(x)
 
 #if !(defined(__PRETTY_FUNCTION__))
