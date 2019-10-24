@@ -274,7 +274,7 @@ namespace khorost {
 
             const char*     get_client_proxy_ip();
 
-            bool        get_multi_part(size_t& rszIterator_, std::string& rsName_, std::string& rsContentType_, const char*& rpBuffer_, size_t& rszBuffer);
+            bool        get_multi_part(size_t& current_iterator, std::string& part_name, std::string& part_content_type, const char*& buffer_content, size_t& buffer_content_size);
 
             void end_of_response(connection& connection) {
                 send_response(connection, nullptr, 0);

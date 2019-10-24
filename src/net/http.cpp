@@ -271,64 +271,69 @@ size_t  http_text_protocol_header::process_data(const boost::uint8_t *buffer, si
     return nProcessByte;
 }
 
-bool http_text_protocol_header::get_multi_part(size_t& rszIterator_, std::string& rsName_, std::string& rsContentType_, const char*& rpBuffer_, size_t& rszBuffer) {
-    const char *content_type = get_header_parameter(HTTP_ATTRIBUTE_CONTENT_TYPE, nullptr);
-    if (content_type == nullptr) {
+bool http_text_protocol_header::get_multi_part(size_t& current_iterator, std::string& part_name, std::string& part_content_type, const char*& buffer_content, size_t& buffer_content_size) {
+    const auto header_content_type = get_header_parameter(HTTP_ATTRIBUTE_CONTENT_TYPE, nullptr);
+    if (header_content_type == nullptr) {
         return false;
     }
     
     const char *pszBoundary = nullptr;
-    const size_t szCT = strlen(content_type);
+    const auto header_content_type_length = strlen(header_content_type);
     size_t szBoundary = 0;
 
-    if (find_sub_value(content_type, szCT, HTTP_ATTRIBUTE_CONTENT_TYPE__MULTIPART_FORM_DATA, sizeof(HTTP_ATTRIBUTE_CONTENT_TYPE__MULTIPART_FORM_DATA) - 1, '=', ';')) {
-        if (find_sub_value(content_type, szCT, HTTP_ATTRIBUTE_CONTENT_TYPE__BOUNDARY, sizeof(HTTP_ATTRIBUTE_CONTENT_TYPE__BOUNDARY) - 1, '=', ';', &pszBoundary, &szBoundary)) {
-            std::string sBoundary = HTTP_ATTRIBUTE_LABEL_CD;
-            sBoundary.append(pszBoundary, szBoundary);
+    if (find_sub_value(header_content_type, header_content_type_length, HTTP_ATTRIBUTE_CONTENT_TYPE__MULTIPART_FORM_DATA, sizeof(HTTP_ATTRIBUTE_CONTENT_TYPE__MULTIPART_FORM_DATA) - 1, '=', ';')) {
+        if (find_sub_value(header_content_type, header_content_type_length, HTTP_ATTRIBUTE_CONTENT_TYPE__BOUNDARY, sizeof(HTTP_ATTRIBUTE_CONTENT_TYPE__BOUNDARY) - 1, '=', ';', &pszBoundary, &szBoundary)) {
+            std::string boundary_label = HTTP_ATTRIBUTE_LABEL_CD;
+            boundary_label.append(pszBoundary, szBoundary);
             // проверить что контрольная метка правильная
-            if (m_abBody.compare(rszIterator_, sBoundary.c_str(), sBoundary.size()) != 0) {
+            if (m_abBody.compare(current_iterator, boundary_label.c_str(), boundary_label.size()) != 0) {
                 return false;
             }
-            rszIterator_ += sBoundary.size();
+            current_iterator += boundary_label.size();
 
-            if (m_abBody.compare(rszIterator_, HTTP_ATTRIBUTE_LABEL_CD, sizeof(HTTP_ATTRIBUTE_LABEL_CD) - 1) == 0) {
+            if (m_abBody.compare(current_iterator, HTTP_ATTRIBUTE_LABEL_CD, sizeof(HTTP_ATTRIBUTE_LABEL_CD) - 1) == 0) {
                 return false; // завершение блока
-            } else if (m_abBody.compare(rszIterator_, HTTP_ATTRIBUTE_ENDL, sizeof(HTTP_ATTRIBUTE_ENDL) - 1) != 0) {
+            }
+
+            if (m_abBody.compare(current_iterator, HTTP_ATTRIBUTE_ENDL, sizeof(HTTP_ATTRIBUTE_ENDL) - 1) != 0) {
                 return false;
             }
-            rszIterator_ += sizeof(HTTP_ATTRIBUTE_ENDL) - 1;
+            current_iterator += sizeof(HTTP_ATTRIBUTE_ENDL) - 1;
+
             const auto    p_max = m_abBody.get_fill_size();
-            while (rszIterator_ < p_max) {
-                auto p_end_line = m_abBody.find(rszIterator_, HTTP_ATTRIBUTE_ENDL, sizeof(HTTP_ATTRIBUTE_ENDL) - 1);
+            while (current_iterator < p_max) {
+                auto p_end_line = m_abBody.find(current_iterator, HTTP_ATTRIBUTE_ENDL, sizeof(HTTP_ATTRIBUTE_ENDL) - 1);
                 if (p_end_line == data::auto_buffer_char::npos) {
-                    p_end_line = m_abBody.get_fill_size() - rszIterator_;
+                    p_end_line = m_abBody.get_fill_size() - current_iterator;
                 }
-                if (p_end_line == rszIterator_) {
-                    rszIterator_ += sizeof(HTTP_ATTRIBUTE_ENDL) - 1;
-                    sBoundary.insert(0, HTTP_ATTRIBUTE_ENDL);
-                    p_end_line = m_abBody.find(rszIterator_, sBoundary.c_str(), sBoundary.size());
+
+                if (p_end_line == current_iterator) {
+                    current_iterator += sizeof(HTTP_ATTRIBUTE_ENDL) - 1;
+                    boundary_label.insert(0, HTTP_ATTRIBUTE_ENDL);
+                    p_end_line = m_abBody.find(current_iterator, boundary_label.c_str(), boundary_label.size());
                     if (p_end_line == data::auto_buffer_char::npos) {
                         return false;
                     }
 
-                    rpBuffer_ = m_abBody.get_head() + rszIterator_;
-                    rszBuffer = p_end_line - rszIterator_;
-                    rszIterator_ = p_end_line;
+                    buffer_content = m_abBody.get_head() + current_iterator;
+                    buffer_content_size = p_end_line - current_iterator;
+                    current_iterator = p_end_line + sizeof(HTTP_ATTRIBUTE_ENDL) - 1;
+
                     return true;
-                } else {
-                    const char* pValue;
-                    size_t szValue;
-                    if (m_abBody.compare(rszIterator_, HTTP_ATTRIBUTE_CONTENT_DISPOSITION, sizeof(HTTP_ATTRIBUTE_CONTENT_DISPOSITION) - 1) == 0) {
-                        if (find_sub_value(m_abBody.get_head() + rszIterator_, p_end_line - rszIterator_, "name", sizeof("name") - 1, '=', ';', &pValue, &szValue)) {
-                            rsName_.assign(pValue, szValue);
-                        }
-                    } else if (m_abBody.compare(rszIterator_, HTTP_ATTRIBUTE_CONTENT_TYPE, sizeof(HTTP_ATTRIBUTE_CONTENT_TYPE) - 1) == 0) {
-                        if (find_sub_value(m_abBody.get_head() + rszIterator_, p_end_line - rszIterator_, HTTP_ATTRIBUTE_CONTENT_TYPE, sizeof(HTTP_ATTRIBUTE_CONTENT_TYPE) - 1, ':', ';', &pValue, &szValue)) {
-                            rsContentType_.assign(pValue, szValue);
-                        }
-                    }
-                    rszIterator_ = p_end_line + sizeof(HTTP_ATTRIBUTE_ENDL) - 1;
                 }
+
+                const char* value;
+                size_t value_size;
+                if (m_abBody.compare(current_iterator, HTTP_ATTRIBUTE_CONTENT_DISPOSITION, sizeof(HTTP_ATTRIBUTE_CONTENT_DISPOSITION) - 1) == 0) {
+                    if (find_sub_value(m_abBody.get_head() + current_iterator, p_end_line - current_iterator, "name", sizeof("name") - 1, '=', ';', &value, &value_size)) {
+                        part_name.assign(value, value_size);
+                    }
+                } else if (m_abBody.compare(current_iterator, HTTP_ATTRIBUTE_CONTENT_TYPE, sizeof(HTTP_ATTRIBUTE_CONTENT_TYPE) - 1) == 0) {
+                    if (find_sub_value(m_abBody.get_head() + current_iterator, p_end_line - current_iterator, HTTP_ATTRIBUTE_CONTENT_TYPE, sizeof(HTTP_ATTRIBUTE_CONTENT_TYPE) - 1, ':', ';', &value, &value_size)) {
+                        part_content_type.assign(value, value_size);
+                    }
+                }
+                current_iterator = p_end_line + sizeof(HTTP_ATTRIBUTE_ENDL) - 1;
             }
         }
     }
