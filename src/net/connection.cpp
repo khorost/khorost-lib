@@ -204,8 +204,34 @@ bool connection_controller::remove_connection(connection* connect){
 
     return true;
 }
+
 // Так делать опасно, осуществляется вызов функции из libevent\util-internal.h
-extern "C" const char * evutil_format_sockaddr_port_(const struct sockaddr *sa, char *out, size_t outlen);
+const char * x_evutil_format_sockaddr_port(const struct sockaddr *sa, char *out, size_t outlen) {
+    char b[128];
+    const char *res = NULL;
+    int port;
+    if (sa->sa_family == AF_INET) {
+        const struct sockaddr_in *sin = (const struct sockaddr_in*)sa;
+        res = evutil_inet_ntop(AF_INET, &sin->sin_addr, b, sizeof(b));
+        port = ntohs(sin->sin_port);
+        if (res) {
+            evutil_snprintf(out, outlen, "%s:%d", b, port);
+            return out;
+        }
+    } else if (sa->sa_family == AF_INET6) {
+        const struct sockaddr_in6 *sin6 = (const struct sockaddr_in6*)sa;
+        res = evutil_inet_ntop(AF_INET6, &sin6->sin6_addr, b, sizeof(b));
+        port = ntohs(sin6->sin6_port);
+        if (res) {
+            evutil_snprintf(out, outlen, "[%s]:%d", b, port);
+            return out;
+        }
+    }
+
+    evutil_snprintf(out, outlen, "<addr with socktype %d>",
+        (int)sa->sa_family);
+    return out;
+}
 
 connection* connection_controller::add_connection(evutil_socket_t fd_, struct sockaddr* sa_, int socklen_){
     boost::mutex::scoped_lock lock(m_mutex_);
@@ -215,7 +241,7 @@ connection* connection_controller::add_connection(evutil_socket_t fd_, struct so
 
     char    buf[1024];
     logger->debug(LOGGER_PREFIX"Detect incoming connect #{:d} from {}. Accepted on socket #{:X}"
-        , pConnection->get_id(), evutil_format_sockaddr_port_(sa_, buf, sizeof(buf)), fd_);
+        , pConnection->get_id(), x_evutil_format_sockaddr_port(sa_, buf, sizeof(buf)), fd_);
 
     pConnection->open_connection();
 
@@ -223,7 +249,7 @@ connection* connection_controller::add_connection(evutil_socket_t fd_, struct so
 }
 
 void connection::get_client_ip(char* buffer, size_t buffer_size) {
-    evutil_format_sockaddr_port_(&m_sa, buffer, buffer_size);
+    x_evutil_format_sockaddr_port(&m_sa, buffer, buffer_size);
 
     for (size_t k = 0; k < buffer_size && buffer[k] != '\0'; ++k) {
         if (buffer[k] == ':') {
