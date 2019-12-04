@@ -518,6 +518,10 @@ void http_text_protocol_header::send_response(network::connection& connect, cons
     connect.send_number(static_cast<unsigned int>(m_response_.m_content_length_));
     connect.send_string(HTTP_ATTRIBUTE_ENDL, sizeof(HTTP_ATTRIBUTE_ENDL) - 1);
 
+
+    connect.send_string(HTTP_ATTRIBUTE_CONTENT_ENCODING ": identity");
+    connect.send_string(HTTP_ATTRIBUTE_ENDL, sizeof(HTTP_ATTRIBUTE_ENDL) - 1);
+
     if (!m_response_.m_tLastModify.is_not_a_date_time()) {
         connect.send_string(HTTP_ATTRIBUTE_LAST_MODIFIED HTTP_ATTRIBUTE_DIV);
         time_t gmt = data::epoch_diff(m_response_.m_tLastModify).total_seconds();
