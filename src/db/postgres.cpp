@@ -177,6 +177,10 @@ std::string linked_postgres::to_string(const pqxx::transaction_base& txn, const 
     return std::to_string(value);
 }
 
+std::string linked_postgres::to_string(const pqxx::transaction_base& txn, const float value) {
+    return std::to_string(value);
+}
+
 std::string linked_postgres::to_string(const pqxx::transaction_base& txn, const std::vector<uint8_t>& value,
                                        const bool suffix) {
     std::string result;
