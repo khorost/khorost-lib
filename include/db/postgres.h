@@ -133,6 +133,11 @@ namespace khorost {
             static std::string to_string(const pqxx::transaction_base& txn, const Json::Value& info);
             static std::string to_string(const pqxx::transaction_base& txn, const bool value);
             static std::string to_string(const pqxx::transaction_base& txn, const unsigned int value);
+            static std::string to_string(const pqxx::transaction_base& txn, const int value);
+            static std::string to_string(const pqxx::transaction_base& txn, const float value);
+            static std::string to_string(const pqxx::transaction_base& txn, const std::string& value);
+            static std::string to_string(const pqxx::transaction_base& txn, const std::vector<uint8_t>& value, const bool suffix);
+            static void from_string(const pqxx::transaction_base& txn, const std::string& src, std::vector<uint8_t>& dst);
         private:
 
         };

@@ -63,6 +63,7 @@ std::string trim(const std::string& str, const std::string& newline = "\r\n") {
     return str.substr(strBegin, strRange);
 }
 
+#ifndef NO_KHL_EXT
 std::string khorost::data::clear_html_tags(const std::string source) {
     std::regex stripFormatting("<[^>]*(>|$)"); //match any character between '<' and '>', even when end tag is missing
 
@@ -72,3 +73,4 @@ std::string khorost::data::clear_html_tags(const std::string source) {
     return s3;
 }
 
+#endif

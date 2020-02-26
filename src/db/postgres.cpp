@@ -2,9 +2,9 @@
 
 #ifdef WIN32
 #ifdef _DEBUG
-#pragma comment(lib, "libpqxxD")
+#pragma comment(lib, "libpqxx_staticD")
 #else
-#pragma comment(lib, "libpqxx")
+#pragma comment(lib, "libpqxx_static")
 #endif
 #endif // WIN32
 
@@ -157,6 +157,10 @@ std::string linked_postgres::to_string(const pqxx::transaction_base& txn,
     }
 }
 
+std::string linked_postgres::to_string(const pqxx::transaction_base& txn, const std::string& value) {
+    return txn.quote(value);
+}
+
 std::string linked_postgres::to_string(const pqxx::transaction_base& txn, const Json::Value& info) {
     return info.isNull() ? "null" : (txn.quote(data::json_string(info)) + "::jsonb");
 }
@@ -169,7 +173,48 @@ std::string linked_postgres::to_string(const pqxx::transaction_base& txn, const 
     return std::to_string(value);
 }
 
-bool khl_postgres::refresh_token(khorost::network::token_ptr& token, int access_timeout, int refresh_timeout, int append_time) const {
+std::string linked_postgres::to_string(const pqxx::transaction_base& txn, const int value) {
+    return std::to_string(value);
+}
+
+std::string linked_postgres::to_string(const pqxx::transaction_base& txn, const float value) {
+    return std::to_string(value);
+}
+
+std::string linked_postgres::to_string(const pqxx::transaction_base& txn, const std::vector<uint8_t>& value,
+                                       const bool suffix) {
+    std::string result;
+    for (const auto a : value) {
+        result += fmt::format("{:02x}", a);
+    }
+    return suffix ? ("'\\x" + result + "'::bytea") : ("\\x" + result);
+}
+
+uint8_t ctoi(char c) {
+    if ('0' <= c && c <= '9') {
+        return c - '0';
+    }
+    if ('a' <= c && c <= 'f') {
+        return c - 'a' + 0xA;
+    }
+    if ('A' <= c && c <= 'F') {
+        return c - 'A' + 0xA;
+    }
+    return 0;
+}
+
+void linked_postgres::from_string(const pqxx::transaction_base& txn, const std::string& src,
+                                  std::vector<uint8_t>& dst) {
+    auto size = src.length();
+    for (decltype(size) k = 2; k < (size - 1); k += 2) {
+        const auto c0 = src.at(k), c1 = src.at(k + 1);
+        uint8_t val = ctoi(c0) * 16 + ctoi(c1);
+        dst.push_back(val);
+    }
+}
+
+bool khl_postgres::refresh_token(khorost::network::token_ptr& token, int access_timeout, int refresh_timeout,
+                                 int append_time) const {
     db_connection conn(m_db_);
     pqxx::work txn(conn.get_handle());
 
@@ -192,7 +237,8 @@ bool khl_postgres::refresh_token(khorost::network::token_ptr& token, int access_
     const auto r = txn.exec(
         "INSERT INTO admin.khl_tokens "
         " (access_token, access_time, refresh_token, refresh_time, payload) "
-        " SELECT uuid_generate_v4(), NOW() + INTERVAL " + access_interval + " , uuid_generate_v4(), NOW() + INTERVAL " + refresh_interval + ", kt.payload "
+        " SELECT uuid_generate_v4(), NOW() + INTERVAL " + access_interval + " , uuid_generate_v4(), NOW() + INTERVAL " +
+        refresh_interval + ", kt.payload "
         "  FROM admin.khl_tokens AS kt "
         " WHERE kt.refresh_token = '" + pre_refresh_token + "' "
         " RETURNING replace(access_token::text,'-',''), access_time AT TIME ZONE 'UTC', replace(refresh_token::text,'-',''), refresh_time AT TIME ZONE 'UTC'"
@@ -245,7 +291,8 @@ khorost::internalization::func_append_value khl_postgres::load_tag() {
     };
 }
 
-khorost::network::token_ptr khl_postgres::create_token(const int access_timeout, const int refresh_timeout, int append_time,
+khorost::network::token_ptr khl_postgres::create_token(const int access_timeout, const int refresh_timeout,
+                                                       int append_time,
                                                        const Json::Value& payload) const {
     db_connection conn(m_db_);
     pqxx::work txn(conn.get_handle());
@@ -258,7 +305,8 @@ khorost::network::token_ptr khl_postgres::create_token(const int access_timeout,
         "INSERT INTO admin.khl_tokens "
         " (access_token, access_time, refresh_token, refresh_time, payload) "
         " VALUES( uuid_generate_v4(), NOW() + INTERVAL '" + std::to_string(access_timeout + append_time) +
-        " SECONDS', uuid_generate_v4(), NOW() + INTERVAL '" + std::to_string(refresh_timeout + append_time) + " SECONDS', " +
+        " SECONDS', uuid_generate_v4(), NOW() + INTERVAL '" + std::to_string(refresh_timeout + append_time) +
+        " SECONDS', " +
         to_string(txn, token_payload) + ") "
         " RETURNING replace(access_token::text,'-',''), access_time AT TIME ZONE 'UTC', replace(refresh_token::text,'-',''), refresh_time AT TIME ZONE 'UTC'"
     );
@@ -270,9 +318,10 @@ khorost::network::token_ptr khl_postgres::create_token(const int access_timeout,
 
     const auto& row0 = r[0];
     return std::make_shared<network::token>(row0[0].as<std::string>(),
-                                              boost::posix_time::time_from_string(row0[1].as<std::string>()),
-                                              row0[2].as<std::string>(),
-                                              boost::posix_time::time_from_string(row0[3].as<std::string>()), token_payload);
+                                            boost::posix_time::time_from_string(row0[1].as<std::string>()),
+                                            row0[2].as<std::string>(),
+                                            boost::posix_time::time_from_string(row0[3].as<std::string>()),
+                                            token_payload);
 }
 
 khorost::network::token_ptr khl_postgres::load_token(const bool is_access_token, const std::string& token_id) const {
@@ -306,7 +355,7 @@ khorost::network::token_ptr khl_postgres::load_token(const bool is_access_token,
     }
 
     return std::make_shared<network::token>(row0[0].as<std::string>(),
-                                              boost::posix_time::time_from_string(row0[1].as<std::string>()),
-                                              row0[2].as<std::string>(),
-                                              boost::posix_time::time_from_string(row0[3].as<std::string>()), payload);
+                                            boost::posix_time::time_from_string(row0[1].as<std::string>()),
+                                            row0[2].as<std::string>(),
+                                            boost::posix_time::time_from_string(row0[3].as<std::string>()), payload);
 }

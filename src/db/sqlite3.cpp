@@ -1,6 +1,7 @@
 ﻿#include "db/sqlite3.h"
 
 #include <string.h>
+#include <vector>
 
 #pragma comment(lib,"sqlite3.lib")
 
@@ -104,10 +105,11 @@ void khl_sqlite3::Adapter::DumpSqliteError(int nResult) {
 bool khl_sqlite3::Adapter::Prepare(const std::string& sql_) {
     m_sPreparedSql = sql_;
     Cleanup();
-    const char* pzTail = NULL;
-    int nResult = sqlite3_prepare_v2(m_HandleDB, sql_.c_str(), sql_.size(), &sqstmt, &pzTail);
-    if (!SQLITE_SUCCESS(nResult)) {
-        DumpSqliteError(nResult);
+
+    const char* tail = nullptr;
+    const auto result = sqlite3_prepare_v2(m_HandleDB, sql_.c_str(), int(sql_.size()), &sqstmt, &tail);
+    if (!SQLITE_SUCCESS(result)) {
+        DumpSqliteError(result);
     }
     return true;
 }
@@ -145,22 +147,29 @@ bool khl_sqlite3::Adapter::BindParam(int column, double value) {
 }
 
 bool khl_sqlite3::Adapter::BindParamString(int column, const char* value, int size) {
-    int nResult;
-    if (value == NULL) {
-        nResult = sqlite3_bind_null(sqstmt, column);
-    } else {
-        nResult = sqlite3_bind_text(sqstmt, column, value, size == -1 ? strlen(value) : size, SQLITE_STATIC);
+    const auto result = value == nullptr
+                            ? sqlite3_bind_null(sqstmt, column)
+                            : sqlite3_bind_text(sqstmt, column, value, size == -1 ? int(strlen(value)) : size,
+                                                SQLITE_STATIC);
+
+    if (!SQLITE_SUCCESS(result)) {
+        DumpSqliteError(result);
     }
+    return true;
+}
+
+bool khl_sqlite3::Adapter::BindParam(int column, const std::string& value) {
+    int nResult = sqlite3_bind_text(sqstmt, column, value.c_str(), int(value.size()), SQLITE_STATIC);
     if (!SQLITE_SUCCESS(nResult)) {
         DumpSqliteError(nResult);
     }
     return true;
 }
 
-bool khl_sqlite3::Adapter::BindParam(int column, const std::string& value) {
-    int nResult = sqlite3_bind_text(sqstmt, column, value.c_str(), value.size(), SQLITE_STATIC);
-    if (!SQLITE_SUCCESS(nResult)) {
-        DumpSqliteError(nResult);
+bool khl_sqlite3::Adapter::bind_param(const int column, const std::vector<uint8_t>& data) {
+    const auto result = sqlite3_bind_blob(sqstmt, column, &data[0], data.size(), SQLITE_STATIC);
+    if (!SQLITE_SUCCESS(result)) {
+        DumpSqliteError(result);
     }
     return true;
 }
@@ -217,6 +226,16 @@ bool khl_sqlite3::Adapter::GetValue(int column, std::string& value) {
         if (lpcText != NULL) {
             value = lpcText;
         }
+        return true;
+    }
+    return false;
+}
+
+bool khl_sqlite3::Adapter::get_value(int column, const char*& data, size_t& data_size) const {
+    column--;
+    if (sqlite3_column_type(sqstmt, column) != SQLITE_NULL) {
+        data_size = sqlite3_column_bytes(sqstmt, column);
+        data = static_cast<const char *>(sqlite3_column_blob(sqstmt, column));
         return true;
     }
     return false;

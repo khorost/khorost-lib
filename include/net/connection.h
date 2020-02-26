@@ -3,6 +3,7 @@
 #if defined(_WIN32) || defined(_WIN64)
 # include <windows.h>
 # include <WinSock2.h>
+# include <ws2tcpip.h>
 #else
 /* For sockaddr_in */
 # include <netinet/in.h>

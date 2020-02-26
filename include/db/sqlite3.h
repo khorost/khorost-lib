@@ -3,6 +3,7 @@
 #include <string>
 
 #include <sqlite3.h>
+#include <vector>
 
 namespace khorost {
     namespace db {
@@ -53,6 +54,7 @@ namespace khorost {
                 bool BindParam(int column_, int value);
                 bool BindParam(int column_, unsigned int value);
                 bool BindParam(int column_, const std::string& value);
+                bool bind_param(int column, const std::vector<uint8_t>& data);
                 bool BindParamString(int column, const char* value, int size = -1);
                 bool BindParam(int column, bool value);
                 bool BindParam(int column, double value);
@@ -63,6 +65,7 @@ namespace khorost {
                 bool GetValue(int column, bool& value);
                 bool GetValue(int column, float& value);
                 bool GetValue(int column, std::string& value);
+                bool get_value(int column, const char*& data, size_t& data_size) const;
                 bool IsNull(int column);
             };
 
