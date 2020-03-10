@@ -1,10 +1,10 @@
 
 KHL_SRC = net/connection.cpp system/fastfile.cpp net/http.cpp db/sqlite3.cpp db/postgres.cpp net/session.cpp \
-	app/config.cxx app/s2h-session.cxx app/s2hb-storage.cxx app/server2hb.cxx net/compactbinary.cpp util/logger.cpp \
+	app/config.cxx app/s2h-session.cxx app/s2hb-storage.cxx app/server2h.cxx app/server2hb.cxx net/compactbinary.cpp util/logger.cpp \
 	util/utils.cxx net/geoip.cxx net/mail.cxx net/token.cxx 
 
 KHL_OBJECTS = net/connection.o system/fastfile.o net/http.o db/sqlite3.o db/postgres.o net/session.o \
-	app/config.o app/s2h-session.o app/s2hb-storage.o app/server2hb.o net/compactbinary.o util/logger.o \
+	app/config.o app/s2h-session.o app/s2hb-storage.o app/server2h.o app/server2hb.o net/compactbinary.o util/logger.o \
 	util/utils.o net/geoip.o net/mail.o net/token.o
 
 KHL_INC = 
