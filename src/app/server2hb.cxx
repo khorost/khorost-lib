@@ -285,6 +285,13 @@ network::token_ptr server2_hb::parse_token(const khorost::network::http_text_pro
     }
 
     auto token = find_token(is_access_token, id);
+
+    logger->debug("[OAUTH] {} Token {} {}"
+                  , is_access_token ? "Access" : "Refresh"
+                  , id
+                  , token != nullptr ? "find" : "not found"
+    );
+
     if (token != nullptr) {
         if (check != boost::date_time::neg_infin && (is_access_token && !token->is_no_expire_access(check) || !is_access_token && !token->is_no_expire_refresh(check))) {
             logger->debug("[OAUTH] {} Token {} expire. timestamp = {}"
