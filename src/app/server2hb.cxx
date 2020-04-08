@@ -271,6 +271,10 @@ network::token_ptr server2_hb::parse_token(const khorost::network::http_text_pro
 
     const auto header_authorization = http->get_header_parameter(khl_http_param_authorization, nullptr);
     if (header_authorization != nullptr) {
+        logger->debug("[OAUTH] Raw header '{}'"
+            , header_authorization
+        );
+
         const auto token_id = data::escape_string(header_authorization);
         const auto token_pos = token_mask.size();
 
