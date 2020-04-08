@@ -521,10 +521,15 @@ network::token_ptr server2_hb::find_token(const bool is_access_token, const std:
         return nullptr;
     }
 
+    const auto logger = get_logger();
+    logger->debug("[find_token] 1 a={} {}", is_access_token, token_id);
+
     const auto it = m_tokens_.find(token_id);
     if (it != m_tokens_.end()) {
         return it->second;
     }
+
+    logger->debug("[find_token] 2 a={} {}", is_access_token, token_id);
 
     const auto token_context = m_cache_db_context_ + (is_access_token ? "at:" : "rt:") + token_id;
     auto rit = m_cache_db_.exists({token_context});
@@ -537,6 +542,8 @@ network::token_ptr server2_hb::find_token(const bool is_access_token, const std:
 
         const auto cp = riv.get();
         if (!cp.is_null()) {
+            logger->debug("[find_token] p a={} {} '{}'", is_access_token, token_id, cp.as_string());
+
             Json::Value payload;
             data::parse_json_string(cp.as_string(), payload);
 
@@ -547,10 +554,13 @@ network::token_ptr server2_hb::find_token(const bool is_access_token, const std:
                 , boost::posix_time::from_iso_extended_string(payload[khl_json_param_refresh_expire].asString())
                 , payload);
 
+            logger->debug("[find_token] e a={} {}", is_access_token, token_id);
             append_token(token);
             return token;
         }
     } else {
+        logger->debug("[find_token] r a={} {}", is_access_token, token_id);
+
         remove_token(token_id);
     }
 
