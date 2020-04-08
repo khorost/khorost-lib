@@ -51,8 +51,8 @@ namespace khorost {
             const boost::posix_time::ptime& get_access_expire() const { return m_access_expire_; }
             const boost::posix_time::ptime& get_refresh_expire() const { return m_refresh_expire_; }
 
-            int get_access_duration() const ;
-            int get_refresh_duration() const ;
+            int get_access_duration() const;
+            int get_refresh_duration() const;
 
             void set_access_duration(const int seconds) {
                 m_payload_[khl_json_param_delta_access_time] = seconds;
@@ -66,6 +66,7 @@ namespace khorost {
                 m_access_token_ = access_token;
                 m_payload_[khl_json_param_access_token] = access_token;
             }
+
             void set_refresh_token(const std::string& refresh_token) {
                 m_refresh_token_ = refresh_token;
                 m_payload_[khl_json_param_refresh_token] = refresh_token;
@@ -75,9 +76,14 @@ namespace khorost {
                 m_access_expire_ = access_expire;
                 m_payload_[khl_json_param_access_expire] = to_iso_extended_string(access_expire);
             }
+
             void set_refresh_expire(const boost::posix_time::ptime& refresh_expire) {
                 m_refresh_expire_ = refresh_expire;
                 m_payload_[khl_json_param_refresh_expire] = to_iso_extended_string(refresh_expire);
+            }
+
+            void set_payload(const std::string& key, const Json::Value& value) {
+                m_payload_[key] = value;
             }
         };
 

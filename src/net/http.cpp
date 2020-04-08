@@ -485,12 +485,12 @@ void http_text_protocol_header::send_response(network::connection& connect, cons
     connect.send_string(std::string("Connection: ") + std::string(connection_keep_alive) + std::string(HTTP_ATTRIBUTE_ENDL));
 
     // CORS
-    const auto origin = get_header_parameter(HTTP_ATTRIBUTE__ORIGIN, nullptr);
+/*    const auto origin = get_header_parameter(HTTP_ATTRIBUTE__ORIGIN, nullptr);
     if (origin != nullptr) {
         connect.send_string(HTTP_ATTRIBUTE__ACCESS_CONTROL_ALLOW_ORIGIN ": " + std::string(origin) + std::string(HTTP_ATTRIBUTE_ENDL));
         connect.send_string(HTTP_ATTRIBUTE__ACCESS_CONTROL_ALLOW_CREDENTIALS ": true" HTTP_ATTRIBUTE_ENDL);
     }
-
+*/
     for (const auto& c : m_response_.m_cookies_) {
         time_t gmt = data::epoch_diff(c.m_dtExpire).total_seconds();
         strftime(st, sizeof(st), "%a, %d-%b-%Y %H:%M:%S GMT", gmtime(&gmt));
