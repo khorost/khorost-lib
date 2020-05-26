@@ -330,6 +330,42 @@ namespace khorost {
 
                 return bResult;
             }
+
+            std::string do_post_request(const std::string uri, const std::string request = "") {
+                data::auto_buffer_char response;
+                struct curl_slist *headers = nullptr;
+
+                headers = curl_slist_append(headers, "Content-Type:application/json");
+                m_curl = curl_easy_init();
+
+                curl_easy_setopt(m_curl, CURLOPT_HTTPHEADER, headers);
+                curl_easy_setopt(m_curl, CURLOPT_FORBID_REUSE, 0L);   /* allow connections to be reused */
+                curl_easy_setopt(m_curl, CURLOPT_USERAGENT, "rewtas agent");
+                curl_easy_setopt(m_curl, CURLOPT_MAXREDIRS, 0);
+                curl_easy_setopt(m_curl, CURLOPT_FAILONERROR, 0);
+                curl_easy_setopt(m_curl, CURLOPT_NOSIGNAL, 1);
+                curl_easy_setopt(m_curl, CURLOPT_TIMEOUT, 60 * 60L);  /* timeout of 60 minutes */
+                curl_easy_setopt(m_curl, CURLOPT_TCP_KEEPALIVE, 1L);
+
+                curl_easy_setopt(m_curl, CURLOPT_URL, uri.c_str());
+                curl_easy_setopt(m_curl, CURLOPT_CUSTOMREQUEST, "POST");
+                curl_easy_setopt(m_curl, CURLOPT_WRITEDATA, (void *)&response);
+                curl_easy_setopt(m_curl, CURLOPT_WRITEFUNCTION, WriteAutobufferCallback);
+                curl_easy_setopt(m_curl, CURLOPT_POSTFIELDSIZE, request.empty() ? 0: request.size());
+                curl_easy_setopt(m_curl, CURLOPT_POSTFIELDS, request.empty() ? nullptr: request.c_str());
+                curl_easy_setopt(m_curl, CURLOPT_POST, 1 );
+
+                CURLcode response_code, ret;
+                ret = curl_easy_perform(m_curl);
+                const auto err = curl_easy_strerror(ret);
+
+                curl_easy_getinfo(m_curl, CURLINFO_RESPONSE_CODE, &response_code);
+                curl_easy_cleanup(m_curl);
+                m_curl = nullptr;
+
+                const auto b = response.get_head();
+                return std::string(b!=nullptr?b:"");
+            }
         };
 
         class   http_curl_string : http_curl_t<char> {
