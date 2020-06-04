@@ -363,8 +363,11 @@ namespace khorost {
                 curl_easy_cleanup(m_curl);
                 m_curl = nullptr;
 
-                const auto b = response.get_head();
-                return std::string(b!=nullptr?b:"");
+                std::string body;
+                if (response.get_fill_size()!=0) {
+                    body.assign(response.get_head(), response.get_head() + response.get_fill_size());
+                }
+                return body;
             }
         };
 
