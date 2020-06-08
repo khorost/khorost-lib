@@ -807,32 +807,31 @@ std::string http_curl_string::do_post_request(const std::string uri, const std::
     struct curl_slist* headers = nullptr;
 
     headers = curl_slist_append(headers, "Content-Type:application/json");
-    m_curl = curl_easy_init();
+    CURL*       curl = curl_easy_init();
 
-    curl_easy_setopt(m_curl, CURLOPT_HTTPHEADER, headers);
-    curl_easy_setopt(m_curl, CURLOPT_FORBID_REUSE, 0L); /* allow connections to be reused */
-    curl_easy_setopt(m_curl, CURLOPT_USERAGENT, "rewtas agent");
-    curl_easy_setopt(m_curl, CURLOPT_MAXREDIRS, 0);
-    curl_easy_setopt(m_curl, CURLOPT_FAILONERROR, 0);
-    curl_easy_setopt(m_curl, CURLOPT_NOSIGNAL, 1);
-    curl_easy_setopt(m_curl, CURLOPT_TIMEOUT, 60 * 60L); /* timeout of 60 minutes */
-    curl_easy_setopt(m_curl, CURLOPT_TCP_KEEPALIVE, 1L);
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+    curl_easy_setopt(curl, CURLOPT_FORBID_REUSE, 0L); /* allow connections to be reused */
+    curl_easy_setopt(curl, CURLOPT_USERAGENT, "rewtas agent");
+    curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 0);
+    curl_easy_setopt(curl, CURLOPT_FAILONERROR, 0);
+    curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 60 * 60L); /* timeout of 60 minutes */
+    curl_easy_setopt(curl, CURLOPT_TCP_KEEPALIVE, 1L);
 
-    curl_easy_setopt(m_curl, CURLOPT_URL, uri.c_str());
-    curl_easy_setopt(m_curl, CURLOPT_CUSTOMREQUEST, "POST");
-    curl_easy_setopt(m_curl, CURLOPT_WRITEDATA, static_cast<void*>(&response));
-    curl_easy_setopt(m_curl, CURLOPT_WRITEFUNCTION, sWriteAutobufferCallback);
-    curl_easy_setopt(m_curl, CURLOPT_POSTFIELDSIZE, request.empty() ? 0 : request.size());
-    curl_easy_setopt(m_curl, CURLOPT_POSTFIELDS, request.empty() ? nullptr : request.c_str());
-    curl_easy_setopt(m_curl, CURLOPT_POST, 1);
+    curl_easy_setopt(curl, CURLOPT_URL, uri.c_str());
+    curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "POST");
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, static_cast<void*>(&response));
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, sWriteAutobufferCallback);
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, request.empty() ? 0 : request.size());
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, request.empty() ? nullptr : request.c_str());
+    curl_easy_setopt(curl, CURLOPT_POST, 1);
 
     CURLcode response_code, ret;
-    ret = curl_easy_perform(m_curl);
+    ret = curl_easy_perform(curl);
     const auto err = curl_easy_strerror(ret);
 
-    curl_easy_getinfo(m_curl, CURLINFO_RESPONSE_CODE, &response_code);
-    curl_easy_cleanup(m_curl);
-    m_curl = nullptr;
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+    curl_easy_cleanup(curl);
 
     std::string body;
     if (response.get_fill_size() != 0) {
