@@ -835,7 +835,7 @@ std::string http_curl_string::do_post_request(const std::string uri, const std::
 
     std::string body;
     if (response.get_fill_size() != 0) {
-        body.assign(response.get_head(), response.get_head() + response.get_fill_size());
+        body.assign(response.get_head(), response.get_fill_size());
     }
     return body;
 }
