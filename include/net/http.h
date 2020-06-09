@@ -366,7 +366,7 @@ namespace khorost {
                 return m_abBuffer.get_head();
             }
 
-            std::string do_post_request(const std::string uri, const std::string request = "");
+            std::string do_post_request(const std::string& uri, const std::string& request = "") const;
         };
     }
 }

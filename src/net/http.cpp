@@ -802,7 +802,7 @@ static size_t sWriteAutobufferCallback(void* Contents_, size_t nSize_, size_t nM
     return nRealSize * sizeof(char);
 }
 
-std::string http_curl_string::do_post_request(const std::string uri, const std::string request) {
+std::string http_curl_string::do_post_request(const std::string& uri, const std::string& request) const  {
     data::auto_buffer_char response;
     struct curl_slist* headers = nullptr;
 
