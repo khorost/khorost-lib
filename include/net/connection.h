@@ -73,7 +73,7 @@ namespace khorost {
             bool    compile_buffer_data();
             virtual size_t data_processing(const boost::uint8_t* buffer, const size_t buffer_size){ return 0; }
         public:
-            connection(connection_controller* pThis_, int ID_, evutil_socket_t fd_, struct sockaddr* sa_, int socklen_);
+            connection(connection_controller* controller, int id, evutil_socket_t fd, struct sockaddr* sa);
             virtual ~connection();
 
             bool    open_connection();
@@ -108,22 +108,21 @@ namespace khorost {
             event_base*             m_base_listen_;
 
             // рабочие потоки
-            boost::thread_group*    m_worker_groups_;
             std::deque<event_base*> m_workers_base_;
 
-            static void     stub_listen_run(connection_controller* pThis_, int iListenPort_);
+            static void     stub_listen_run(connection_controller* controller, unsigned short listen_port);
             static void     stub_worker(connection_controller* pThis_);
-            static void     stub_accept(struct evconnlistener *listener, evutil_socket_t fd, struct sockaddr *sa, int socklen, void *user_data);
+            static void     stub_accept(struct evconnlistener *listener, evutil_socket_t fd, struct sockaddr *sa, int socklen, void *ctx);
 
             int     	get_uniq_id(){ return ++m_uniq_id_; }
 
-            virtual connection* create_connection(connection_controller* pThis_, int ID_, evutil_socket_t fd_, struct sockaddr* sa_, int socklen_);
+            virtual connection* create_connection(connection_controller* controller, int id, evutil_socket_t fd, struct sockaddr* sa);
         public:
             connection_controller(connection_context* context);
             virtual ~connection_controller();
 
             // Запуск слушащего сокета. Управление возвращается сразу
-            bool	start_listen(int listen_port, int poll_size = 0);
+            bool	start_listen(unsigned short listen_port);
             bool    wait_listen() const;
             bool    shutdown();
 
@@ -132,7 +131,7 @@ namespace khorost {
             connection_context*  get_context() const { return m_context_; }
             void                set_context(connection_context* context) { m_context_ = context; }
 
-            connection* add_connection(evutil_socket_t fd_, struct sockaddr* sa_, int socklen_);
+            connection* add_connection(evutil_socket_t fd, struct sockaddr* sa);
             bool        remove_connection(connection* connect);
         };
     }

@@ -43,24 +43,24 @@ boost::posix_time::time_duration khorost::data::epoch_diff(boost::posix_time::pt
     return pt - s_time_t_epoch;
 }
 
-boost::posix_time::ptime khorost::data::epoch_microseconds2ptime(uint64_t ms) {
+boost::posix_time::ptime khorost::data::epoch_microseconds_to_ptime(const uint64_t ms) {
     return s_time_t_epoch + boost::posix_time::microseconds(ms);
 }
 
-boost::posix_time::ptime khorost::data::epoch_milliseconds2ptime(uint64_t ms) {
+boost::posix_time::ptime khorost::data::epoch_milliseconds_to_ptime(const uint64_t ms) {
     return s_time_t_epoch + boost::posix_time::milliseconds(ms);
 }
 
 // The trimming method comes from https://stackoverflow.com/a/1798170/1613961
 std::string trim(const std::string& str, const std::string& newline = "\r\n") {
-    const auto strBegin = str.find_first_not_of(newline);
-    if (strBegin == std::string::npos)
+    const auto str_begin = str.find_first_not_of(newline);
+    if (str_begin == std::string::npos)
         return ""; // no content
 
-    const auto strEnd = str.find_last_not_of(newline);
-    const auto strRange = strEnd - strBegin + 1;
+    const auto str_end = str.find_last_not_of(newline);
+    const auto str_range = str_end - str_begin + 1;
 
-    return str.substr(strBegin, strRange);
+    return str.substr(str_begin, str_range);
 }
 
 #ifndef NO_KHL_EXT

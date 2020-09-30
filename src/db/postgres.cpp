@@ -17,7 +17,7 @@
 
 using namespace khorost::db;
 
-void db_pool::prepare(int count, const std::string& connect_param) {
+void db_pool::prepare(const int count, const std::string& connect_param) {
     std::lock_guard<std::mutex> locker(m_mutex_);
 
     for (auto n = 0; n < count; ++n) {
@@ -37,7 +37,7 @@ db_connection_pool_ptr db_pool::get_connection_pool() {
 
     if (m_free_pool_.size() < 3) {
         auto logger = spdlog::get(KHL_LOGGER_COMMON);
-        logger->debug("[get from pool] size = {:d}", m_free_pool_.size());
+        logger->debug("[DB] [get from free pool] size = {:d}", m_free_pool_.size());
     }
 
     return conn;
@@ -52,7 +52,7 @@ void db_pool::release_connection_pool(db_connection_pool_ptr pdbc) {
 
     if (m_free_pool_.size() < 4) {
         auto logger = spdlog::get(KHL_LOGGER_COMMON);
-        logger->debug("[return to pool] size = {:d}", m_free_pool_.size());
+        logger->debug("[DB] [return to free pool] size = {:d}", m_free_pool_.size());
     }
 }
 
@@ -68,7 +68,7 @@ std::string postgres::get_connect_param() const {
 }
 
 bool db_connection_pool::check_connect() const {
-    static int times = 0;
+    static auto times = 0;
     try {
         times++;
         if (!m_connect_->is_open()) {
@@ -94,7 +94,7 @@ bool db_connection_pool::check_connect() const {
 
 static void s_execute_custom_sql(pqxx::transaction_base& txn_, const std::string& sSQL_, Json::Value& jvResult_) {
     try {
-        auto r = txn_.exec(sSQL_);
+        const auto r = txn_.exec(sSQL_);
 
         Json::Value jvHeader, jvTable;
         auto columns = r.columns();

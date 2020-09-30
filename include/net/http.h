@@ -12,7 +12,7 @@
 /* For socket functions */
 # include <sys/socket.h>
 # include <unistd.h>
-#endif  
+#endif
 
 #include <curl/curl.h>
 #include "boost/date_time/posix_time/posix_time.hpp"
@@ -87,35 +87,36 @@ namespace khorost {
     namespace network {
         class http_text_protocol_header final {
             // Быстрый доступ к атрибутам HTTP
-            data::auto_buffer_chunk_char   m_query_method_;
-            data::auto_buffer_chunk_char   m_query_uri_;
-            data::auto_buffer_chunk_char   m_query_version_;
+            data::auto_buffer_chunk_char m_query_method_;
+            data::auto_buffer_chunk_char m_query_uri_;
+            data::auto_buffer_chunk_char m_query_version_;
 
-            size_t  m_nHost{};
-            size_t  m_nPort{};
+            size_t m_host_{};
+            size_t m_port_{};
 
-            typedef std::list< std::pair<size_t, size_t> > ListPairs;
+            typedef std::list<std::pair<size_t, size_t>> list_pairs;
 
-            ListPairs   m_header_values;  // словарь для заголовка
-            ListPairs   m_params_value_;  // словарь для параметров
-            ListPairs   m_cookies_;      // словарь для кук
+            list_pairs m_header_values_; // словарь для заголовка
+            list_pairs m_params_value_; // словарь для параметров
+            list_pairs m_cookies_; // словарь для кук
 
-            data::auto_buffer_char                    m_abHeader;
-            data::auto_buffer_char                    m_abParams;
-            data::auto_buffer_char                    m_abBody;
+            data::auto_buffer_char m_ab_header_;
+            data::auto_buffer_char m_ab_params_;
+            data::auto_buffer_char m_ab_body_;
+
             enum {
-                eNone
-                , eProcessingFirst
-                , eProcessingNext
-                , eSuccessful
-                , eError
-            }   m_eHeaderProcess, m_eBodyProcess;
+                eNone,
+                eProcessingFirst,
+                eProcessingNext,
+                eSuccessful,
+                eError
+            } m_eHeaderProcess, m_eBodyProcess;
 
             struct request final {
-                size_t    m_content_length_;
+                size_t m_content_length;
 
                 void clear() {
-                    m_content_length_ = -1;
+                    m_content_length = -1;
                 }
             } m_request_;
 
@@ -124,10 +125,10 @@ namespace khorost {
                 std::map<std::string, std::string> m_header_params_;
             public:
                 struct cookie final {
-                    std::string m_sCookie;
-                    std::string m_sValue;
-                    boost::posix_time::ptime m_dtExpire;
-                    std::string m_sDomain;
+                    std::string m_name_cookie;
+                    std::string m_value;
+                    boost::posix_time::ptime m_expire;
+                    std::string m_domain;
                     bool m_http_only = false;
 
                     cookie() = default;
@@ -138,132 +139,141 @@ namespace khorost {
                             *this = right;
                         }
                     }
-                    cookie(const std::string& sCookie_, const std::string& sValue_, boost::posix_time::ptime dtExpire_, const std::string& sDomain_, const bool http_only) {
-                        m_sCookie = sCookie_;
-                        m_sValue = sValue_;
-                        m_dtExpire = dtExpire_;
-                        m_sDomain = sDomain_;
+
+                    cookie(const std::string& name_cookie, const std::string& value,
+                           const boost::posix_time::ptime expire, const std::string& domain, const bool http_only) {
+                        m_name_cookie = name_cookie;
+                        m_value = value;
+                        m_expire = expire;
+                        m_domain = domain;
                         m_http_only = http_only;
                     }
+
                     cookie& operator=(const cookie& right) {
                         if (this != &right) {
-                            m_sCookie = right.m_sCookie;
-                            m_sValue = right.m_sValue;
-                            m_dtExpire = right.m_dtExpire;
-                            m_sDomain = right.m_sDomain;
+                            m_name_cookie = right.m_name_cookie;
+                            m_value = right.m_value;
+                            m_expire = right.m_expire;
+                            m_domain = right.m_domain;
                             m_http_only = right.m_http_only;
                         }
                         return *this;
                     }
                 };
-                std::deque<cookie>  m_cookies_;
-                bool                m_auto_close;
-                int                 m_nCode;
-                std::string         m_sCodeReason;
-                std::string         m_sContentType;
-                std::string         m_sContentTypeCP;
-                boost::posix_time::ptime              m_tLastModify;
-                std::string         m_sContentDisposition;
-                std::string         m_sRedirectURL;
-                size_t m_content_length_;
 
-                void    clear() {
-                    m_cookies_.clear();
+                std::deque<cookie> m_cookies;
+                bool m_auto_close;
+                int m_code;
+                std::string m_code_reason;
+                std::string m_content_type;
+                std::string m_content_type_codepage;
+                boost::posix_time::ptime m_last_modify;
+                std::string m_content_disposition;
+                std::string m_redirect_url;
+                size_t m_content_length;
+
+                void clear() {
+                    m_cookies.clear();
                     m_auto_close = true;
-                    m_nCode = http_response_status_ok;
-                    m_sCodeReason = "Ok";
-                    m_sContentType = HTTP_ATTRIBUTE_CONTENT_TYPE__TEXT_HTML;
-                    m_sContentTypeCP = "UTF-8";
-                    m_sContentDisposition = "";
-                    m_tLastModify = boost::posix_time::ptime(boost::posix_time::not_a_date_time);
-                    m_content_length_ = 0;
+                    m_code = http_response_status_ok;
+                    m_code_reason = "Ok";
+                    m_content_type = HTTP_ATTRIBUTE_CONTENT_TYPE__TEXT_HTML;
+                    m_content_type_codepage = "UTF-8";
+                    m_content_disposition = "";
+                    m_last_modify = boost::posix_time::ptime(boost::posix_time::not_a_date_time);
+                    m_content_length = 0;
 
                     m_header_params_.clear();
                 }
 
-                void set_header_param(const std::string& key, const std::string& value) ;
+                void set_header_param(const std::string& key, const std::string& value);
                 void send_header_data(connection& connect);
 
-            }   m_response_;
+            } m_response_;
 
-            bool    get_chunk(const char*& rpBuffer_, size_t& rnBufferSize_, char cPrefix_, const char* pDiv_, data::auto_buffer_char& abTarget_, data::auto_buffer_chunk_char& rabcQueryValue_, size_t& rnChunkSize_);
-            bool    parse_string(char* pBuffer_, size_t nBufferSize_, size_t nShift, ListPairs& lpTarget_, char cDiv, bool bTrim);
+            bool get_chunk(const char*& rpBuffer_, size_t& rnBufferSize_, char prefix, const char* div,
+                           data::auto_buffer_char& abTarget_, data::auto_buffer_chunk_char& rabcQueryValue_,
+                           size_t& rnChunkSize_);
+            bool parse_string(char* pBuffer_, size_t nBufferSize_, size_t nShift, list_pairs& lpTarget_, char cDiv,
+                              bool bTrim);
         public:
             http_text_protocol_header() :
-                m_query_method_(m_abHeader)
-                , m_query_uri_(m_abHeader)
-                , m_query_version_(m_abHeader)
-            {
+                m_query_method_(m_ab_header_)
+                , m_query_uri_(m_ab_header_)
+                , m_query_version_(m_ab_header_) {
                 clear();
             }
 
-            void    clear() {
+            void clear() {
                 m_query_method_.clear_reference();
                 m_query_uri_.clear_reference();
                 m_query_version_.clear_reference();
 
                 m_eHeaderProcess = eProcessingFirst;
                 m_eBodyProcess = eNone;
-                m_nPort = -1;
-                m_nHost = -1;
+                m_port_ = -1;
+                m_host_ = -1;
 
-                m_header_values.clear();
+                m_header_values_.clear();
                 m_params_value_.clear();
                 m_cookies_.clear();
 
-                m_abHeader.flush_free_size();
-                m_abParams.flush_free_size();
-                m_abBody.flush_free_size();
+                m_ab_header_.flush_free_size();
+                m_ab_params_.flush_free_size();
+                m_ab_body_.flush_free_size();
 
                 m_request_.clear();
                 m_response_.clear();
             }
 
-            size_t  process_data(const boost::uint8_t* buffer, size_t buffer_size);
-            bool    is_ready() const { return m_eHeaderProcess == eSuccessful && m_eBodyProcess == eSuccessful; }
-            bool    is_auto_close() const { return m_response_.m_auto_close; }
+            size_t process_data(const uint8_t* buffer, size_t buffer_size);
+            bool is_ready() const { return m_eHeaderProcess == eSuccessful && m_eBodyProcess == eSuccessful; }
+            bool is_auto_close() const { return m_response_.m_auto_close; }
 
-            const char*    get_query_method() const { return m_query_method_.get_chunk(); }
-            const char*    get_query_uri() const { return m_query_uri_.get_chunk(); }
-            const char*    get_header_parameter(const std::string& param, const char* default_value) const;
-            const char*    get_cookie_parameter(const std::string& key, const char* default_value) const;
-            const char*    get_cookie(const std::string& sKey_, const char* default_value) const;
-            const boost::uint8_t*  get_body() const { return reinterpret_cast<boost::uint8_t*>(m_abBody.get_head()); }
-            size_t          get_body_length() const { return m_abBody.get_fill_size(); }
-            const char*     get_host();
-            const char*     get_port();
-            void            calculate_host_port();
+            const char* get_query_method() const { return m_query_method_.get_chunk(); }
+            const char* get_query_uri() const { return m_query_uri_.get_chunk(); }
+            const char* get_header_parameter(const std::string& param, const char* default_value) const;
+            const char* get_cookie_parameter(const std::string& key, const char* default_value) const;
+            const char* get_cookie(const std::string& key, const char* default_value) const;
+            const uint8_t* get_body() const { return reinterpret_cast<uint8_t*>(m_ab_body_.get_head()); }
+            size_t get_body_length() const { return m_ab_body_.get_fill_size(); }
+            const char* get_host();
+            const char* get_port();
+            void calculate_host_port();
 
-            void            FillParameter2Array(const std::string& sKey_, std::vector<int>& rArray_);
-            bool            get_parameter(const std::string& key, bool default_value) const;
-            int             get_parameter(const std::string& key, int default_value) const;
-            int64_t         get_parameter64(const std::string& key, int64_t default_value) const;
-            const char*     get_parameter(const std::string& key, const char* default_value) const;
-            size_t          get_parameter_index(const std::string& key) const;
-            size_t          get_header_index(const std::string& key) const;
-            bool            is_parameter_exist(const std::string& key) const;
+            void fill_parameter2_array(const std::string& s_key, std::vector<int>& r_array);
+            bool get_parameter(const std::string& key, bool default_value) const;
+            int get_parameter(const std::string& key, int default_value) const;
+            int64_t get_parameter64(const std::string& key, int64_t default_value) const;
+            const char* get_parameter(const std::string& key, const char* default_value) const;
+            size_t get_parameter_index(const std::string& key) const;
+            size_t get_header_index(const std::string& key) const;
+            bool is_parameter_exist(const std::string& key) const;
 
-            void    set_cookie(const std::string& cookie, const std::string& value, boost::posix_time::ptime expire, const std::string&
-                               domain, bool http_only);
-            void    set_response_status(const int code, const std::string& code_reason) {
-                m_response_.m_nCode = code;
-                m_response_.m_sCodeReason = code_reason;
-            }
-            void    SetRedirect(int nCode_, const std::string& sRedirectURL_) {
-                m_response_.m_sRedirectURL = sRedirectURL_;
-                set_response_status(nCode_, "Redirect");
+            void set_cookie(const std::string& cookie, const std::string& value, boost::posix_time::ptime expire,
+                            const std::string&
+                            domain, bool http_only);
+
+            void set_response_status(const int code, const std::string& code_reason) {
+                m_response_.m_code = code;
+                m_response_.m_code_reason = code_reason;
             }
 
-            void    set_content_type(const std::string& sContentType_, const std::string& sContentTypeCP_ = "UTF-8") {
-                m_response_.m_sContentType = sContentType_;
-                m_response_.m_sContentTypeCP = sContentTypeCP_;
+            void set_redirect(const int code, const std::string& redirect_url) {
+                m_response_.m_redirect_url = redirect_url;
+                set_response_status(code, "Redirect");
             }
 
-            void    SetContentDisposition(const std::string& sContentDisposition_) {
-                m_response_.m_sContentDisposition = sContentDisposition_;
+            void set_content_type(const std::string& content_type, const std::string& content_type_codepage = "UTF-8") {
+                m_response_.m_content_type = content_type;
+                m_response_.m_content_type_codepage = content_type_codepage;
             }
 
-            void    set_last_modify(boost::posix_time::ptime tLM_) { m_response_.m_tLastModify = tLM_; }
+            void set_content_disposition(const std::string& content_disposition) {
+                m_response_.m_content_disposition = content_disposition;
+            }
+
+            void set_last_modify(boost::posix_time::ptime tLM_) { m_response_.m_last_modify = tLM_; }
 
             bool is_send_data() const;
             void send_response(connection& connect, const char* response, size_t length);
@@ -272,24 +282,27 @@ namespace khorost {
                 send_response(connect, body.c_str(), body.size());
             }
 
-            const char*     get_client_proxy_ip();
+            const char* get_client_proxy_ip() const;
 
-            bool        get_multi_part(size_t& current_iterator, std::string& part_name, std::string& part_content_type, const char*& buffer_content, size_t& buffer_content_size);
+            bool get_multi_part(size_t& current_iterator, std::string& part_name, std::string& part_content_type,
+                                const char*& buffer_content, size_t& buffer_content_size);
 
             void end_of_response(connection& connection) {
                 send_response(connection, nullptr, 0);
             }
 
-            bool    send_file(const std::string& query_uri, connection& connect, const std::string& doc_root, const std::string& file_name = "");
+            bool send_file(const std::string& query_uri, connection& connect, const std::string& doc_root,
+                           const std::string& file_name = "");
 
             response& get_response() { return m_response_; }
             const request& get_request() const { return m_request_; }
         };
-        typedef	std::shared_ptr<http_text_protocol_header>	http_text_protocol_header_ptr;
 
-        template<typename T>
+        typedef std::shared_ptr<http_text_protocol_header> http_text_protocol_header_ptr;
+
+        template <typename T>
         class http_curl_t {
-            static size_t WriteAutobufferCallback(void* Contents_, size_t nSize_, size_t nMemb_, void *Ctx_) {
+            static size_t WriteAutobufferCallback(void* Contents_, size_t nSize_, size_t nMemb_, void* Ctx_) {
                 size_t nRealSize = (nSize_ * nMemb_) / sizeof(T);
                 data::auto_buffer_t<T>* pBuffer = reinterpret_cast<data::auto_buffer_t<T>*>(Ctx_);
 
@@ -298,12 +311,14 @@ namespace khorost {
 
                 return nRealSize * sizeof(T);
             }
+
         protected:
-            CURL*       m_curl;
+            CURL* m_curl;
         public:
             http_curl_t() {
                 m_curl = curl_easy_init();
             }
+
             virtual ~http_curl_t() {
                 if (m_curl != nullptr) {
                     /* always cleanup */
@@ -313,14 +328,14 @@ namespace khorost {
             }
 
             bool do_request(const std::string& sURL_, data::auto_buffer_t<T>& abBuffer_) {
-                bool    bResult = false;
+                bool bResult = false;
 
-                CURLcode    curlCode, nRespCode;
+                CURLcode curlCode, nRespCode;
 
                 if (m_curl != nullptr) {
                     curl_easy_setopt(m_curl, CURLOPT_URL, sURL_.c_str());
                     curl_easy_setopt(m_curl, CURLOPT_WRITEFUNCTION, WriteAutobufferCallback);
-                    curl_easy_setopt(m_curl, CURLOPT_WRITEDATA, (void *)&abBuffer_);
+                    curl_easy_setopt(m_curl, CURLOPT_WRITEDATA, (void*)&abBuffer_);
                     curlCode = curl_easy_perform(m_curl);
                     curl_easy_getinfo(m_curl, CURLINFO_RESPONSE_CODE, &nRespCode);
                     if (nRespCode == 200) {
@@ -333,14 +348,15 @@ namespace khorost {
 
         };
 
-        class   http_curl_string : http_curl_t<char> {
-            data::auto_buffer_char    m_abBuffer;
+        class http_curl_string : http_curl_t<char> {
+            data::auto_buffer_char m_abBuffer;
         public:
-            bool    do_easy_request(const std::string& sURL_) {
+            bool do_easy_request(const std::string& sURL_) {
                 return do_request(sURL_, m_abBuffer);
             }
 
-            const data::auto_buffer_char&   get_buffer() const { return m_abBuffer; }
+            const data::auto_buffer_char& get_buffer() const { return m_abBuffer; }
+
             const char* get_uri_encode(const char* pURIString_) {
 
                 if (pURIString_ == nullptr || *pURIString_ == '\0') {
@@ -349,12 +365,13 @@ namespace khorost {
                 } else {
                     int nLenghtOut = 0;
 
-                    data::auto_buffer_char    abTemp;
+                    data::auto_buffer_char abTemp;
                     abTemp.append(pURIString_, strlen(pURIString_));
                     // if +'s aren't replaced with %20's then curl won't unescape to spaces propperly
                     abTemp.replace("+", 1, "%20", 3, false);
                     //            string url = std::str_replace("+", "%20", str);
-                    char* pt = curl_easy_unescape(m_curl, abTemp.get_head(), static_cast<int>(abTemp.get_fill_size()), &nLenghtOut);
+                    char* pt = curl_easy_unescape(m_curl, abTemp.get_head(), static_cast<int>(abTemp.get_fill_size()),
+                                                  &nLenghtOut);
 
                     m_abBuffer.check_size(nLenghtOut);
                     strcpy(m_abBuffer.get_head(), pt);

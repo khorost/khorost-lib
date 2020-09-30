@@ -8,10 +8,10 @@
 
 namespace khorost {
     namespace data {
-        std::string escape_string(const std::string& s_);
-        boost::posix_time::time_duration epoch_diff(boost::posix_time::ptime pt_);
-        boost::posix_time::ptime epoch_microseconds2ptime(uint64_t ms_);
-        boost::posix_time::ptime epoch_milliseconds2ptime(uint64_t ms);
+        std::string escape_string(const std::string& s);
+        boost::posix_time::time_duration epoch_diff(boost::posix_time::ptime pt);
+        boost::posix_time::ptime epoch_microseconds_to_ptime(uint64_t ms);
+        boost::posix_time::ptime epoch_milliseconds_to_ptime(uint64_t ms);
 
         std::string clear_html_tags(const std::string source);
 

@@ -26,12 +26,12 @@ server2_h::server2_h() :
     , m_nHTTPListenPort(0) {
 }
 
-void server2_h::http_connection::get_client_ip(char* pBuffer_, size_t buffer_size) {
-    const char* pPIP = m_http->get_client_proxy_ip();
-    if (pPIP != nullptr) {
-        strncpy(pBuffer_, pPIP, buffer_size);
+void server2_h::http_connection::get_client_ip(char* buffer, const size_t buffer_size) {
+    const char* cpi = m_http_processor->get_client_proxy_ip();
+    if (cpi != nullptr) {
+        strncpy(buffer, cpi, buffer_size);
     } else {
-        connection::get_client_ip(pBuffer_, buffer_size);
+        connection::get_client_ip(buffer, buffer_size);
     }
 }
 
@@ -54,7 +54,7 @@ bool server2_h::auto_execute() {
 }
 
 bool server2_h::startup() {
-    return m_connections.start_listen(m_nHTTPListenPort, 5);
+    return m_connections.start_listen(m_nHTTPListenPort);
 }
 
 bool server2_h::run() {
@@ -75,10 +75,9 @@ bool server2_h::shutdown() {
 }
 
 
-bool server2_h::process_http(http_connection& connection) {
+bool server2_h::process_http(http_connection& connection, const khorost::network::http_text_protocol_header_ptr& http) {
     auto logger = get_logger();
 
-    auto http = connection.get_http();
     const auto query_uri = http->get_query_uri();
     const auto url_prefix_action = get_url_prefix_action();
     const auto size_upa = strlen(url_prefix_action);
@@ -88,7 +87,7 @@ bool server2_h::process_http(http_connection& connection) {
     if (strncmp(query_uri, url_prefix_action, size_upa) == 0) {
         std::string action, params;
         parse_action(query_uri + size_upa, action, params);
-        if (process_http_action(action, params, connection)) {
+        if (process_http_action(action, params, connection, http)) {
             return true;
         }
 
@@ -99,14 +98,15 @@ bool server2_h::process_http(http_connection& connection) {
 
         return false;
     }
-    return process_http_file_server(query_uri, connection);
+    return process_http_file_server(query_uri, connection, http);
 }
 
-bool server2_h::process_http_action(const std::string& action, const std::string& uri_params, http_connection& connection) {
+bool server2_h::process_http_action(const std::string& action, const std::string& uri_params,
+                                    http_connection& connection, const khorost::network::http_text_protocol_header_ptr& http) {
     const auto it = m_dictActionS2Hs.find(action);
     if (it != m_dictActionS2Hs.end()) {
         const auto func_action = it->second;
-        return (this->*func_action)(uri_params, connection);
+        return (this->*func_action)(uri_params, connection, http);
     }
     return false;
 }
@@ -122,8 +122,7 @@ void server2_h::parse_action(const std::string& query, std::string& action, std:
     }
 }
 
-bool server2_h::process_http_file_server(const std::string& query_uri, http_connection& connection) {
-    auto http = connection.get_http();
+bool server2_h::process_http_file_server(const std::string& query_uri, http_connection& connection, const khorost::network::http_text_protocol_header_ptr& http) {
     return http->send_file(query_uri, connection, m_doc_root);
 }
 
@@ -409,15 +408,15 @@ void server2_h::service_report_event(LPTSTR szFunction) {
         lpszStrings[0] = m_service_name.c_str();
         lpszStrings[1] = Buffer;
 
-        ReportEvent(hEventSource,        // event log handle
-            EVENTLOG_ERROR_TYPE, // event type
-            0,                   // event category
-            SVC_ERROR,           // event identifier
-            NULL,                // no security identifier
-            2,                   // size of lpszStrings array
-            0,                   // no binary data
-            lpszStrings,         // array of strings
-            NULL);               // no binary data
+        ReportEvent(hEventSource, // event log handle
+                    EVENTLOG_ERROR_TYPE, // event type
+                    0, // event category
+                    SVC_ERROR, // event identifier
+                    NULL, // no security identifier
+                    2, // size of lpszStrings array
+                    0, // no binary data
+                    lpszStrings, // array of strings
+                    NULL); // no binary data
 
         DeregisterEventSource(hEventSource);
     }
@@ -439,8 +438,7 @@ bool server2_h::check_params(int argc, char* argv[], int& result) {
         ("service", "run in service mode")
         ("configure", "configure server")
         ("cfg", po::value<std::string>(), "config file (default server.conf)")
-        ("console", "run in console mode (default)")
-        ;
+        ("console", "run in console mode (default)");
     po::variables_map vm;
     try {
         po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -469,16 +467,20 @@ bool server2_h::check_params(int argc, char* argv[], int& result) {
 
     auto logger = get_logger();
 #if defined(_WIN32) || defined(_WIN64)
-    m_service_name = vm.count("name") ? vm["name"].as<std::string>() : m_configure_.get_value("service:name", std::string("khlsrv_") + get_context_default_name());
-    m_service_display_name = m_configure_.get_value("service:displayName", std::string("Khorost Service (") + get_context_default_name() + ")");
+    m_service_name = vm.count("name")
+                         ? vm["name"].as<std::string>()
+                         : m_configure_.get_value("service:name", std::string("khlsrv_") + get_context_default_name());
+    m_service_display_name = m_configure_.get_value("service:displayName",
+                                                    std::string(
+                                                        "Khorost Service (") + get_context_default_name() + ")");
 
     if (vm.count("service")) {
         m_run_as_service = true;
 
         logger->info("Service = {}", m_service_name);
         SERVICE_TABLE_ENTRY DispatcherTable[] = {
-            { (LPSTR)m_service_name.c_str(), (LPSERVICE_MAIN_FUNCTION)ServiceMain },
-            { nullptr, nullptr }
+            {(LPSTR)m_service_name.c_str(), (LPSERVICE_MAIN_FUNCTION)ServiceMain},
+            {nullptr, nullptr}
         };
 
         if (!StartServiceCtrlDispatcher(DispatcherTable)) {
@@ -539,4 +541,3 @@ bool server2_h::check_params(int argc, char* argv[], int& result) {
 
     return true;
 }
-
