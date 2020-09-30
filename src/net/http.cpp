@@ -518,7 +518,7 @@ void http_text_protocol_header::send_response(network::connection& connect, cons
         }
     */
     for (const auto& c : m_response_.m_cookies) {
-        auto gmt = data::epoch_diff(c.m_expire).total_seconds();
+        time_t gmt = data::epoch_diff(c.m_expire).total_seconds();
         strftime(st, sizeof(st), "%a, %d-%b-%Y %H:%M:%S GMT", gmtime(&gmt));
 
         connect.send_string(
@@ -545,7 +545,7 @@ void http_text_protocol_header::send_response(network::connection& connect, cons
 
     if (!m_response_.m_last_modify.is_not_a_date_time()) {
         connect.send_string(HTTP_ATTRIBUTE_LAST_MODIFIED HTTP_ATTRIBUTE_DIV);
-        auto gmt = data::epoch_diff(m_response_.m_last_modify).total_seconds();
+        time_t gmt = data::epoch_diff(m_response_.m_last_modify).total_seconds();
         strftime(st, sizeof(st), "%a, %d-%b-%Y %H:%M:%S GMT", gmtime(&gmt));
         connect.send_string(st);
         connect.send_string(HTTP_ATTRIBUTE_ENDL, sizeof(HTTP_ATTRIBUTE_ENDL) - 1);
@@ -599,7 +599,7 @@ bool http_text_protocol_header::send_file(const std::string& query_uri, network:
 #ifdef WIN32
     } else if (dw_attr != static_cast<DWORD>(-1) && dw_attr & FILE_ATTRIBUTE_DIRECTORY) {
 #else
-    } else if (stat(sFileName.c_str(), &s)!=-1 && S_ISDIR(s.st_mode)) {
+    } else if (stat(s_file_name.c_str(), &s)!=-1 && S_ISDIR(s.st_mode)) {
 #endif
         s_file_name.append(1, DIRECTORY_DIV);
         s_file_name += "index.html";
@@ -627,7 +627,7 @@ bool http_text_protocol_header::send_file(const std::string& query_uri, network:
         return false;
     }
 #else
-    if (!realpath(sFileName.c_str(), bufCanonicFileName)) {
+    if (!realpath(s_file_name.c_str(), buf_canonic_file_name)) {
         logger->warn("realpath failed");
 
         set_response_status(http_response_status_not_found, "Not found");
