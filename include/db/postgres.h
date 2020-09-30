@@ -106,14 +106,14 @@ namespace khorost {
 
             std::string get_connect_param() const;
 
-            void set_connect(const std::string& host, int port, const std::string& database, const std::string& login, const std::string& password) {
+            void set_connect(const std::string& host, int port, const std::string& database, const std::string& login, const std::string& password, int pool_size) {
                 m_host_ = host;
                 m_port_ = port;
                 m_database_ = database;
                 m_login_ = login;
                 m_password_ = password;
 
-                prepare(5, get_connect_param());
+                prepare(pool_size, get_connect_param());
             }
 
             void execute_custom_sql(bool b_read_only, const std::string& sql, Json::Value& json_result);
