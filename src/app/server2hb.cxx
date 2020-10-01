@@ -179,7 +179,8 @@ bool server2_hb::process_http(http_connection& connection, const khorost::networ
     return process_http_file_server(query_uri, connection, http);
 }
 
-bool server2_hb::process_http_file_server(const std::string& query_uri, http_connection& connection, const khorost::network::http_text_protocol_header_ptr& http) {
+bool server2_hb::process_http_file_server(const std::string& query_uri, http_connection& connection,
+                                          const khorost::network::http_text_protocol_header_ptr& http) {
     const std::string prefix = get_url_prefix_storage();
 
     if (prefix == query_uri.substr(0, prefix.size())) {
@@ -245,7 +246,7 @@ network::session_ptr server2_hb::processing_session(http_connection& connect, co
     auto* s2_h_session = reinterpret_cast<network::s2h_session*>(sp.get());
 
     char s_ip[255];
-    connect.get_client_ip(s_ip, sizeof(s_ip));
+    connect.get_client_ip(http, s_ip, sizeof(s_ip));
 
     if (s2_h_session != nullptr) {
         s2_h_session->set_last_activity(second_clock::universal_time());
@@ -317,7 +318,8 @@ void server2_hb::fill_json_token(const network::token_ptr& token, Json::Value& v
     value["refresh_expires_in"] = token->get_refresh_duration();
 }
 
-bool server2_hb::action_refresh_token(const std::string& params_uri, http_connection& connection , const khorost::network::http_text_protocol_header_ptr& http, khorost::network::s2h_session* session) {
+bool server2_hb::action_refresh_token(const std::string& params_uri, http_connection& connection,
+                                      const khorost::network::http_text_protocol_header_ptr& http, khorost::network::s2h_session* session) {
     const auto& logger = get_logger();
     Json::Value json_root;
     const auto now = boost::posix_time::microsec_clock::universal_time();
@@ -391,7 +393,8 @@ bool server2_hb::action_refresh_token(const std::string& params_uri, http_connec
     return true;
 }
 
-bool server2_hb::action_auth(const std::string& uri_params, http_connection& connection, const khorost::network::http_text_protocol_header_ptr& http, network::s2h_session* session) {
+bool server2_hb::action_auth(const std::string& uri_params, http_connection& connection,
+                             const khorost::network::http_text_protocol_header_ptr& http, network::s2h_session* session) {
     using namespace boost::posix_time;
 
     Json::Value root;

@@ -26,8 +26,9 @@ server2_h::server2_h() :
     , m_nHTTPListenPort(0) {
 }
 
-void server2_h::http_connection::get_client_ip(char* buffer, const size_t buffer_size) {
-    const char* cpi = m_http_processor->get_client_proxy_ip();
+void server2_h::http_connection::get_client_ip(const khorost::network::http_text_protocol_header_ptr& http, char* buffer,
+                                               const size_t buffer_size) {
+    const auto cpi = http->get_client_proxy_ip();
     if (cpi != nullptr) {
         strncpy(buffer, cpi, buffer_size);
     } else {
@@ -122,7 +123,8 @@ void server2_h::parse_action(const std::string& query, std::string& action, std:
     }
 }
 
-bool server2_h::process_http_file_server(const std::string& query_uri, http_connection& connection, const khorost::network::http_text_protocol_header_ptr& http) {
+bool server2_h::process_http_file_server(const std::string& query_uri, http_connection& connection,
+                                         const khorost::network::http_text_protocol_header_ptr& http) {
     return http->send_file(query_uri, connection, m_doc_root);
 }
 

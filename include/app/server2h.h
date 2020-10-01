@@ -40,7 +40,7 @@ namespace khorost {
                 , m_send_bytes_prev_request(0) {
             }
 
-            virtual void get_client_ip(char* buffer, size_t buffer_size);
+            void get_client_ip(const khorost::network::http_text_protocol_header_ptr& http,char* buffer, size_t buffer_size);
 
             void update_prev_bytes() {
                 m_receive_bytes_prev_request = m_receive_bytes;
