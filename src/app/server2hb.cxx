@@ -16,8 +16,8 @@ namespace fs = boost::filesystem;
 using namespace khorost;
 
 void RecalcPasswordHash(std::string& sPwHash_, const std::string& sLogin_, const std::string& sPassword_, const std::string& sSalt_) {
-    std::vector<unsigned char>   md(MD5_DIGEST_LENGTH);
-    MD5_CTX         ctx;
+    std::vector<unsigned char> md(MD5_DIGEST_LENGTH);
+    MD5_CTX ctx;
 
     MD5_Init(&ctx);
     MD5_Update(&ctx, sLogin_.c_str(), sLogin_.size());
@@ -30,8 +30,8 @@ void RecalcPasswordHash(std::string& sPwHash_, const std::string& sLogin_, const
 }
 
 bool IsPasswordHashEqual2(const std::string& sChecked_, const std::string& sFirst_, const std::string& sSecond_) {
-    std::vector<unsigned char>   md(MD5_DIGEST_LENGTH);
-    MD5_CTX         ctx;
+    std::vector<unsigned char> md(MD5_DIGEST_LENGTH);
+    MD5_CTX ctx;
 
     MD5_Init(&ctx);
     MD5_Update(&ctx, sFirst_.c_str(), sFirst_.size());
@@ -44,9 +44,10 @@ bool IsPasswordHashEqual2(const std::string& sChecked_, const std::string& sFirs
     return sChecked_ == sPwhashSession;
 }
 
-bool IsPasswordHashEqual3(const std::string& sChecked_, const std::string& sFirst_, const std::string& sSecond_, const std::string& sThird_) {
-    std::vector<unsigned char>   md(MD5_DIGEST_LENGTH);
-    MD5_CTX         ctx;
+bool IsPasswordHashEqual3(const std::string& sChecked_, const std::string& sFirst_, const std::string& sSecond_,
+                          const std::string& sThird_) {
+    std::vector<unsigned char> md(MD5_DIGEST_LENGTH);
+    MD5_CTX ctx;
 
     MD5_Init(&ctx);
     MD5_Update(&ctx, sFirst_.c_str(), sFirst_.size());
@@ -88,6 +89,7 @@ bool server2_hb::prepare_to_start() {
         , m_configure_.get_value("storage:db", "")
         , m_configure_.get_value("storage:user", "")
         , m_configure_.get_value("storage:password", "")
+        , m_configure_.get_value("storage:pool", 7)
     );
 
     logger->debug("[GEOIP] MMDB version: {}", khorost::network::geo_ip_database::get_lib_version_mmdb());
@@ -96,7 +98,7 @@ bool server2_hb::prepare_to_start() {
 
     const auto geoip_city_path = m_configure_.get_value("geoip:city", "");
     if (db.open_database(geoip_city_path)) {
-//        logger->debug("[GEOIP] meta city info \"{}\"", db.get_metadata());
+        //        logger->debug("[GEOIP] meta city info \"{}\"", db.get_metadata());
         m_geoip_city_path_ = geoip_city_path;
     } else {
         logger->warn("[GEOIP] Error init MMDB City by path {}", geoip_city_path);
@@ -104,8 +106,8 @@ bool server2_hb::prepare_to_start() {
     db.close_database();
 
     const auto geoip_asn_path = m_configure_.get_value("geoip:asn", "");
-    if (db.open_database(geoip_asn_path)){
-//        logger->debug("[GEOIP] meta asn info \"{}\"", db.get_metadata());
+    if (db.open_database(geoip_asn_path)) {
+        //        logger->debug("[GEOIP] meta asn info \"{}\"", db.get_metadata());
         m_geoip_asn_path_ = geoip_asn_path;
     } else {
         logger->warn("[GEOIP] Error init MMDB ASN by path {}", geoip_asn_path);
@@ -139,22 +141,21 @@ bool server2_hb::run() {
     return server2_h::run();
 }
 
-bool server2_hb::process_http_action(const std::string& action, const std::string& uri_params, http_connection& connection) {
-    auto http = connection.get_http();
-    const auto s2_h_session = reinterpret_cast<network::s2h_session*>(processing_session(connection).get());
+bool server2_hb::process_http_action(const std::string& action, const std::string& uri_params, http_connection& connection,
+                                     const khorost::network::http_text_protocol_header_ptr& http) {
+    const auto s2_h_session = reinterpret_cast<network::s2h_session*>(processing_session(connection, http).get());
 
     const auto it = m_dictActionS2H.find(action);
     if (it != m_dictActionS2H.end()) {
         const auto func_action = it->second;
-        return (this->*func_action)(uri_params, connection, s2_h_session);
+        return (this->*func_action)(uri_params, connection, http, s2_h_session);
     }
     return false;
 }
 
-bool server2_hb::process_http(http_connection& connection) {
+bool server2_hb::process_http(http_connection& connection, const khorost::network::http_text_protocol_header_ptr& http) {
     auto logger = get_logger();
 
-    auto http = connection.get_http();
     const auto query_uri = http->get_query_uri();
     const auto url_prefix_action = get_url_prefix_action();
     const auto size_upa = strlen(url_prefix_action);
@@ -164,7 +165,7 @@ bool server2_hb::process_http(http_connection& connection) {
     if (strncmp(query_uri, url_prefix_action, size_upa) == 0) {
         std::string action, params;
         parse_action(query_uri + size_upa, action, params);
-        if (process_http_action(action, params, connection)) {
+        if (process_http_action(action, params, connection, http)) {
             return true;
         }
 
@@ -175,18 +176,17 @@ bool server2_hb::process_http(http_connection& connection) {
 
         return false;
     }
-    return process_http_file_server(query_uri, connection);
+    return process_http_file_server(query_uri, connection, http);
 }
 
-bool server2_hb::process_http_file_server(const std::string& query_uri, http_connection& connection) {
+bool server2_hb::process_http_file_server(const std::string& query_uri, http_connection& connection, const khorost::network::http_text_protocol_header_ptr& http) {
     const std::string prefix = get_url_prefix_storage();
 
     if (prefix == query_uri.substr(0, prefix.size())) {
-        auto http = connection.get_http();
         return http->send_file(query_uri.substr(prefix.size() - 1), connection, m_storage_root);
     }
 
-    return server2_h::process_http_file_server(query_uri, connection);
+    return server2_h::process_http_file_server(query_uri, connection, http);
 }
 
 void server2_hb::timer_session_update() {
@@ -224,21 +224,20 @@ void server2_hb::stub_timer_run(server2_hb* server) {
 
 server2_hb::func_creator server2_hb::get_session_creator() {
     return [](const std::string& session_id, boost::posix_time::ptime created,
-        boost::posix_time::ptime expired) {
+              boost::posix_time::ptime expired) {
         return std::make_shared<network::s2h_session>(
             session_id, created, expired);
     };
 }
 
-void   server2_hb::set_session_driver(const std::string& driver) {
+void server2_hb::set_session_driver(const std::string& driver) {
     m_sessions.open(driver, SESSION_VERSION_MIN, SESSION_VERSION_CURRENT, get_session_creator());
 }
 
-network::session_ptr server2_hb::processing_session(http_connection& connect) {
+network::session_ptr server2_hb::processing_session(http_connection& connect, const khorost::network::http_text_protocol_header_ptr& http) {
     using namespace boost::posix_time;
 
     auto logger = get_logger();
-    auto http = connect.get_http();
 
     auto created = false;
     const auto session_id = http->get_cookie(get_session_code(), nullptr);
@@ -256,13 +255,14 @@ network::session_ptr server2_hb::processing_session(http_connection& connect) {
     http->set_cookie(get_session_code(), sp->get_session_id(), sp->get_expired(), http->get_host(), true);
 
     logger->debug("[OAUTH] {} = '{}' ClientIP = '{}' ConnectID = #{:d} InS = '{}' "
-        , get_session_code(), sp->get_session_id().c_str(), s_ip, connect.get_id()
-        , session_id != nullptr ? (strcmp(sp->get_session_id().c_str(), session_id) == 0 ? "+" : session_id) : "-"
+                  , get_session_code(), sp->get_session_id().c_str(), s_ip, connect.get_id()
+                  , session_id != nullptr ? (strcmp(sp->get_session_id().c_str(), session_id) == 0 ? "+" : session_id) : "-"
     );
     return sp;
 }
 
-network::token_ptr server2_hb::parse_token(const khorost::network::http_text_protocol_header_ptr& http, const bool is_access_token, const boost::posix_time::ptime& check) {
+network::token_ptr server2_hb::parse_token(const khorost::network::http_text_protocol_header_ptr& http, const bool is_access_token,
+                                           const boost::posix_time::ptime& check) {
     PROFILER_FUNCTION_TAG(get_logger_profiler(), fmt::format("[AT={}]", is_access_token));
 
     static const auto token_mask = khl_token_type + std::string(" ");
@@ -286,7 +286,8 @@ network::token_ptr server2_hb::parse_token(const khorost::network::http_text_pro
 
     auto token = find_token(is_access_token, id);
     if (token != nullptr) {
-        if (check != boost::date_time::neg_infin && (is_access_token && !token->is_no_expire_access(check) || !is_access_token && !token->is_no_expire_refresh(check))) {
+        if (check != boost::date_time::neg_infin && (is_access_token && !token->is_no_expire_access(check) || !is_access_token && !token->
+            is_no_expire_refresh(check))) {
             logger->debug("[OAUTH] {} Token {} expire. timestamp = {}"
                           , is_access_token ? "Access" : "Refresh"
                           , id
@@ -316,9 +317,8 @@ void server2_hb::fill_json_token(const network::token_ptr& token, Json::Value& v
     value["refresh_expires_in"] = token->get_refresh_duration();
 }
 
-bool server2_hb::action_refresh_token(const std::string& params_uri, http_connection& connection, khorost::network::s2h_session* session) {
+bool server2_hb::action_refresh_token(const std::string& params_uri, http_connection& connection , const khorost::network::http_text_protocol_header_ptr& http, khorost::network::s2h_session* session) {
     const auto& logger = get_logger();
-    const auto& http = connection.get_http();
     Json::Value json_root;
     const auto now = boost::posix_time::microsec_clock::universal_time();
 
@@ -344,7 +344,7 @@ bool server2_hb::action_refresh_token(const std::string& params_uri, http_connec
             token->set_access_duration(time_access);
             token->set_access_expire(access_expire);
 
-            token->set_refresh_token( refresh_token);
+            token->set_refresh_token(refresh_token);
             token->set_refresh_duration(time_refresh);
             token->set_refresh_expire(refresh_expire);
 
@@ -352,23 +352,23 @@ bool server2_hb::action_refresh_token(const std::string& params_uri, http_connec
             const auto token_value = khorost::data::json_string(payload);
             const auto cache_set_value = payload[get_cache_set_tag()].asString();
             // clear previous state
-            m_cache_db_.del({ prev_access_token , prev_refresh_token });
-            m_cache_db_.srem(m_cache_db_context_ + "tt:" + cache_set_value, { prev_refresh_token });
+            m_cache_db_.del({prev_access_token, prev_refresh_token});
+            m_cache_db_.srem(m_cache_db_context_ + "tt:" + cache_set_value, {prev_refresh_token});
             // set new state
             m_cache_db_.setex(m_cache_db_context_ + "at:" + access_token, time_access + khl_token_append_time,
-                token_value);
+                              token_value);
             m_cache_db_.setex(m_cache_db_context_ + "rt:" + refresh_token, time_refresh + khl_token_append_time,
-                token_value);
-            m_cache_db_.sadd(m_cache_db_context_ + "tt:" + cache_set_value, { refresh_token });
+                              token_value);
+            m_cache_db_.sadd(m_cache_db_context_ + "tt:" + cache_set_value, {refresh_token});
             m_cache_db_.sync_commit();
 
             logger->debug("[OAUTH] Remove token Access='{}', Refresh='{}' and append token Access='{}'@{}, Refresh='{}'@{}"
-                , prev_access_token
-                , prev_refresh_token
-                , token->get_access_token()
-                , to_iso_extended_string(token->get_access_expire())
-                , token->get_refresh_token()
-                , to_iso_extended_string(token->get_refresh_expire())
+                          , prev_access_token
+                          , prev_refresh_token
+                          , token->get_access_token()
+                          , to_iso_extended_string(token->get_access_expire())
+                          , token->get_refresh_token()
+                          , to_iso_extended_string(token->get_refresh_expire())
             );
             update_tokens(token, prev_access_token, prev_refresh_token);
 
@@ -391,10 +391,8 @@ bool server2_hb::action_refresh_token(const std::string& params_uri, http_connec
     return true;
 }
 
-bool server2_hb::action_auth(const std::string& uri_params, http_connection& connection, network::s2h_session* session) {
+bool server2_hb::action_auth(const std::string& uri_params, http_connection& connection, const khorost::network::http_text_protocol_header_ptr& http, network::s2h_session* session) {
     using namespace boost::posix_time;
-
-    auto http = connection.get_http();
 
     Json::Value root;
     std::string action, params;
@@ -555,4 +553,3 @@ network::token_ptr server2_hb::find_token(const bool is_access_token, const std:
 
     return nullptr;
 }
-

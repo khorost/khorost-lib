@@ -26,9 +26,8 @@ namespace khorost {
             }
 
         public:
-            cb_connection(network::connection_controller* pThis_, int ID_, evutil_socket_t fd_, struct sockaddr* sa_,
-                          int socklen_) :
-                network::connection(pThis_, ID_, fd_, sa_, socklen_) {
+            cb_connection(network::connection_controller* controller, int id, evutil_socket_t fd, struct sockaddr* sa) :
+                network::connection(controller, id, fd, sa) {
             }
         };
 
@@ -47,9 +46,9 @@ namespace khorost {
     private:
         class cb_controller final : public network::connection_controller {
         public:
-            network::connection* create_connection(connection_controller* pThis_, int ID_, evutil_socket_t fd_,
-                                                   struct sockaddr* sa_, int socklen_) override {
-                return new cb_connection(pThis_, ID_, fd_, sa_, socklen_);
+            network::connection*
+            create_connection(connection_controller* controller, int id, evutil_socket_t fd, struct sockaddr* sa) override {
+                return new cb_connection(controller, id, fd, sa);
             }
         };
 
@@ -65,6 +64,7 @@ namespace khorost {
         std::shared_ptr<std::thread> m_TimerThread;
         // ****************************************************************
         typedef bool (server2_hb::*funcActionS2H)(const std::string& uri_params, http_connection& connection,
+                                                  const khorost::network::http_text_protocol_header_ptr& http,
                                                   network::s2h_session* session);
         typedef std::map<std::string, funcActionS2H> DictionaryActionS2H;
 
@@ -74,10 +74,11 @@ namespace khorost {
                                                    boost::posix_time::ptime)> func_creator;
         virtual func_creator get_session_creator();
     protected:
-        bool process_http(http_connection& connection) override;
-        bool process_http_file_server(const std::string& query_uri, http_connection& connection) override;
+        bool process_http(http_connection& connection, const khorost::network::http_text_protocol_header_ptr& http) override;
+        bool process_http_file_server(const std::string& query_uri, http_connection& connection,
+                                      const khorost::network::http_text_protocol_header_ptr& http) override;
         bool process_http_action(const std::string& action, const std::string& uri_params,
-            http_connection& connection) override;
+                                 http_connection& connection, const khorost::network::http_text_protocol_header_ptr& http) override;
 
         virtual const char* get_session_code() const {
             return "s2hsession";
@@ -95,7 +96,7 @@ namespace khorost {
             return "/storage/";
         }
 
-        network::session_ptr processing_session(http_connection& connect);
+        network::session_ptr processing_session(http_connection& connect, const khorost::network::http_text_protocol_header_ptr& http);
 
         network::token_ptr parse_token(const khorost::network::http_text_protocol_header_ptr& http,
                                        bool is_access_token,
@@ -103,8 +104,10 @@ namespace khorost {
         static void fill_json_token(const network::token_ptr& token, Json::Value& value);
 
         bool action_refresh_token(const std::string& params_uri, http_connection& connection,
+                                  const khorost::network::http_text_protocol_header_ptr& http,
                                   khorost::network::s2h_session* session);
-        bool action_auth(const std::string& uri_params, http_connection& connection, network::s2h_session* session);
+        bool action_auth(const std::string& uri_params, http_connection& connection,
+                         const khorost::network::http_text_protocol_header_ptr& http, network::s2h_session* session);
 
         network::token_ptr find_token(bool is_access_token, const std::string& token_id);
         void update_tokens(const network::token_ptr& token, const std::string& access_token,
@@ -131,11 +134,11 @@ namespace khorost {
         static void json_fill_auth(network::s2h_session* session, bool full_info, Json::Value& value);
 
         void set_connect(const std::string& host, const int port, const std::string& database, const std::string& login,
-                         const std::string& password) {
+                         const std::string& password, int pool_size) {
             PROFILER_FUNCTION_TAG(get_logger_profiler()
-                                  , fmt::format("[host={} port={} user={} password=*** database={}]"
-                                      , host, port, login, database));
-            m_db_connect_.set_connect(host, port, database, login, password);
+                                  , fmt::format("[host={} port={} user={} password=*** database={} pool_size={}]"
+                                      , host, port, login, database, pool_size));
+            m_db_connect_.set_connect(host, port, database, login, password, pool_size);
         }
 
         void set_session_driver(const std::string& driver);

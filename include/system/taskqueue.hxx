@@ -38,8 +38,8 @@ public:
     }
 
     // Returns the number of tasks that are queued but not yet completed.
-    int NumPendingTasks() {
-        int num_pending = 0;
+    size_t NumPendingTasks() {
+        size_t num_pending = 0;
         BOOST_FOREACH(const SharedFuture& future, futures_) {
             if (!future.is_ready()) {
                 ++num_pending;
