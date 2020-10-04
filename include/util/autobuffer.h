@@ -29,6 +29,12 @@ namespace khorost {
                 m_auto_free_(true) {
             }
 
+            auto_buffer_t(const auto_buffer_t& right) {
+                if (this != &right) {
+                    *this = right;
+                }
+            }
+
             ~auto_buffer_t() {
                 if (m_auto_free_) {
                     free(m_buffer_);
@@ -36,6 +42,21 @@ namespace khorost {
 
                 m_buffer_ = nullptr;
                 m_full_size_ = m_ready_position_ = 0;
+            }
+
+            auto_buffer_t& operator=(const auto_buffer_t& right) {
+                if (this != &right) {
+                    m_auto_free_ = right.m_auto_free_;
+                    m_ready_position_ = right.m_ready_position_;
+                    m_full_size_ = right.m_full_size_;
+                    if (m_auto_free_) {
+                        m_buffer_ = static_cast<T*>(realloc(nullptr, m_full_size_ * sizeof(T)));
+                        memcpy(m_buffer_, right.m_buffer_, m_ready_position_ * sizeof(T));
+                    } else {
+                        m_buffer_ = right.m_buffer_;
+                    }
+                }
+                return *this;
             }
 
             //	**********************************************************************
