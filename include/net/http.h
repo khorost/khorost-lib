@@ -298,7 +298,7 @@ namespace khorost {
             const request& get_request() const { return m_request_; }
         };
 
-        typedef std::shared_ptr<http_text_protocol_header> http_text_protocol_header_ptr;
+//        typedef std::shared_ptr<http_text_protocol_header> http_text_protocol_header_ptr;
 
         template <typename T>
         class http_curl_t {

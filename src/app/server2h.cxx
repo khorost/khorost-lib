@@ -26,7 +26,7 @@ server2_h::server2_h() :
     , m_nHTTPListenPort(0) {
 }
 
-void server2_h::http_connection::get_client_ip(const khorost::network::http_text_protocol_header_ptr& http, char* buffer,
+void server2_h::http_connection::get_client_ip(const khorost::network::http_text_protocol_header* http, char* buffer,
                                                const size_t buffer_size) {
     const auto cpi = http->get_client_proxy_ip();
     if (cpi != nullptr) {
@@ -76,7 +76,7 @@ bool server2_h::shutdown() {
 }
 
 
-bool server2_h::process_http(http_connection& connection, const khorost::network::http_text_protocol_header_ptr& http) {
+bool server2_h::process_http(http_connection& connection, khorost::network::http_text_protocol_header* http) {
     auto logger = get_logger();
 
     const auto query_uri = http->get_query_uri();
@@ -103,7 +103,7 @@ bool server2_h::process_http(http_connection& connection, const khorost::network
 }
 
 bool server2_h::process_http_action(const std::string& action, const std::string& uri_params,
-                                    http_connection& connection, const khorost::network::http_text_protocol_header_ptr& http) {
+                                    http_connection& connection, khorost::network::http_text_protocol_header* http) {
     const auto it = m_dictActionS2Hs.find(action);
     if (it != m_dictActionS2Hs.end()) {
         const auto func_action = it->second;
@@ -124,7 +124,7 @@ void server2_h::parse_action(const std::string& query, std::string& action, std:
 }
 
 bool server2_h::process_http_file_server(const std::string& query_uri, http_connection& connection,
-                                         const khorost::network::http_text_protocol_header_ptr& http) {
+                                         khorost::network::http_text_protocol_header* http) {
     return http->send_file(query_uri, connection, m_doc_root);
 }
 

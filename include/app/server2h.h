@@ -11,23 +11,23 @@
 namespace khorost {
     class server2_h : public network::connection_context {
     protected:
-        struct HttpTask;
+        class HttpTask;
 
         class http_connection final : public network::connection {
-            network::http_text_protocol_header_ptr m_http_processor;
+            network::http_text_protocol_header* m_http_processor;
             size_t m_receive_bytes_prev_request, m_send_bytes_prev_request;
         protected:
             size_t data_processing(const boost::uint8_t* buffer, const size_t buffer_size) override {
                 auto server = reinterpret_cast<server2_h*>(get_controller()->get_context());
                 if (m_http_processor == nullptr) {
-                    m_http_processor = std::make_shared<network::http_text_protocol_header>();
+                    m_http_processor = new network::http_text_protocol_header();
                 }
                 const auto process_bytes = m_http_processor->process_data(buffer, buffer_size);
 
                 if (process_bytes != 0) {
                     if (m_http_processor->is_ready()) {
                         server->m_queue.QueueTask(HttpTask(server, this, m_http_processor));
-                        m_http_processor.reset();
+                        m_http_processor = nullptr;
                     }
                 }
                 return process_bytes;
@@ -36,11 +36,19 @@ namespace khorost {
         public:
             http_connection(network::connection_controller* controller, int id, evutil_socket_t fd, struct sockaddr* sa) :
                 network::connection(controller, id, fd, sa)
+                ,m_http_processor(nullptr)
                 , m_receive_bytes_prev_request(0)
                 , m_send_bytes_prev_request(0) {
             }
 
-            void get_client_ip(const khorost::network::http_text_protocol_header_ptr& http,char* buffer, size_t buffer_size);
+            virtual ~http_connection() {
+                if (m_http_processor != nullptr) {
+                    delete m_http_processor;
+                    m_http_processor = nullptr;
+                }
+            }
+
+            void get_client_ip(const khorost::network::http_text_protocol_header* http,char* buffer, size_t buffer_size);
 
             void update_prev_bytes() {
                 m_receive_bytes_prev_request = m_receive_bytes;
@@ -67,14 +75,15 @@ namespace khorost {
             }
         };
 
-        struct HttpTask {
+        class HttpTask {
+        public:
             typedef bool result_type;
 
             server2_h* m_server;
             http_connection* m_connection;
-            network::http_text_protocol_header_ptr m_http_processor;
+            network::http_text_protocol_header* m_http_processor;
 
-            HttpTask(server2_h* server, http_connection* connection, network::http_text_protocol_header_ptr http_processor) :
+            HttpTask(server2_h* server, http_connection* connection, network::http_text_protocol_header* http_processor) :
                 m_server(server),
                 m_connection(connection),
                 m_http_processor(http_processor){
@@ -103,7 +112,7 @@ namespace khorost {
                     m_connection->update_prev_bytes();
                 }
 
-                m_http_processor->clear();
+                delete m_http_processor;
 
                 return true;
             }
@@ -130,7 +139,7 @@ namespace khorost {
             return "s2h";
         }
 
-        typedef bool (server2_h::*funcActionS2Hs)(const std::string& uri_params, http_connection& connection, const khorost::network::http_text_protocol_header_ptr& http);
+        typedef bool (server2_h::*funcActionS2Hs)(const std::string& uri_params, http_connection& connection, khorost::network::http_text_protocol_header* http);
         typedef std::map<std::string, funcActionS2Hs> DictionaryActionS2Hs;
 
         DictionaryActionS2Hs m_dictActionS2Hs;
@@ -183,9 +192,9 @@ namespace khorost {
         virtual bool finish();
         virtual bool shutdown();
 
-        virtual bool process_http(http_connection& connection, const khorost::network::http_text_protocol_header_ptr& http);
-        virtual bool process_http_file_server(const std::string& query_uri, http_connection& connection, const khorost::network::http_text_protocol_header_ptr& http);
-        virtual bool process_http_action(const std::string& action, const std::string& uri_params, http_connection& connection, const khorost::network::http_text_protocol_header_ptr& http);
+        virtual bool process_http(http_connection& connection, khorost::network::http_text_protocol_header* http);
+        virtual bool process_http_file_server(const std::string& query_uri, http_connection& connection, khorost::network::http_text_protocol_header* http);
+        virtual bool process_http_action(const std::string& action, const std::string& uri_params, http_connection& connection, khorost::network::http_text_protocol_header* http);
 
         std::shared_ptr<spdlog::logger> get_logger();
         std::shared_ptr<spdlog::logger> get_logger_profiler();
