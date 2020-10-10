@@ -1,3 +1,6 @@
+// This is an independent project of an individual developer. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++, C#, and Java: http://www.viva64.com
+
 #include "net/session.h"
 #include "util/utils.h"
 
@@ -16,8 +19,8 @@ std::string session::generate_session_id() {
     return boost::lexical_cast<std::string>(uid);
 }
 
-session::session(const std::string& session_id, const boost::posix_time::ptime created,
-                 const boost::posix_time::ptime expired) {
+session::session(const std::string& session_id, const boost::posix_time::ptime& created,
+                 const boost::posix_time::ptime& expired) {
     m_session_id = session_id;
     m_created = created;
     m_expired = expired;
@@ -39,7 +42,7 @@ void session::set_ip(const std::string& ip) {
     }
 }
 
-void session::get_ip(std::list<std::string>& ips, bool reset) {
+void session::get_ip(std::list<std::string>& ips, const bool reset) {
     for (auto& it : m_ips) {
         if (!it.second) {
             ips.push_back(it.first);
@@ -50,7 +53,7 @@ void session::get_ip(std::list<std::string>& ips, bool reset) {
     }
 }
 
-void session::set_last_activity(const boost::posix_time::ptime value) {
+void session::set_last_activity(const boost::posix_time::ptime& value) {
     using namespace boost::posix_time;
 
     auto td = value - m_last_activity;
@@ -63,14 +66,14 @@ void session::set_last_activity(const boost::posix_time::ptime value) {
     m_stats_update = true;
 }
 
-session_controller::session_controller() {
+session_controller::session_controller(): m_session_db_() {
     m_version_min_ = m_version_current_ = 1;
 }
 
-bool session_controller::open(const std::string& driver, int version_min, int version_current,
-                             const std::function<session_ptr(const std::string& session_id,
-                                                             boost::posix_time::ptime created,
-                                                             boost::posix_time::ptime expired)> creator) {
+bool session_controller::open(const std::string& driver, const int version_min, const int version_current,
+                              const std::function<session_ptr(const std::string& session_id,
+                                                              const boost::posix_time::ptime& created,
+                                                              const boost::posix_time::ptime& expired)> creator) {
     m_version_min_ = version_min;
     m_version_current_ = version_current;
 
@@ -132,9 +135,9 @@ bool session_controller::session_db::remove_session(session* session) {
 }
 
 bool session_controller::session_db::load_sessions(session_controller& session_controler,
-                                                  const std::function<session_ptr(
-                                                      const std::string& session_id, boost::posix_time::ptime created,
-                                                      boost::posix_time::ptime expired)> creator) {
+                                                   const std::function<session_ptr(
+                                                       const std::string& session_id, boost::posix_time::ptime created,
+                                                       boost::posix_time::ptime expired)> creator) {
     using namespace boost::posix_time;
     using namespace boost::gregorian;
 
@@ -201,9 +204,9 @@ session_ptr session_controller::find_session(const std::string& session_id) {
 }
 
 session_ptr session_controller::get_session(const std::string& session_id, bool& created,
-                                           const std::function<session_ptr(
-                                               const std::string& session_id, boost::posix_time::ptime created,
-                                               boost::posix_time::ptime expired)> creator) {
+                                            const std::function<session_ptr(
+                                                const std::string& session_id, const boost::posix_time::ptime& created,
+                                                const boost::posix_time::ptime& expired)> creator) {
     using namespace boost::posix_time;
     using namespace boost::gregorian;
 

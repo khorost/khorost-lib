@@ -1,4 +1,7 @@
-﻿#include "app/server2hb.h"
+﻿// This is an independent project of an individual developer. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++, C#, and Java: http://www.viva64.com
+
+#include "app/server2hb.h"
 #include "net/geoip.h"
 
 #include <openssl/md5.h>
@@ -65,11 +68,11 @@ server2_hb::server2_hb() :
     server2_h()
     , m_db_base(m_db_connect_)
     , m_dispatcher(this)
-    , m_shutdown_timer(false) {
+    , m_shutdown_timer_(false) {
 }
 
 bool server2_hb::shutdown() {
-    m_shutdown_timer = true;
+    m_shutdown_timer_ = true;
     return server2_h::shutdown();
 }
 
@@ -92,7 +95,7 @@ bool server2_hb::prepare_to_start() {
         , m_configure_.get_value("storage:pool", 7)
     );
 
-    logger->debug("[GEOIP] MMDB version: {}", khorost::network::geo_ip_database::get_lib_version_mmdb());
+    logger->debug("[GEOIP] MMDB version: {}", khorost::network::geo_ip_database::get_lib_version_db());
 
     khorost::network::geo_ip_database db;
 
@@ -142,7 +145,7 @@ bool server2_hb::run() {
 }
 
 bool server2_hb::process_http_action(const std::string& action, const std::string& uri_params, http_connection& connection,
-                                     const khorost::network::http_text_protocol_header_ptr& http) {
+                                     khorost::network::http_text_protocol_header* http) {
     const auto s2_h_session = reinterpret_cast<network::s2h_session*>(processing_session(connection, http).get());
 
     const auto it = m_dictActionS2H.find(action);
@@ -153,7 +156,7 @@ bool server2_hb::process_http_action(const std::string& action, const std::strin
     return false;
 }
 
-bool server2_hb::process_http(http_connection& connection, const khorost::network::http_text_protocol_header_ptr& http) {
+bool server2_hb::process_http(http_connection& connection, khorost::network::http_text_protocol_header* http) {
     auto logger = get_logger();
 
     const auto query_uri = http->get_query_uri();
@@ -180,7 +183,7 @@ bool server2_hb::process_http(http_connection& connection, const khorost::networ
 }
 
 bool server2_hb::process_http_file_server(const std::string& query_uri, http_connection& connection,
-                                          const khorost::network::http_text_protocol_header_ptr& http) {
+                                          khorost::network::http_text_protocol_header* http) {
     const std::string prefix = get_url_prefix_storage();
 
     if (prefix == query_uri.substr(0, prefix.size())) {
@@ -204,7 +207,7 @@ void server2_hb::stub_timer_run(server2_hb* server) {
 
     auto session_update = session_ip_update = second_clock::universal_time();
 
-    while (!server->m_shutdown_timer) {
+    while (!server->m_shutdown_timer_) {
         const auto now = second_clock::universal_time();
 
         if ((now - session_update).minutes() >= 10) {
@@ -235,7 +238,7 @@ void server2_hb::set_session_driver(const std::string& driver) {
     m_sessions.open(driver, SESSION_VERSION_MIN, SESSION_VERSION_CURRENT, get_session_creator());
 }
 
-network::session_ptr server2_hb::processing_session(http_connection& connect, const khorost::network::http_text_protocol_header_ptr& http) {
+network::session_ptr server2_hb::processing_session(http_connection& connect, khorost::network::http_text_protocol_header* http) {
     using namespace boost::posix_time;
 
     auto logger = get_logger();
@@ -262,7 +265,7 @@ network::session_ptr server2_hb::processing_session(http_connection& connect, co
     return sp;
 }
 
-network::token_ptr server2_hb::parse_token(const khorost::network::http_text_protocol_header_ptr& http, const bool is_access_token,
+network::token_ptr server2_hb::parse_token(khorost::network::http_text_protocol_header* http, const bool is_access_token,
                                            const boost::posix_time::ptime& check) {
     PROFILER_FUNCTION_TAG(get_logger_profiler(), fmt::format("[AT={}]", is_access_token));
 
@@ -319,7 +322,7 @@ void server2_hb::fill_json_token(const network::token_ptr& token, Json::Value& v
 }
 
 bool server2_hb::action_refresh_token(const std::string& params_uri, http_connection& connection,
-                                      const khorost::network::http_text_protocol_header_ptr& http, khorost::network::s2h_session* session) {
+                                      khorost::network::http_text_protocol_header* http, khorost::network::s2h_session* session) {
     const auto& logger = get_logger();
     Json::Value json_root;
     const auto now = boost::posix_time::microsec_clock::universal_time();
@@ -394,7 +397,7 @@ bool server2_hb::action_refresh_token(const std::string& params_uri, http_connec
 }
 
 bool server2_hb::action_auth(const std::string& uri_params, http_connection& connection,
-                             const khorost::network::http_text_protocol_header_ptr& http, network::s2h_session* session) {
+                             khorost::network::http_text_protocol_header* http, network::s2h_session* session) {
     using namespace boost::posix_time;
 
     Json::Value root;

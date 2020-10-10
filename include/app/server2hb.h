@@ -60,11 +60,11 @@ namespace khorost {
         void timer_session_update();
         static void stub_timer_run(server2_hb* server);
 
-        bool m_shutdown_timer;
+        bool m_shutdown_timer_;
         std::shared_ptr<std::thread> m_TimerThread;
         // ****************************************************************
         typedef bool (server2_hb::*funcActionS2H)(const std::string& uri_params, http_connection& connection,
-                                                  const khorost::network::http_text_protocol_header_ptr& http,
+                                                  network::http_text_protocol_header* http,
                                                   network::s2h_session* session);
         typedef std::map<std::string, funcActionS2H> DictionaryActionS2H;
 
@@ -74,11 +74,11 @@ namespace khorost {
                                                    boost::posix_time::ptime)> func_creator;
         virtual func_creator get_session_creator();
     protected:
-        bool process_http(http_connection& connection, const khorost::network::http_text_protocol_header_ptr& http) override;
+        bool process_http(http_connection& connection, khorost::network::http_text_protocol_header* http) override;
         bool process_http_file_server(const std::string& query_uri, http_connection& connection,
-                                      const khorost::network::http_text_protocol_header_ptr& http) override;
+                                      khorost::network::http_text_protocol_header* http) override;
         bool process_http_action(const std::string& action, const std::string& uri_params,
-                                 http_connection& connection, const khorost::network::http_text_protocol_header_ptr& http) override;
+                                 http_connection& connection, khorost::network::http_text_protocol_header* http) override;
 
         virtual const char* get_session_code() const {
             return "s2hsession";
@@ -96,18 +96,18 @@ namespace khorost {
             return "/storage/";
         }
 
-        network::session_ptr processing_session(http_connection& connect, const khorost::network::http_text_protocol_header_ptr& http);
+        network::session_ptr processing_session(http_connection& connect, khorost::network::http_text_protocol_header* http);
 
-        network::token_ptr parse_token(const khorost::network::http_text_protocol_header_ptr& http,
+        network::token_ptr parse_token(khorost::network::http_text_protocol_header* http,
                                        bool is_access_token,
                                        const boost::posix_time::ptime& check);
         static void fill_json_token(const network::token_ptr& token, Json::Value& value);
 
         bool action_refresh_token(const std::string& params_uri, http_connection& connection,
-                                  const khorost::network::http_text_protocol_header_ptr& http,
+                                  khorost::network::http_text_protocol_header* http,
                                   khorost::network::s2h_session* session);
         bool action_auth(const std::string& uri_params, http_connection& connection,
-                         const khorost::network::http_text_protocol_header_ptr& http, network::s2h_session* session);
+                         khorost::network::http_text_protocol_header* http, network::s2h_session* session);
 
         network::token_ptr find_token(bool is_access_token, const std::string& token_id);
         void update_tokens(const network::token_ptr& token, const std::string& access_token,

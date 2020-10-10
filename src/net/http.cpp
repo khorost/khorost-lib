@@ -1,4 +1,7 @@
-﻿#ifndef NOMINMAX
+﻿// This is an independent project of an individual developer. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++, C#, and Java: http://www.viva64.com
+
+#ifndef NOMINMAX
  #define NOMINMAX
 #endif
 
@@ -363,40 +366,39 @@ bool http_text_protocol_header::get_multi_part(size_t& current_iterator, std::st
     return false;
 }
 
-bool http_text_protocol_header::parse_string(char* pBuffer_, size_t nBufferSize_, size_t nShift, list_pairs& lpTarget_,
-                                             char cDiv, bool bTrim) {
+void http_text_protocol_header::parse_string(char* buffer, const size_t buffer_size, const size_t shift, list_pairs& target, const char div,
+                                             const bool trim) {
     size_t k, v, t;
-    for (k = 0, v = -1, t = 0; t < nBufferSize_;) {
-        if (t >= nBufferSize_ || pBuffer_[t] == '\0') {
-            if (bTrim) {
-                for (; pBuffer_[k] != '\0' && pBuffer_[k] == ' '; ++k) {
+    for (k = 0, v = -1, t = 0; t < buffer_size;) {
+        if (t >= buffer_size || buffer[t] == '\0') {
+            if (trim) {
+                for (; buffer[k] == ' '; ++k) {
                 }
             }
-            lpTarget_.push_back(std::make_pair(nShift + k, v != -1 ? nShift + v : v));
+            target.push_back(std::make_pair(shift + k, v != -1 ? shift + v : v));
             break;
         }
 
-        if (pBuffer_[t] == cDiv) {
-            pBuffer_[t] = '\0';
-            if (bTrim) {
-                for (; pBuffer_[k] != '\0' && pBuffer_[k] == ' '; ++k) {
+        if (buffer[t] == div) {
+            buffer[t] = '\0';
+            if (trim) {
+                for (; buffer[k] == ' '; ++k) {
                 }
             }
-            lpTarget_.push_back(std::make_pair(nShift + k, v != -1 ? nShift + v : v));
+            target.push_back(std::make_pair(shift + k, v != -1 ? shift + v : v));
             k = ++t;
             v = -1;
-        } else if (pBuffer_[t] == '=') {
-            pBuffer_[t] = '\0';
+        } else if (buffer[t] == '=') {
+            buffer[t] = '\0';
             v = ++t;
         } else {
             ++t;
         }
     }
-    return true;
 }
 
 const char* http_text_protocol_header::get_cookie_parameter(const std::string& key, const char* default_value) const {
-    auto value = get_cookie(key, nullptr);
+    const auto* value = get_cookie(key, nullptr);
     if (value == nullptr) {
         value = get_parameter(key, default_value);
     }

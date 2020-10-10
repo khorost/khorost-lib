@@ -86,6 +86,10 @@ constexpr auto http_response_status_error = 503;
 namespace khorost {
     namespace network {
         class http_text_protocol_header final {
+            data::auto_buffer_char m_ab_header_;
+            data::auto_buffer_char m_ab_params_;
+            data::auto_buffer_char m_ab_body_;
+
             // Быстрый доступ к атрибутам HTTP
             data::auto_buffer_chunk_char m_query_method_;
             data::auto_buffer_chunk_char m_query_uri_;
@@ -99,10 +103,6 @@ namespace khorost {
             list_pairs m_header_values_; // словарь для заголовка
             list_pairs m_params_value_; // словарь для параметров
             list_pairs m_cookies_; // словарь для кук
-
-            data::auto_buffer_char m_ab_header_;
-            data::auto_buffer_char m_ab_params_;
-            data::auto_buffer_char m_ab_body_;
 
             enum {
                 eNone,
@@ -141,7 +141,7 @@ namespace khorost {
                     }
 
                     cookie(const std::string& name_cookie, const std::string& value,
-                           const boost::posix_time::ptime expire, const std::string& domain, const bool http_only) {
+                           const boost::posix_time::ptime& expire, const std::string& domain, const bool http_only) {
                         m_name_cookie = name_cookie;
                         m_value = value;
                         m_expire = expire;
@@ -194,8 +194,7 @@ namespace khorost {
             bool get_chunk(const char*& rpBuffer_, size_t& rnBufferSize_, char prefix, const char* div,
                            data::auto_buffer_char& abTarget_, data::auto_buffer_chunk_char& rabcQueryValue_,
                            size_t& rnChunkSize_);
-            bool parse_string(char* pBuffer_, size_t nBufferSize_, size_t nShift, list_pairs& lpTarget_, char cDiv,
-                              bool bTrim);
+            static void parse_string(char* buffer, size_t buffer_size, size_t shift, list_pairs& target, char div, bool trim);
         public:
             http_text_protocol_header() :
                 m_query_method_(m_ab_header_)
@@ -298,7 +297,7 @@ namespace khorost {
             const request& get_request() const { return m_request_; }
         };
 
-//        typedef std::shared_ptr<http_text_protocol_header> http_text_protocol_header_ptr;
+        //        typedef std::shared_ptr<http_text_protocol_header> http_text_protocol_header_ptr;
 
         template <typename T>
         class http_curl_t {
@@ -327,60 +326,58 @@ namespace khorost {
                 }
             }
 
-            bool do_request(const std::string& sURL_, data::auto_buffer_t<T>& abBuffer_) {
-                bool bResult = false;
-
-                CURLcode curlCode, nRespCode;
+            bool do_request(const std::string& url, data::auto_buffer_t<T>& buffer) {
+                auto result = false;
 
                 if (m_curl != nullptr) {
-                    curl_easy_setopt(m_curl, CURLOPT_URL, sURL_.c_str());
+                    curl_easy_setopt(m_curl, CURLOPT_URL, url.c_str());
                     curl_easy_setopt(m_curl, CURLOPT_WRITEFUNCTION, WriteAutobufferCallback);
-                    curl_easy_setopt(m_curl, CURLOPT_WRITEDATA, (void*)&abBuffer_);
-                    curlCode = curl_easy_perform(m_curl);
-                    curl_easy_getinfo(m_curl, CURLINFO_RESPONSE_CODE, &nRespCode);
-                    if (nRespCode == 200) {
-                        bResult = true;
+                    curl_easy_setopt(m_curl, CURLOPT_WRITEDATA, static_cast<void*>(&buffer));
+                    if (CURLE_OK == curl_easy_perform(m_curl)) {
+                        long resp_code;
+                        curl_easy_getinfo(m_curl, CURLINFO_RESPONSE_CODE, &resp_code);
+                        result = resp_code == 200;
                     }
                 }
 
-                return bResult;
+                return result;
             }
 
         };
 
-        class http_curl_string : http_curl_t<char> {
-            data::auto_buffer_char m_abBuffer;
+        class http_curl_string final : http_curl_t<char> {
+            data::auto_buffer_char m_ab_buffer_;
         public:
-            bool do_easy_request(const std::string& sURL_) {
-                return do_request(sURL_, m_abBuffer);
+            bool do_easy_request(const std::string& url) {
+                return do_request(url, m_ab_buffer_);
             }
 
-            const data::auto_buffer_char& get_buffer() const { return m_abBuffer; }
+            const data::auto_buffer_char& get_buffer() const { return m_ab_buffer_; }
 
-            const char* get_uri_encode(const char* pURIString_) {
+            const char* get_uri_encode(const char* uri) {
 
-                if (pURIString_ == nullptr || *pURIString_ == '\0') {
-                    m_abBuffer.check_size(sizeof(char));
-                    m_abBuffer[0] = '\0';
+                if (uri == nullptr || *uri == '\0') {
+                    m_ab_buffer_.check_size(sizeof(char));
+                    m_ab_buffer_[0] = '\0';
                 } else {
-                    int nLenghtOut = 0;
+                    auto length_out = 0;
 
-                    data::auto_buffer_char abTemp;
-                    abTemp.append(pURIString_, strlen(pURIString_));
+                    data::auto_buffer_char temp;
+                    temp.append(uri, strlen(uri));
                     // if +'s aren't replaced with %20's then curl won't unescape to spaces propperly
-                    abTemp.replace("+", 1, "%20", 3, false);
+                    temp.replace("+", 1, "%20", 3, false);
                     //            string url = std::str_replace("+", "%20", str);
-                    char* pt = curl_easy_unescape(m_curl, abTemp.get_head(), static_cast<int>(abTemp.get_fill_size()),
-                                                  &nLenghtOut);
+                    auto pt = curl_easy_unescape(m_curl, temp.get_head(), static_cast<int>(temp.get_fill_size()),
+                                                 &length_out);
 
-                    m_abBuffer.check_size(nLenghtOut);
-                    strcpy(m_abBuffer.get_head(), pt);
-                    m_abBuffer.flush_free_size();
-                    m_abBuffer.decrement_free_size(nLenghtOut);
+                    m_ab_buffer_.check_size(length_out);
+                    strcpy(m_ab_buffer_.get_head(), pt);
+                    m_ab_buffer_.flush_free_size();
+                    m_ab_buffer_.decrement_free_size(length_out);
                     curl_free(pt);
                 }
 
-                return m_abBuffer.get_head();
+                return m_ab_buffer_.get_head();
             }
 
             std::string do_post_request(const std::string& uri, const std::string& request = "") const;

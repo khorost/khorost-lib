@@ -1,4 +1,7 @@
-﻿#include "app/s2hb-storage.h"
+﻿// This is an independent project of an individual developer. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++, C#, and Java: http://www.viva64.com
+
+#include "app/s2hb-storage.h"
 #include "util/logger.h"
 
 #if defined(_WIN32) || defined(_WIN64)

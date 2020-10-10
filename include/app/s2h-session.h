@@ -21,7 +21,7 @@ namespace khorost {
             std::string         m_sPosition;
             std::set<std::string>   m_dRoles;
         public:
-            s2h_session(const std::string& session_id, const boost::posix_time::ptime created, const boost::posix_time::ptime expired) :
+            s2h_session(const std::string& session_id, const boost::posix_time::ptime& created, const boost::posix_time::ptime& expired) :
                 session(session_id, created, expired) {
                 reset();
             }
@@ -47,7 +47,7 @@ namespace khorost {
             void                SetPostion(const std::string& sPosition_) { m_sPosition = sPosition_; }
             const std::string&  GetPosition() const { return m_sPosition; }
 
-            void        ResetRoles() { m_dRoles.empty(); }
+            void        ResetRoles() { m_dRoles.clear(); }
             void        AppendRole(const std::string& sRole_) { m_dRoles.insert(sRole_); }
             bool        IsRoleExist(const std::string& sRole_) const { return m_dRoles.find(sRole_) != m_dRoles.end(); }
             void        fill_roles(Json::Value& value);

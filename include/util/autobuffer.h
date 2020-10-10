@@ -51,7 +51,9 @@ namespace khorost {
                     m_full_size_ = right.m_full_size_;
                     if (m_auto_free_) {
                         m_buffer_ = static_cast<T*>(realloc(nullptr, m_full_size_ * sizeof(T)));
-                        memcpy(m_buffer_, right.m_buffer_, m_ready_position_ * sizeof(T));
+                        if (m_buffer_ != nullptr && right.m_buffer_ != nullptr) {
+                            memcpy(m_buffer_, right.m_buffer_, m_ready_position_ * sizeof(T));
+                        }
                     } else {
                         m_buffer_ = right.m_buffer_;
                     }
@@ -131,7 +133,12 @@ namespace khorost {
                 if (demand_size > m_full_size_) {
                     m_full_size_ = (demand_size / buffer_granulate + 1) * buffer_granulate;
 
-                    m_buffer_ = static_cast<T*>(realloc(m_buffer_, m_full_size_ * sizeof(T)));
+                    auto* const t = static_cast<T*>(realloc(m_buffer_, m_full_size_ * sizeof(T)));
+                    if (t != nullptr) {
+                        m_buffer_ = t;
+                    } else {
+                        // TODO: ошибка выделения памяти
+                    }
                     //	буфер "раздувается" по мере приема необработанной информации
                     //	имеет смысл сделать возможность уменьшения рабочего объема по мере
                     //	использования информации из буфера
@@ -151,7 +158,8 @@ namespace khorost {
                 m_ready_position_ -= count_byte;
             }
 
-            bool replace(const T* match_buffer, size_type match_count, const T* replace_buffer, size_type replace_count, const bool single = true) {
+            bool replace(const T* match_buffer, size_type match_count, const T* replace_buffer, size_type replace_count,
+                         const bool single = true) {
                 if (m_ready_position_ < match_count)
                     return false;
 
@@ -209,7 +217,7 @@ namespace khorost {
         template <typename T, typename SizeT, SizeT DefaultBufferGranulate>
         const typename auto_buffer_t<T, SizeT, DefaultBufferGranulate>::size_type
         auto_buffer_t<T, SizeT, DefaultBufferGranulate>::npos =
-           static_cast<typename auto_buffer_t<T, SizeT, DefaultBufferGranulate>::size_type>(-1);
+            static_cast<typename auto_buffer_t<T, SizeT, DefaultBufferGranulate>::size_type>(-1);
 
         template <typename T, typename SizeT>
         class auto_buffer_chunk_t {

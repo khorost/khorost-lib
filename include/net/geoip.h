@@ -6,17 +6,17 @@
 
 namespace khorost {
     namespace network {
-        class geo_ip_database {
-            MMDB_s m_mmdb_;
+        class geo_ip_database final {
+            MMDB_s m_db_;
         public:
-            geo_ip_database() {
+            geo_ip_database(): m_db_() {
             }
 
-            virtual ~geo_ip_database() {
+            ~geo_ip_database() {
                 close_database();
             }
 
-            static std::string get_lib_version_mmdb() { return MMDB_lib_version(); }
+            static std::string get_lib_version_db() { return MMDB_lib_version(); }
 
             bool open_database(const std::string& path_name);
             void close_database();

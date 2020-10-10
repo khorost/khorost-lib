@@ -31,8 +31,8 @@ namespace khorost {
             bool m_only_read_; // Файл открыт только для чтения
             time_t m_update_;
         public:
-            fastfile(size_ff Granulate = 0);
-            virtual ~fastfile();
+            explicit fastfile(size_ff granulate = 0);
+            ~fastfile();
 
             // Открывает файл. Если Size_ == 0, тогда файл открывается размером соответствующим действительному размеру файла.
             bool open_file(const std::string& file_name, size_ff file_size = 0, bool file_open_mode_only_read = true);
