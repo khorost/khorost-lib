@@ -21,8 +21,8 @@ void khorost::log::prepare_logger(const config& configure, const std::string& lo
     const auto level = configure.get_value(prefix_key + ":level", "WARNING");
     auto rotating_sink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
         configure.get_value(prefix_key + ":file_name", "./log")
-        , configure.get_value(prefix_key + ":max_file_size", 1048576 * 10)
-        , configure.get_value(prefix_key + ":max_files", 5));
+        , configure.get_value(prefix_key + ":max_file_size", 1048576 * 20)
+        , configure.get_value(prefix_key + ":max_files", 10));
     rotating_sink->set_pattern(pattern_file);
 
     auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
