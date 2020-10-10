@@ -28,9 +28,9 @@ using namespace khorost::system;
 //////////////////////////////////////////////////////////////////////
 
 fastfile::fastfile(size_ff granulate):
-	m_granulate_(granulate)
+    m_granulate_(granulate)
     , m_file_size_(0)
-    , m_over_file_size_(0){
+    , m_over_file_size_(0), m_only_read_(false), m_update_(0) {
 #ifndef UNIX
     m_file_ = INVALID_HANDLE_VALUE;
     m_file_map_ = nullptr;

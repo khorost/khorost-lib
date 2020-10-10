@@ -370,7 +370,7 @@ void http_text_protocol_header::parse_string(char* buffer, const size_t buffer_s
                                              const bool trim) {
     size_t k, v, t;
     for (k = 0, v = -1, t = 0; t < buffer_size;) {
-        if (t >= buffer_size || buffer[t] == '\0') {
+        if (buffer[t] == '\0') {
             if (trim) {
                 for (; buffer[k] == ' '; ++k) {
                 }
