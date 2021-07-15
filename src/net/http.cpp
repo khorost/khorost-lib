@@ -407,7 +407,7 @@ const char* http_text_protocol_header::get_cookie_parameter(const std::string& k
 
 const char* http_text_protocol_header::get_cookie(const std::string& key, const char* default_value) const {
     for (const auto& cit : m_cookies_) {
-        if (stricmp(key.c_str(), m_ab_header_.get_position(cit.first)) == 0) {
+        if (strcasecmp(key.c_str(), m_ab_header_.get_position(cit.first)) == 0) {
             return cit.second != std::string::npos ? m_ab_header_.get_position(cit.second) : default_value;
         }
     }
@@ -416,7 +416,7 @@ const char* http_text_protocol_header::get_cookie(const std::string& key, const 
 
 bool http_text_protocol_header::is_parameter_exist(const std::string& key) const {
     for (const auto& cit : m_params_value_) {
-        if (stricmp(key.c_str(), m_ab_params_.get_position(cit.first)) == 0) {
+        if (strcasecmp(key.c_str(), m_ab_params_.get_position(cit.first)) == 0) {
             return true;
         }
     }
@@ -425,7 +425,7 @@ bool http_text_protocol_header::is_parameter_exist(const std::string& key) const
 
 size_t http_text_protocol_header::get_parameter_index(const std::string& key) const {
     for (const auto& cit : m_params_value_) {
-        if (stricmp(key.c_str(), m_ab_params_.get_position(cit.first)) == 0) {
+        if (strcasecmp(key.c_str(), m_ab_params_.get_position(cit.first)) == 0) {
             return cit.second;
         }
     }
@@ -434,7 +434,7 @@ size_t http_text_protocol_header::get_parameter_index(const std::string& key) co
 
 size_t http_text_protocol_header::get_header_index(const std::string& key) const {
     for (const auto& cit : m_header_values_) {
-        if (stricmp(key.c_str(), m_ab_header_.get_position(cit.first)) == 0) {
+        if (strcasecmp(key.c_str(), m_ab_header_.get_position(cit.first)) == 0) {
             return cit.second;
         }
     }
@@ -444,7 +444,7 @@ size_t http_text_protocol_header::get_header_index(const std::string& key) const
 void http_text_protocol_header::fill_parameter2_array(const std::string& s_key, std::vector<int>& r_array) {
     const auto s_key2 = s_key + "[]";
     for (const auto& p : m_params_value_) {
-        if (stricmp(s_key.c_str(), m_ab_params_.get_position(p.first)) == 0 || strcmp(
+        if (strcasecmp(s_key.c_str(), m_ab_params_.get_position(p.first)) == 0 || strcasecmp(
             s_key2.c_str(), m_ab_params_.get_position(p.first)) == 0) {
             r_array.push_back(atoi(m_ab_params_.get_position(p.second)));
         }
@@ -453,7 +453,7 @@ void http_text_protocol_header::fill_parameter2_array(const std::string& s_key, 
 
 const char* http_text_protocol_header::get_parameter(const std::string& key, const char* default_value) const {
     for (const auto& cit : m_params_value_) {
-        if (stricmp(key.c_str(), m_ab_params_.get_position(cit.first)) == 0) {
+        if (strcasecmp(key.c_str(), m_ab_params_.get_position(cit.first)) == 0) {
             return cit.second != std::string::npos ? m_ab_params_.get_position(cit.second) : default_value;
         }
     }
@@ -462,7 +462,7 @@ const char* http_text_protocol_header::get_parameter(const std::string& key, con
 
 const char* http_text_protocol_header::get_header_parameter(const std::string& param, const char* default_value) const {
     for (const auto& cit : m_header_values_) {
-        if (stricmp(param.c_str(), m_ab_header_.get_position(cit.first)) == 0) {
+        if (strcasecmp(param.c_str(), m_ab_header_.get_position(cit.first)) == 0) {
             return m_ab_header_.get_position(cit.second);
         }
     }
@@ -471,7 +471,7 @@ const char* http_text_protocol_header::get_header_parameter(const std::string& p
 }
 
 bool http_text_protocol_header::is_send_data() const {
-    return stricmp(get_query_method(), "HEAD") != 0;
+    return strcasecmp(get_query_method(), "HEAD") != 0;
 }
 
 void http_text_protocol_header::send_response(network::connection& connect, const char* response, const size_t length) {
