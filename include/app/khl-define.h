@@ -53,3 +53,7 @@ constexpr auto khl_json_param_delta_refresh_time = "delta_refresh_time";
 #define S2H_JSON_ROLES                      "roles"
 
 #define S2H_DEFAULT_TCP_PORT                7709
+
+#ifdef WIN32
+#define strcasecmp stricmp
+#endif

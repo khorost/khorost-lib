@@ -26,7 +26,11 @@ khorost::server2_h* khorost::g_pS2HB = nullptr;
 
 server2_h::server2_h() :
     m_connections(reinterpret_cast<connection_context*>(this))
-    , m_nHTTPListenPort(0), m_run_as_service(false), m_service_status(), m_service_status_handle(nullptr) {
+    , m_nHTTPListenPort(0)
+#if defined(_WIN32) || defined(_WIN64)
+    , m_run_as_service(false), m_service_status(), m_service_status_handle(nullptr)
+#endif
+{
 }
 
 void server2_h::http_connection::get_client_ip(const khorost::network::http_text_protocol_header* http, char* buffer,
