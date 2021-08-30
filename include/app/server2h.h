@@ -26,7 +26,9 @@ namespace khorost {
 
                 if (process_bytes != 0) {
                     if (m_http_processor->is_ready()) {
-                        server->m_queue.QueueTask(HttpTask(server, this, m_http_processor));
+                        HttpTask task(server, this, m_http_processor) ;
+                        task.processing();
+//                        server->m_queue.QueueTask(HttpTask(server, this, m_http_processor));
                         m_http_processor = nullptr;
                     }
                 }
@@ -90,6 +92,10 @@ namespace khorost {
             }
 
             bool operator()() {
+                return processing();
+            }
+
+            bool processing() {
                 auto logger = m_server->get_logger();
 
                 m_server->process_http(*m_connection, m_http_processor);

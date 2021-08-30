@@ -205,7 +205,7 @@ void WINAPI ServiceControl(DWORD dwControlCode) {
 }
 
 void WINAPI ServiceMain(DWORD dwArgc, LPTSTR* plszArgv) {
-    if (g_pS2HB != NULL) {
+    if (g_pS2HB != nullptr) {
         char ServicePath[_MAX_PATH + 3];
         // Получаем путь к exe-файлу
         GetModuleFileName(NULL, ServicePath, _MAX_PATH);
@@ -470,7 +470,7 @@ bool server2_h::check_params(int argc, char* argv[], int& result) {
         return false;
     }
 
-    auto logger = get_logger();
+    const auto logger = get_logger();
 #if defined(_WIN32) || defined(_WIN64)
     m_service_name = vm.count("name")
                          ? vm["name"].as<std::string>()
@@ -489,8 +489,10 @@ bool server2_h::check_params(int argc, char* argv[], int& result) {
         };
 
         if (!StartServiceCtrlDispatcher(DispatcherTable)) {
-            logger->info("InitAsService: Probable error 1063");
-        };
+
+            auto a = GetLastError();
+            logger->info("InitAsService: Probable error 1063 {}",a);
+        }
 
         logger->info("Service shutdown");
         return false;
